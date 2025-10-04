@@ -18,6 +18,15 @@ class Driver {
     return result.recordset[0];
   }
 
+  // Lấy 1 driver theo Email
+  static async getByEmail(email) {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('Email', sql.NVarChar, email)
+      .query('SELECT * FROM EV_Driver WHERE Email = @Email');
+    return result.recordset[0];
+  }
+
   // Tạo driver mới
   static async create(driver) {
     const pool = await poolPromise;
