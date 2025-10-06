@@ -4,4 +4,5 @@ dist/
 build/
 
 #Bỏ qua file cấu hình môi trường
-.env
+*.env
+.env.*
