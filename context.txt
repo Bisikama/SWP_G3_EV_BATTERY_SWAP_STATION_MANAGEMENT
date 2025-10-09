@@ -1,0 +1,45 @@
+"EV Battery Swap Station Management System
+Phần mềm quản lý trạm đổi pin xe máy điện"
+
+"EV Driver
+BSS Staff
+Admin
+warehouse manager"
+
+"1. Chức năng cho Tài xế (EV Driver)
+a. Đăng ký & quản lý tài khoản (username,password,fullname,phone,email)
++ Liên kết phương tiện (VIN, loại pin).
++ Đăng ký dịch vụ đổi pin (mua gói thuê pin).
+b. Đặt lịch & tra cứu trạm đổi pin
++ Tìm kiếm trạm gần nhất, tình trạng pin sẵn có. (dùng google map api để hiện thị vị trí trạm)
++ Đặt lịch trước để đảm bảo có pin đầy.
+c. Thanh toán & gói dịch vụ
++ Thanh toán theo gói thuê pin
+(bắt buộc mua gói,Gói gắn với 1 VIN duy nhất, đầu mỗi tháng sẽ thanh toán trước tiền gói + tiền phí thêm của tháng trước nếu có)
+việc tính tiền phí thêm của gói dựa theo delta soh (gói có bugget soh và trừ sau mỗi lần đổi pin trong tháng ) + free allowance (không tính 2% soh giảm đầu tiên ).
+loại gói thuê chia theo số pin có thể thuê và loại pin(có 2 loại pin)
++ Quản lý hóa đơn, lịch sử giao dịch.
++ Theo dõi số lần đổi pin, chi phí.
+d. Hỗ trợ & phản hồi
++ Gửi yêu cầu hỗ trợ khi gặp sự cố pin hoặc trạm.
++ Đánh giá dịch vụ trạm đổi pin."
+"2. Chức năng cho Nhân viên Trạm đổi pin (Battery Swap Station Staff)
+a. Quản lý tồn kho pin
++ Theo dõi số lượng pin đầy, pin đang sạc, pin bảo dưỡng.
++ Phân loại theo dung lượng, model, tình trạng.
+Nhận lịch phân công trực trạm.
+"3. Chức năng cho Quản trị (Admin)
+a. Quản lý trạm
++ Theo dõi lịch sử sử dụng & trạng thái sức khỏe (SoH – State of Health).
++ Xử lý khiếu nại
+b. Quản lý người dùng & gói thuê
++ Quản lý khách hàng.
++ Tạo gói thuê pin.
++ Phân công nhân viên trạm đổi pin.
+c. Báo cáo & thống kê
++ Doanh thu, số lượt đổi pin.
++ Báo cáo tần suất dổi pin, giờ cao điểm.
++ AI gợi ý dự báo nhu cầu sử dụng trạm đổi pin để nâng cấp hạ tầng."
+4. warehouse manager
++ cung cấp pin từ kho tổng về các trạm khi staff gửi request 
+
