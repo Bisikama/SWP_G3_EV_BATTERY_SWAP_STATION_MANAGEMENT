@@ -1,7 +1,7 @@
 // Axios configuration
 
 import axios from "axios";
-import { clearAuth } from "@/lib/auth";
+import { clearAuth } from "./auth";
 
 // Base URL from environment variables
 const baseURL = import.meta.env.VITE_API_BASE_URL;

@@ -1,7 +1,8 @@
 //Authentication hook
 
 import { useState, useEffect, useContext, createContext } from 'react';
-import { authAPI, setAuthToken, getAuthToken } from '@/lib/api';
+import { authAPI } from '../lib/apiServices';
+import { setAuthToken, getAuthToken } from '../lib/api';
 
 const AuthContext = createContext();
 
