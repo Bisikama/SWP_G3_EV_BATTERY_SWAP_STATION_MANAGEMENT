@@ -10,11 +10,11 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasMany(models.Booking, { as: 'station_id', foreignKey: 'station_id' });
-      this.hasMany(models.Cabinet, { as: 'station_id', foreignKey: 'station_id' });
-      this.hasMany(models.Shift, { as: 'station_id', foreignKey: 'station_id' });
-      this.hasMany(models.SwapRecord, { as: 'station_id', foreignKey: 'station_id' });
-      this.hasMany(models.TransferRecord, { as: 'station_id', foreignKey: 'station_id' });
+  this.hasMany(models.Booking, { as: 'bookings', foreignKey: 'station_id' });
+  this.hasMany(models.Cabinet, { as: 'cabinets', foreignKey: 'station_id' });
+  this.hasMany(models.Shift, { as: 'shifts', foreignKey: 'station_id' });
+  this.hasMany(models.SwapRecord, { as: 'swapRecords', foreignKey: 'station_id' });
+  this.hasMany(models.TransferRecord, { as: 'transferRecords', foreignKey: 'station_id' });
     }
   }
   Station.init({
@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
     address: DataTypes.STRING,
     latitude: DataTypes.DECIMAL,
     longitude: DataTypes.DECIMAL,
-    status: DataTypes.ENUM
+    status: DataTypes.ENUM('operational', 'maintenance', 'closed')
   }, {
     sequelize,
     modelName: 'Station',

@@ -10,12 +10,12 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasMany(models.SwapRecord, { as: 'vehicle_id', foreignKey: 'vehicle_id' });
-      this.hasMany(models.Battery, { as: 'vehicle_id', foreignKey: 'vehicle_id' });
-      this.hasOne(models.Subscription, { as: 'vehicle_id', foreignKey: 'vehicle_id' });
-      this.hasOne(models.Booking, { as: 'vehicle_id', foreignKey: 'vehicle_id' });
-      this.belongsTo(models.Account, { as: 'driver_id', foreignKey: 'driver_id' });
-      this.belongsTo(models.VehicleModel, { as: 'model_id', foreignKey: 'model_id' });
+        this.hasMany(models.SwapRecord, { as: 'swapRecords', foreignKey: 'vehicle_id' });
+        this.hasMany(models.Battery, { as: 'batteries', foreignKey: 'vehicle_id' });
+        this.hasOne(models.Subscription, { as: 'subscription', foreignKey: 'vehicle_id' });
+        this.hasOne(models.Booking, { as: 'booking', foreignKey: 'vehicle_id' });
+        this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
+        this.belongsTo(models.VehicleModel, { as: 'model', foreignKey: 'model_id' });
     }
   }
   Vehicle.init({

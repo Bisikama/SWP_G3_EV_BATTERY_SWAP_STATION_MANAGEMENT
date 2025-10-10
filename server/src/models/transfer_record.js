@@ -10,12 +10,12 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsToMany(models.Battery, { through: 'RetrievedTransferBattery', as: 'retrieved_transfer_id', foreignKey: 'transfer_id', otherKey: 'battery_id' });
-      this.belongsToMany(models.Battery, { through: 'ReturnedTransferBattery', as: 'returned_transfer_id', foreignKey: 'transfer_id', otherKey: 'battery_id' });
-      this.belongsTo(models.Account, { as: 'manager_id', foreignKey: 'manager_id' });
-      this.belongsTo(models.Account, { as: 'staff_id', foreignKey: 'staff_id' });
-      this.belongsTo(models.Warehouse, { as: 'warehouse_id', foreignKey: 'warehouse_id' });
-      this.belongsTo(models.Station, { as: 'station_id', foreignKey: 'station_id' });
+        this.belongsToMany(models.Battery, { through: 'RetrievedTransferBattery', as: 'retrievedBatteries', foreignKey: 'transfer_id', otherKey: 'battery_id' });
+        this.belongsToMany(models.Battery, { through: 'ReturnedTransferBattery', as: 'returnedBatteries', foreignKey: 'transfer_id', otherKey: 'battery_id' });
+        this.belongsTo(models.Account, { as: 'manager', foreignKey: 'manager_id' });
+        this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
+        this.belongsTo(models.Warehouse, { as: 'warehouse', foreignKey: 'warehouse_id' });
+        this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
     }
   }
   TransferRecord.init({
@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     create_time: DataTypes.DATE,
     accept_time: DataTypes.DATE,
     confirm_time: DataTypes.DATE,
-    status: DataTypes.ENUM,
+    status: DataTypes.ENUM('pending', 'accepted', 'rejected', 'confirmed'),
     notes: DataTypes.TEXT
   }, {
     sequelize,

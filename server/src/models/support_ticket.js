@@ -10,8 +10,8 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsTo(models.Account, { as: 'driver_id', foreignKey: 'driver_id' });
-      this.belongsTo(models.Account, { as: 'admin_id', foreignKey: 'admin_id' });
+  this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
+  this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
     }
   }
   SupportTicket.init({
@@ -20,9 +20,16 @@ module.exports = (sequelize, DataTypes) => {
     admin_id: DataTypes.UUID,
     create_date: DataTypes.DATE,
     resolve_date: DataTypes.DATE,
-    subject: DataTypes.ENUM,
+    subject: DataTypes.ENUM(
+      'battery_issue',
+      'vehicle_issue',
+      'station_issue',
+      'account_issue',
+      'payment_issue',
+      'other'
+    ),
     description: DataTypes.TEXT,
-    status: DataTypes.ENUM
+    status: DataTypes.ENUM('pending','resolved')
   }, {
     sequelize,
     modelName: 'SupportTicket',
