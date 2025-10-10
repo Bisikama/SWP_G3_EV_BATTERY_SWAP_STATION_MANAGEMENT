@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsTo(models.Invoice, { as: 'invoice_id', foreignKey: 'invoice_id' });
+  this.belongsTo(models.Invoice, { as: 'invoice', foreignKey: 'invoice_id' });
     }
   }
   PaymentRecord.init({
@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
     payment_date: DataTypes.DATE,
     payment_method: DataTypes.STRING,
     amount: DataTypes.DECIMAL,
-    status: DataTypes.ENUM
+    status: DataTypes.ENUM('success','fail')
   }, {
     sequelize,
     modelName: 'PaymentRecord',

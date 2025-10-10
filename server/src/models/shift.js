@@ -10,9 +10,9 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsTo(models.Account, { as: 'admin_id', foreignKey: 'admin_id' });
-      this.belongsTo(models.Account, { as: 'staff_id', foreignKey: 'staff_id' });
-      this.belongsTo(models.Station, { as: 'station_id', foreignKey: 'station_id' });
+  this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
+  this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
+  this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
     }
   }
   Shift.init({
@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     station_id: DataTypes.INTEGER,
     start_time: DataTypes.DATE,
     end_time: DataTypes.DATE,
-    status: DataTypes.ENUM
+    status: DataTypes.ENUM('assigned', 'confirmed', 'cancelled')
   }, {
     sequelize,
     modelName: 'Shift',

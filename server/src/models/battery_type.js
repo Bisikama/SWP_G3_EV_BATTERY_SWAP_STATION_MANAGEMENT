@@ -10,8 +10,8 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasMany(models.Battery, { as: 'battery_type_id', foreignKey: 'battery_type_id' });
-      this.hasMany(models.VehicleModel, { as: 'battery_type_id', foreignKey: 'battery_type_id' });
+  this.hasMany(models.Battery, { as: 'batteries', foreignKey: 'battery_type_id' });
+  this.hasMany(models.VehicleModel, { as: 'vehicleModels', foreignKey: 'battery_type_id' });
     }
   }
   BatteryType.init({
@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
     nominal_voltage: DataTypes.DECIMAL,
     energy_capacity_wh: DataTypes.DECIMAL,
     rated_power: DataTypes.DECIMAL,
-    cell_chemistry: DataTypes.ENUM,
+    cell_chemistry: DataTypes.ENUM('Li-ion','LFP'),
     weight: DataTypes.DECIMAL
   }, {
     sequelize,

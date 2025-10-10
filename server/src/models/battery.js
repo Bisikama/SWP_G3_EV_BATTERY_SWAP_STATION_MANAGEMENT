@@ -10,15 +10,17 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsToMany(models.SwapRecord, { through: 'RetrievedSwapBattery', as: 'retrieved_battery_id', foreignKey: 'battery_id', otherKey: 'swap_id' });
-      this.belongsToMany(models.SwapRecord, { through: 'ReturnedSwapBattery', as: 'returned_battery_id', foreignKey: 'battery_id', otherKey: 'swap_id' });
-      this.belongsToMany(models.TransferRecord, { through: 'RetrievedTransferBattery', as: 'retrieved_battery_id', foreignKey: 'battery_id', otherKey: 'transfer_id' });
-      this.belongsToMany(models.TransferRecord, { through: 'ReturnedTransferBattery', as: 'returned_battery_id', foreignKey: 'battery_id', otherKey: 'transfer_id' });
-      this.belongsToMany(models.Booking, { through: 'BookingBattery', as: 'battery_id', foreignKey: 'battery_id', otherKey: 'booking_id' });
-      this.belongsTo(models.BatteryType, { as: 'battery_type_id', foreignKey: 'battery_type_id' });
-      this.belongsTo(models.Vehicle, { as: 'vehicle_id', foreignKey: 'vehicle_id' });
-      this.belongsTo(models.Warehouse, { as: 'warehouse_id', foreignKey: 'warehouse_id' });
-      this.belongsTo(models.CabinetSlot, { as: 'slot_id', foreignKey: 'slot_id' });
+      this.belongsToMany(models.SwapRecord, { through: 'RetrievedSwapBattery', as: 'swapRetrievedRecords', foreignKey: 'battery_id', otherKey: 'swap_id' });
+      this.belongsToMany(models.SwapRecord, { through: 'ReturnedSwapBattery', as: 'swapReturnedRecords', foreignKey: 'battery_id', otherKey: 'swap_id' });
+      // transfer records: retrieved vs returned
+      this.belongsToMany(models.TransferRecord, { through: 'RetrievedTransferBattery', as: 'transferRetrievedRecords', foreignKey: 'battery_id', otherKey: 'transfer_id' });
+      this.belongsToMany(models.TransferRecord, { through: 'ReturnedTransferBattery', as: 'transferReturnedRecords', foreignKey: 'battery_id', otherKey: 'transfer_id' });
+      // bookings
+      this.belongsToMany(models.Booking, { through: 'BookingBattery', as: 'bookingRecords', foreignKey: 'battery_id', otherKey: 'booking_id' });
+      this.belongsTo(models.BatteryType, { foreignKey: 'battery_type_id' });
+      this.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id' });
+      this.belongsTo(models.Warehouse, { foreignKey: 'warehouse_id' });
+      this.belongsTo(models.CabinetSlot, { foreignKey: 'slot_id' });
     }
   }
   Battery.init({

@@ -10,8 +10,8 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasOne(models.Battery, { as: 'slot_id', foreignKey: 'slot_id' });
-      this.belongsTo(models.Cabinet, { as: 'cabinet_id', foreignKey: 'cabinet_id' });
+  this.hasOne(models.Battery, { as: 'battery', foreignKey: 'slot_id' });
+  this.belongsTo(models.Cabinet, { as: 'cabinet', foreignKey: 'cabinet_id' });
     }
   }
   CabinetSlot.init({
@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
     slot_number: DataTypes.STRING,
     voltage: DataTypes.DECIMAL,
     current: DataTypes.DECIMAL,
-    status: DataTypes.ENUM
+    status: DataTypes.ENUM('empty', 'charging', 'charged', 'faulty')
   }, {
     sequelize,
     modelName: 'CabinetSlot',

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const userController = require('../controllers/user.controller');
 
 /**
  * @swagger
@@ -23,8 +24,9 @@ const router = express.Router();
  *                     type: string
  *                     example: John Doe
  */
-router.get('/', (req, res) => {
-  res.json([{ id: 1, name: 'John Doe' }]);
-});
+router.get('/', userController.getAll);
+
+// login route
+router.post('/login', userController.login);
 
 module.exports = router;

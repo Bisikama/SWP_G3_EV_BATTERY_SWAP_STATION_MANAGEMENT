@@ -10,10 +10,10 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasOne(models.Invoice, { as: 'subscription_id', foreignKey: 'subscription_id' });
-      this.belongsTo(models.SubscriptionPlan, { as: 'plan_id', foreignKey: 'plan_id' });
-      this.belongsTo(models.Account, { as: 'driver_id', foreignKey: 'driver_id' });
-      this.belongsTo(models.Vehicle, { as: 'vehicle_id', foreignKey: 'vehicle_id' });
+  this.hasOne(models.Invoice, { as: 'invoice', foreignKey: 'subscription_id' });
+  this.belongsTo(models.SubscriptionPlan, { as: 'plan', foreignKey: 'plan_id' });
+  this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
+  this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
     }
   }
   Subscription.init({
@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
     plan_id: DataTypes.INTEGER,
     start_date: DataTypes.DATEONLY,
     end_date: DataTypes.DATEONLY,
-    status: DataTypes.ENUM
+    status: DataTypes.ENUM('in-use','used','cancelled')
   }, {
     sequelize,
     modelName: 'Subscription',

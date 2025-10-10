@@ -10,9 +10,9 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasMany(models.PaymentRecord, { as: 'invoice_id', foreignKey: 'invoice_id' });
-      this.belongsTo(models.Subscription, { as: 'subscription_id', foreignKey: 'subscription_id' });
-      this.belongsTo(models.Account, { as: 'driver_id', foreignKey: 'driver_id' });
+  this.hasMany(models.PaymentRecord, { as: 'payments', foreignKey: 'invoice_id' });
+  this.belongsTo(models.Subscription, { as: 'subscription', foreignKey: 'subscription_id' });
+  this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
     }
   }
   Invoice.init({
