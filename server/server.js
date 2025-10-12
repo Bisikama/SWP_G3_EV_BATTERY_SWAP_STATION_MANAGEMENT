@@ -12,6 +12,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // routes
 app.use('/api/user', userRoutes);
 
+
+
 // start server
 const port = process.env.PORT;
 app.listen(port, () => {
