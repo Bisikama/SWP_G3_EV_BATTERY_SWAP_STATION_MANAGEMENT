@@ -2,90 +2,65 @@
 const userService = require('../services/user.service');
 
 async function findAll(req, res) {
-  try {
-    const users = await userService.findAll();
-    res.json(users);
-  } catch (err) {
-    console.error('Get all users error', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  const users = await userService.findAll();
+  return res.status(200).json({ 
+    success: true,
+    payload: { users }
+  });
 }
 
 async function findById(req, res) {
-  try {
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ message: 'Id is required' });
-    const user = await userService.findById(id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    return res.json(user);
-  } catch (err) {
-    console.error('FindById error', err);
-    const status = err.status || 500;
-    return res.status(status).json({ message: err.message || 'Internal server error' });
-  }
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ message: 'Id is required' });
+  const user = await userService.findById(id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  return res.status(200).json({ 
+    success: true,
+    payload: { user }
+  });
 }
 
 async function findByEmail(req, res) {
-  try {
-    const { email } = req.params;
-    if (!email) return res.status(400).json({ message: 'Email is required' });
-    const user = await userService.findByEmail(email);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    return res.json(user);
-  } catch (err) {
-    console.error('FindByEmail error', err);
-    const status = err.status || 500;
-    return res.status(status).json({ message: err.message || 'Internal server error' });
-  }
+  const { email } = req.params;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+  const user = await userService.findByEmail(email);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  return res.status(200).json({
+    success: true,
+    payload: { user }
+  });
 }
 
-/**
- * Login controller
- * Expected body: { email, password }
- * Responses:
- *  - 200: { token, account }
- *  - 400: invalid input
- *  - 401: invalid credentials
- *  - 500: server error
- */
 async function login(req, res) {
-  try {
-    const { email, password } = req.body || {};
-    const token = await userService.authenticate({ email, password });
-    const account = await userService.findByEmail(email);
-    return res.json({ token, account });
-  } catch (err) {
-    console.error('Login error', err);
-    const status = err.status || 500;
-    return res.status(status).json({ message: err.message || 'Internal server error' });
-  }
+  const { email, password } = req.body || {};
+  const token = await userService.authenticate({ email, password });
+  const account = await userService.findByEmail(email);
+  return res.status(200).json({ 
+    success: true,
+    payload: { token, account } 
+  });
 }
 
 async function register(req, res) {
-  try {
-    const { username, email, password, fullname, phone_number } = req.body || {};
-    const account = await userService.createAccount({ username, email, password, fullname, phone_number, permission: 'driver' });
-    return res.status(201).json({ account });
-  } catch (err) {
-    console.error('Register error', err);
-    const status = err.status || 500;
-    return res.status(status).json({ message: err.message || 'Internal server error' });
-  }
+  const { username, email, password, fullname, phone_number } = req.body || {};
+  const account = await userService.createAccount({ username, email, password, fullname, phone_number, permission: 'driver' });
+  return res.status(201).json({ 
+    success: true,
+    payload: { account }
+  });
 }
 
 // logout: add token to blacklist (expects Authorization: Bearer <token>)
 async function logout(req, res) {
-  try {
-    const auth = req.headers.authorization || '';
-    const parts = auth.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(400).json({ message: 'Invalid authorization header' });
-    const token = parts[1];
-    userService.logout(token);
-    return res.json({ message: 'Logged out' });
-  } catch (err) {
-    console.error('Logout error', err);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
+  const auth = req.headers.authorization || '';
+  const parts = auth.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(400).json({ message: 'Invalid authorization header' });
+  const token = parts[1];
+  userService.logout(token);
+  return res.status(200).json({ 
+    success: true,
+    message: 'Logged out' 
+  });
 }
 
 module.exports = { findAll, login, register, logout, findById, findByEmail };

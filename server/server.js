@@ -4,6 +4,8 @@ const swaggerDocs = require('./src/config/swagger.config');
 const cors = require('./src/config/cors.config');
 require('dotenv').config();
 
+const errorHandler = require('./src/middlewares/errorHandler');
+
 const userRoutes = require('./src/routes/user.route');
 
 const app = express();
@@ -14,7 +16,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // routes
 app.use('/api/user', userRoutes);
 
-
+// catch errors
+app.use(errorHandler);
 
 // start server
 const port = process.env.PORT;

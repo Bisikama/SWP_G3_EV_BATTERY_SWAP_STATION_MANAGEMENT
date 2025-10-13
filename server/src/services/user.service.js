@@ -6,72 +6,48 @@ const SALT_ROUNDS = 10;
 const tokenBlacklist = require('../utils/tokenBlacklist');
 
 async function findAll() {
-  try {
-    const accounts = await Account.findAll({
-      attributes: [
-        'account_id',
-        'username',
-        'email',
-        'fullname',
-        'phone_number',
-        'permission',
-        'status'
-      ]
-    });
-    return accounts;
-  } catch (err) {
-    console.error('DB error in findAll', err);
-    const e = new Error('Database error');
-    e.status = 500;
-    throw e;
-  }
+  return Account.findAll({
+    attributes: [
+      'account_id',
+      'username',
+      'email',
+      'fullname',
+      'phone_number',
+      'permission',
+      'status'
+    ]
+  });
 }
 
 async function findById(id) {
-  try {
-    if (!id) return null;
-    const accounts = await Account.findByPk(id, {
-      attributes: [
-        'account_id',
-        'username',
-        'email',
-        'fullname',
-        'phone_number',
-        'permission',
-        'status'
-      ]
-    });
-    return accounts;
-  } catch (err) {
-    console.error('DB error in findById', err);
-    const e = new Error('Database error');
-    e.status = 500;
-    throw e;
-  }
+  if (!id) return null;
+  return Account.findByPk(id, {
+    attributes: [
+      'account_id',
+      'username',
+      'email',
+      'fullname',
+      'phone_number',
+      'permission',
+      'status'
+    ]
+  });
 }
 
 async function findByEmail(email) {
-  try {
-    if (!email) return null;
-    const account = await Account.findOne({
-      where: { email },
-      attributes: [
-        'account_id',
-        'username',
-        'email',
-        'fullname',
-        'phone_number',
-        'permission',
-        'status'
-      ]
-    });
-    return account;
-  } catch (err) {
-    console.error('DB error in findByEmail', err);
-    const e = new Error('Database error');
-    e.status = 500;
-    throw e;
-  }
+  if (!email) return null;
+  return Account.findOne({
+    where: { email },
+    attributes: [
+      'account_id',
+      'username',
+      'email',
+      'fullname',
+      'phone_number',
+      'permission',
+      'status'
+    ]
+  });
 }
 
 async function authenticate({ email, password }) {
@@ -81,17 +57,9 @@ async function authenticate({ email, password }) {
     throw err;
   }
 
-  let account;
-  try {
-    account = await Account.findOne({ where: { email } });
-  } catch (err) {
-    console.error('DB error in authenticate (findOne)', err);
-    const e = new Error('Database error');
-    e.status = 500;
-    throw e;
-  }
+  const account = await Account.findOne({ where: { email } });
   if (!account) {
-    const err = new Error('Invalid email or password');
+    const err = new Error('Incorrect email');
     err.status = 401;
     throw err;
   }
@@ -101,12 +69,13 @@ async function authenticate({ email, password }) {
     match = await bcrypt.compare(password, account.password_hash);
   } catch (err) {
     console.error('Error comparing password', err);
-    const e = new Error('Authentication error');
+    const e = new Error('Failed to verify password');
     e.status = 500;
     throw e;
   }
+
   if (!match) {
-    const err = new Error('Invalid email or password');
+    const err = new Error('Incorrect password');
     err.status = 401;
     throw err;
   }
@@ -136,23 +105,30 @@ async function authenticate({ email, password }) {
 
 async function createAccount({ username, email, password, fullname, phone_number, permission = 'driver' }) {
   if (!username || !email || !password) {
-    const err = new Error('username, email and password are required');
+    const err = new Error('Username, email and password are required');
     err.status = 400;
     throw err;
   }
 
-  try {
-    const exists = await Account.findOne({ where: { email } });
-    if (exists) {
-      const err = new Error('Email already registered');
-      err.status = 409;
-      throw err;
-    }
-  } catch (err) {
-    console.error('DB error in createAccount (findOne)', err);
-    const e = new Error('Database error');
-    e.status = 500;
-    throw e;
+  const usernameExists = await Account.findOne({ where: { username } });
+  if (usernameExists) {
+    const err = new Error('Username already registered');
+    err.status = 409;
+    throw err;
+  }
+
+  const emailExists = await Account.findOne({ where: { email } });
+  if (emailExists) {
+    const err = new Error('Email already registered');
+    err.status = 409;
+    throw err;
+  }
+
+  const phoneExists = await Account.findOne({ where: { phone_number } });
+  if (phoneExists) {
+    const err = new Error('Phone number already registered');
+    err.status = 409;
+    throw err;
   }
 
   let newAccount;
@@ -166,9 +142,7 @@ async function createAccount({ username, email, password, fullname, phone_number
     throw e;
   }
 
-  const safeAccount = findById(newAccount.account_id);
-
-  return safeAccount;
+  return findById(newAccount.account_id);
 }
 
 function logout(token) {
