@@ -1,12 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const validateRegister = require('../middlewares/validateRegister');
-<<<<<<< HEAD
-=======
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
->>>>>>> 5fdeef0 (refactoring)
 const userController = require('../controllers/user.controller');
-const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+
 /**
  * @swagger
  * /api/user/login:
@@ -186,9 +183,5 @@ router.post('/station/update', verifyToken, authorizeRole('Admin', 'Staff'), (re
 router.get('/profile', verifyToken, (req, res) => {
   res.json({ message: `Hello ${req.user.email}`, role: req.user.permission });
 });
-<<<<<<< HEAD
-
-=======
->>>>>>> 5fdeef0 (refactoring)
 
 module.exports = router;

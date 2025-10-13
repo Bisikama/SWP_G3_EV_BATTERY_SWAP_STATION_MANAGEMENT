@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-// src/middlewares/validateRegister.js
-=======
->>>>>>> 5fdeef0 (refactoring)
 function validateRegister(req, res, next) {
   const { username, email, password } = req.body || {};
 
@@ -36,15 +32,7 @@ function validateRegister(req, res, next) {
     }
   }
 
-<<<<<<< HEAD
-
   next();
 }
 
 module.exports = validateRegister;
-=======
-  next();
-}
-
-module.exports = validateRegister;
->>>>>>> 5fdeef0 (refactoring)
