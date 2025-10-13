@@ -19,12 +19,21 @@ module.exports = {
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
+    const batteryTypes = await queryInterface.sequelize.query(
+      `SELECT battery_type_id FROM "BatteryTypes"`,
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+
+    const randomBatteryType = () =>
+      batteryTypes[Math.floor(Math.random() * batteryTypes.length)].battery_type_id;
+
     const batteries = [];
 
     // Batteries in vehicles (one per vehicle)
     vehicles.forEach((vehicle, index) => {
       batteries.push({
         battery_id: uuidv4(),
+        battery_type_id: randomBatteryType(),
         vehicle_id: vehicle.vehicle_id,
         warehouse_id: null,
         slot_id: null,
@@ -38,6 +47,7 @@ module.exports = {
     chargedSlots.slice(0, 50).forEach((slot, index) => {
       batteries.push({
         battery_id: uuidv4(),
+        battery_type_id: randomBatteryType(),
         vehicle_id: null,
         warehouse_id: null,
         slot_id: slot.slot_id,
@@ -51,6 +61,7 @@ module.exports = {
     for (let i = 0; i < 30; i++) {
       batteries.push({
         battery_id: uuidv4(),
+        battery_type_id: randomBatteryType(),
         vehicle_id: null,
         warehouse_id: warehouses[i % warehouses.length].warehouse_id,
         slot_id: null,

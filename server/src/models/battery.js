@@ -25,6 +25,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   Battery.init({
     battery_id: DataTypes.UUID,
+    battery_type_id: DataTypes.INTEGER,
     vehicle_id: DataTypes.UUID,
     warehouse_id: DataTypes.INTEGER,
     slot_id: DataTypes.INTEGER,
