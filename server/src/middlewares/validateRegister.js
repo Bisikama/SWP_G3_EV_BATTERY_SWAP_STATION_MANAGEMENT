@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // src/middlewares/validateRegister.js
+=======
+>>>>>>> 5fdeef0 (refactoring)
 function validateRegister(req, res, next) {
   const { username, email, password } = req.body || {};
 
@@ -15,7 +18,7 @@ function validateRegister(req, res, next) {
       message: 'Password must be at least 8 characters long and include uppercase, lowercase, and numbers'
     });
 
-   // 4️⃣ Validate số điện thoại Việt Nam
+  const { phone_number } = req.body || {};
   if (phone_number) {
     /**
      * Quy tắc:
@@ -33,8 +36,15 @@ function validateRegister(req, res, next) {
     }
   }
 
+<<<<<<< HEAD
 
   next();
 }
 
 module.exports = validateRegister;
+=======
+  next();
+}
+
+module.exports = validateRegister;
+>>>>>>> 5fdeef0 (refactoring)

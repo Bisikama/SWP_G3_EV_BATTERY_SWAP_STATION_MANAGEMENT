@@ -1,8 +1,6 @@
 const jwt = require('jsonwebtoken');
 const tokenBlacklist = require('../utils/tokenBlacklist');
 
-
-// ✅ 1. Middleware xác thực token
 function verifyToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -30,7 +28,6 @@ function verifyToken(req, res, next) {
   });
 }
 
-// ✅ 2. Middleware phân quyền (Authorization)
 function authorizeRole(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user || !req.user.permission) {
@@ -45,4 +42,4 @@ function authorizeRole(...allowedRoles) {
   };
 }
 
-module.exports = { verifyToken, authorizeRole , };
+module.exports = { verifyToken, authorizeRole };

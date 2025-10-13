@@ -3,7 +3,8 @@ require('dotenv').config();
 
 const options = {
   origin: [
-    'http://localhost:3001'
+    'http://localhost:3000',
+    `http://localhost:${process.env.PORT}`,
     ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],

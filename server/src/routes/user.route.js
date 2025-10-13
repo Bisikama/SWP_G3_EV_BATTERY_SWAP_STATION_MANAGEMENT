@@ -1,41 +1,176 @@
 const express = require('express');
 const router = express.Router();
 const validateRegister = require('../middlewares/validateRegister');
+<<<<<<< HEAD
+=======
+const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+>>>>>>> 5fdeef0 (refactoring)
 const userController = require('../controllers/user.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 /**
  * @swagger
- * /api/user:
- *   get:
- *     summary: Retrieve a list of users
+ * /api/user/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login a user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
  *     responses:
  *       200:
- *         description: A list of users
+ *         description: Login successful, returns JWT
+ *       401:
+ *         description: Invalid credentials
+ */
+router.post('/login', userController.login);
+
+/**
+ * @swagger
+ * /api/user/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Register a new user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               fullname:
+ *                 type: string
+ *               phone_number:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       400:
+ *         description: Missing required fields
+ *       409:
+ *         description: Email already registered
+ */
+router.post('/register', validateRegister, userController.register);
+
+/**
+ * @swagger
+ * /api/user/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logged out
+ *       400:
+ *         description: Invalid authorization header
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/logout', userController.logout);
+
+/**
+ * @swagger
+ * /api/user:
+ *   get:
+ *     summary: Get all users
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: List of all users
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                     example: 1
- *                   name:
- *                     type: string
- *                     example: John Doe
+ *                 $ref: '#/components/schemas/User'
+ *       500:
+ *         description: Internal server error
  */
-router.get('/', userController.getAll);
+router.get('/', userController.findAll);
 
-// login route
-router.post('/login', userController.login);
-router.post('/register', validateRegister, userController.register);
-router.post('/logout', userController.logout);
+/**
+ * @swagger
+ * /api/user/id/{id}:
+ *   get:
+ *     summary: Get user by ID
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID
+ *     responses:
+ *       200:
+ *         description: User found successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/id/:id', userController.findById);
 
-// get all users (for admin/testing)
-router.get('/all', userController.getAll);
-
-
+/**
+ * @swagger
+ * /api/user/email/{email}:
+ *   get:
+ *     summary: Get user by email
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: email
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user email
+ *     responses:
+ *       200:
+ *         description: User found successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/email/:email', userController.findByEmail);
 
 // 🔐 Route chỉ cho phép Admin truy cập
 router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {
@@ -51,6 +186,9 @@ router.post('/station/update', verifyToken, authorizeRole('Admin', 'Staff'), (re
 router.get('/profile', verifyToken, (req, res) => {
   res.json({ message: `Hello ${req.user.email}`, role: req.user.permission });
 });
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5fdeef0 (refactoring)
 
 module.exports = router;
