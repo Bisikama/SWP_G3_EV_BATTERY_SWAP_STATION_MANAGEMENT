@@ -17,14 +17,15 @@ module.exports = (sequelize, DataTypes) => {
       this.belongsToMany(models.TransferRecord, { through: 'ReturnedTransferBattery', as: 'transferReturnedRecords', foreignKey: 'battery_id', otherKey: 'transfer_id' });
       // bookings
       this.belongsToMany(models.Booking, { through: 'BookingBattery', as: 'bookingRecords', foreignKey: 'battery_id', otherKey: 'booking_id' });
-      this.belongsTo(models.BatteryType, { foreignKey: 'battery_type_id' });
+      this.belongsTo(models.BatteryType, { as: 'batteryType', foreignKey: 'battery_type_id' });
       this.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id' });
       this.belongsTo(models.Warehouse, { foreignKey: 'warehouse_id' });
-      this.belongsTo(models.CabinetSlot, { foreignKey: 'slot_id' });
+      this.belongsTo(models.CabinetSlot, { as: 'cabinetSlot', foreignKey: 'slot_id' });
     }
   }
   Battery.init({
-    battery_id: DataTypes.UUID,
+    battery_id: { type: DataTypes.UUID, primaryKey: true },
+    battery_type_id: { type: DataTypes.INTEGER},
     vehicle_id: DataTypes.UUID,
     warehouse_id: DataTypes.INTEGER,
     slot_id: DataTypes.INTEGER,

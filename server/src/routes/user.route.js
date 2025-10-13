@@ -25,7 +25,7 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *                     type: string
  *                     example: John Doe
  */
-router.get('/', userController.getAll);
+// router.get('/', userController.getAll);
 
 // login route
 router.post('/login', userController.login);

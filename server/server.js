@@ -4,6 +4,7 @@ const swaggerDocs = require('./src/config/swagger.config');
 require('dotenv').config();
 
 const userRoutes = require('./src/routes/user.route');
+const batteryRoutes = require('./src/routes/battery.route');
 
 const app = express();
 app.use(express.json());
@@ -11,8 +12,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // routes
 app.use('/api/user', userRoutes);
-
-
+app.use('/api/battery', batteryRoutes);
 
 // start server
 const port = process.env.PORT;

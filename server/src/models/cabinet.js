@@ -15,7 +15,11 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Cabinet.init({
-    cabinet_id: DataTypes.INTEGER,
+    cabinet_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
     station_id: DataTypes.INTEGER,
     cabinet_name: DataTypes.STRING,
     capacity: DataTypes.INTEGER,
