@@ -8,6 +8,16 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true
       },
+      battery_type_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'BatteryTypes',
+          key: 'battery_type_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
+      },
       vehicle_id: {
         type: Sequelize.UUID,
         allowNull: true,

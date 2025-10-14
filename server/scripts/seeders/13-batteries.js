@@ -14,12 +14,26 @@ module.exports = {
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
+    const batteryTypes = await queryInterface.sequelize.query(
+      `SELECT battery_type_id FROM "BatteryTypes"`,
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+
+    const randomBatteryType = () =>
+      batteryTypes[Math.floor(Math.random() * batteryTypes.length)].battery_type_id;
+
     const batteries = [];
+
+    if (!batteryTypes || batteryTypes.length === 0) {
+      console.info('No battery types found; skipping Batteries seeder to avoid null battery_type_id.');
+      return;
+    }
 
     // Batteries in vehicles (one per vehicle)
     vehicles.forEach((vehicle, index) => {
       batteries.push({
         battery_id: uuidv4(),
+        battery_type_id: randomBatteryType(),
         vehicle_id: vehicle.vehicle_id,
         slot_id: null,
         battery_serial: `BAT-VEH-${String(index + 1).padStart(4, '0')}`,
@@ -32,6 +46,7 @@ module.exports = {
     chargedSlots.slice(0, 50).forEach((slot, index) => {
       batteries.push({
         battery_id: uuidv4(),
+        battery_type_id: randomBatteryType(),
         vehicle_id: null,
         slot_id: slot.slot_id,
         battery_serial: `BAT-SLT-${String(index + 1).padStart(4, '0')}`,
@@ -46,24 +61,26 @@ module.exports = {
     for (let i = 0; i < extraCount; i++) {
       if (chargedSlots.length > 0) {
         const slot = chargedSlots[i % chargedSlots.length];
-        batteries.push({
-          battery_id: uuidv4(),
-          vehicle_id: null,
-          slot_id: slot.slot_id,
-          battery_serial: `BAT-SLT-EX-${String(i + 1).padStart(4, '0')}`,
-          current_soc: 70.00 + Math.random() * 30,
-          current_soh: 85.00 + Math.random() * 15
-        });
+          batteries.push({
+            battery_id: uuidv4(),
+            battery_type_id: randomBatteryType(),
+            vehicle_id: null,
+            slot_id: slot.slot_id,
+            battery_serial: `BAT-SLT-EX-${String(i + 1).padStart(4, '0')}`,
+            current_soc: 70.00 + Math.random() * 30,
+            current_soh: 85.00 + Math.random() * 15
+          });
       } else if (vehicles.length > 0) {
         const vehicle = vehicles[i % vehicles.length];
-        batteries.push({
-          battery_id: uuidv4(),
-          vehicle_id: vehicle.vehicle_id,
-          slot_id: null,
-          battery_serial: `BAT-VEH-EX-${String(i + 1).padStart(4, '0')}`,
-          current_soc: 50.00 + Math.random() * 50,
-          current_soh: 80.00 + Math.random() * 20
-        });
+          batteries.push({
+            battery_id: uuidv4(),
+            battery_type_id: randomBatteryType(),
+            vehicle_id: vehicle.vehicle_id,
+            slot_id: null,
+            battery_serial: `BAT-VEH-EX-${String(i + 1).padStart(4, '0')}`,
+            current_soc: 50.00 + Math.random() * 50,
+            current_soh: 80.00 + Math.random() * 20
+          });
       }
     }
 
