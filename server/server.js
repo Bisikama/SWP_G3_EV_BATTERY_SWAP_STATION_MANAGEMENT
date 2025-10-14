@@ -18,6 +18,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/api/user', userRoutes);
 app.use('/api/battery', batteryRoutes);
 
+// catch errors
+app.use(errorHandler);
+
 // start server
 const port = process.env.PORT;
 app.listen(port, () => {

@@ -1,11 +1,10 @@
 'use strict';
 const { Account } = require('../models');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const SALT_ROUNDS = 10;
-const tokenBlacklist = require('../utils/tokenBlacklist');
 const { sendPasswordResetEmail, sendPasswordChangeConfirmation } = require('../utils/emailService');
+const userService = require('../services/user.service');
 
 async function findAll(req, res) {
   const users = await userService.findAll();
