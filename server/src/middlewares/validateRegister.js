@@ -16,22 +16,22 @@ function validateRegister(req, res, next) {
     });
 
    // 4️⃣ Validate số điện thoại Việt Nam
-  if (phone_number) {
-    /**
-     * Quy tắc:
-     * - Bắt đầu bằng 0
-     * - Sau đó là 9 hoặc 10 chữ số
-     * - Các đầu số di động hợp lệ hiện nay gồm:
-     *   03x, 05x, 07x, 08x, 09x
-     */
-    const vnPhoneRegex = /^(0(3[2-9]|5[25689]|7[06789]|8[1-9]|9[0-9]))\d{7}$/;
-    if (!vnPhoneRegex.test(phone_number)) {
-      return res.status(400).json({
-        message:
-          'Invalid Vietnamese phone number. Must start with 03, 05, 07, 08, or 09 and contain 10 digits'
-      });
-    }
-  }
+  // if (phone_number) {
+  //   /**
+  //    * Quy tắc:
+  //    * - Bắt đầu bằng 0
+  //    * - Sau đó là 9 hoặc 10 chữ số
+  //    * - Các đầu số di động hợp lệ hiện nay gồm:
+  //    *   03x, 05x, 07x, 08x, 09x
+  //    */
+  //   const vnPhoneRegex = /^(0(3[2-9]|5[25689]|7[06789]|8[1-9]|9[0-9]))\d{7}$/;
+  //   if (!vnPhoneRegex.test(phone_number)) {
+  //     return res.status(400).json({
+  //       message:
+  //         'Invalid Vietnamese phone number. Must start with 03, 05, 07, 08, or 09 and contain 10 digits'
+  //     });
+  //   }
+  // }
 
 
   next();

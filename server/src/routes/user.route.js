@@ -32,6 +32,10 @@ router.post('/login', userController.login);
 router.post('/register', validateRegister, userController.register);
 router.post('/logout', userController.logout);
 
+// password reset routes
+router.post('/forgot-password', userController.requestPasswordReset);
+router.post('/reset-password', userController.resetPassword);
+
 // get all users (for admin/testing)
 router.get('/all', userController.getAll);
 

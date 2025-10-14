@@ -42,6 +42,8 @@ module.exports = (sequelize, DataTypes) => {
     email: DataTypes.STRING,
     status: DataTypes.ENUM('active', 'inactive'),
     permission: DataTypes.ENUM('driver', 'admin', 'manager', 'staff'),
+    reset_token: DataTypes.STRING,
+    reset_token_expires: DataTypes.DATE
   }, {
     sequelize,
     modelName: 'Account',
