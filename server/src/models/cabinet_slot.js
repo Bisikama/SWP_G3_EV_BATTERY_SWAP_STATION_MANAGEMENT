@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   CabinetSlot.init({
-    slot_id: DataTypes.INTEGER,
+    slot_id: { type: DataTypes.INTEGER, primaryKey: true},
     cabinet_id: DataTypes.INTEGER,
     slot_number: DataTypes.STRING,
     voltage: DataTypes.DECIMAL,

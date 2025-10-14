@@ -18,7 +18,11 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Station.init({
-    station_id: DataTypes.INTEGER,
+    station_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
     station_name: DataTypes.STRING,
     address: DataTypes.STRING,
     latitude: DataTypes.DECIMAL,

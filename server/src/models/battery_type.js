@@ -15,7 +15,11 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   BatteryType.init({
-    battery_type_id: DataTypes.INTEGER,
+     battery_type_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
     battery_type_name: DataTypes.STRING,
     nominal_capacity: DataTypes.DECIMAL,
     nominal_voltage: DataTypes.DECIMAL,
