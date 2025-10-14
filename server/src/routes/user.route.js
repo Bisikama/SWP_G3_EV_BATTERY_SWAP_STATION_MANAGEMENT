@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const validateRegister = require('../middlewares/validateRegister');
-const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+const { validateResetPassword } = require('../middlewares/validatePassword');
 const userController = require('../controllers/user.controller');
+const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 
 /**
  * @swagger
@@ -23,7 +24,7 @@ const userController = require('../controllers/user.controller');
  *               email:
  *                 type: string
  *               password:
- *                 type: string
+ *                 type: strings
  *     responses:
  *       200:
  *         description: Login successful, returns JWT
@@ -114,6 +115,10 @@ router.post('/logout', userController.logout);
  *         description: Internal server error
  */
 router.get('/', userController.findAll);
+
+// password reset routes
+router.post('/forgot-password', userController.requestPasswordReset);
+router.post('/reset-password', validateResetPassword, userController.resetPassword);
 
 /**
  * @swagger

@@ -7,6 +7,7 @@ require('dotenv').config();
 const errorHandler = require('./src/middlewares/errorHandler');
 
 const userRoutes = require('./src/routes/user.route');
+const batteryRoutes = require('./src/routes/battery.route');
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // routes
 app.use('/api/user', userRoutes);
+app.use('/api/battery', batteryRoutes);
 
 // catch errors
 app.use(errorHandler);
