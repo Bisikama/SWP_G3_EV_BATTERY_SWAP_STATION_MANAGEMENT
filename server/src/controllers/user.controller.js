@@ -103,7 +103,8 @@ async function register(req, res) {
     };
     return res.status(201).json({ account: safeAccount });
   } catch (err) {
-    console.error('Register error', err);
+    console.error('Register error:', err.message);
+  if (err.parent) console.error('Database says:', err.parent.message);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }

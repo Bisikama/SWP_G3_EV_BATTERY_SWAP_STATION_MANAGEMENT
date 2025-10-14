@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const validateRegister = require('../middlewares/validateRegister');
+const { validateResetPassword } = require('../middlewares/validatePassword');
 const userController = require('../controllers/user.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 /**
@@ -34,7 +35,7 @@ router.post('/logout', userController.logout);
 
 // password reset routes
 router.post('/forgot-password', userController.requestPasswordReset);
-router.post('/reset-password', userController.resetPassword);
+router.post('/reset-password', validateResetPassword, userController.resetPassword);
 
 // get all users (for admin/testing)
 router.get('/all', userController.getAll);
