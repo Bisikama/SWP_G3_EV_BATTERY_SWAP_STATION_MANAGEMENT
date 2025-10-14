@@ -36,6 +36,13 @@ module.exports = {
           min: 0
         }
       },
+      usage_cap: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
       description: {
         type: Sequelize.TEXT,
         allowNull: true

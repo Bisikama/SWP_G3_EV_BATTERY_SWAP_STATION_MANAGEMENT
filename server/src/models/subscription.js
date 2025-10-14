@@ -10,24 +10,63 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-  this.hasOne(models.Invoice, { as: 'invoice', foreignKey: 'subscription_id' });
-  this.belongsTo(models.SubscriptionPlan, { as: 'plan', foreignKey: 'plan_id' });
-  this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
-  this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
+      this.hasOne(models.Invoice, { as: 'invoice', foreignKey: 'subscription_id' });
+      this.belongsTo(models.SubscriptionPlan, { as: 'plan', foreignKey: 'plan_id' });
+      this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
+      this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
     }
   }
-  Subscription.init({
-    subscription_id: DataTypes.UUID,
-    driver_id: DataTypes.UUID,
-    vehicle_id: DataTypes.UUID,
-    plan_id: DataTypes.INTEGER,
-    start_date: DataTypes.DATEONLY,
-    end_date: DataTypes.DATEONLY,
-    status: DataTypes.ENUM('in-use','used','cancelled')
-  }, {
-    sequelize,
-    modelName: 'Subscription',
-  });
+  Subscription.init(
+    {
+      subscription_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      driver_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      vehicle_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Vehicles',
+          key: 'vehicle_id'
+        }
+      },
+      plan_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'SubscriptionPlans',
+          key: 'plan_id'
+        }
+      },
+      start_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+      },
+      end_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false
+      },
+      status: {
+        type: DataTypes.ENUM('in-use', 'used', 'cancelled'),
+        allowNull: false
+      }
+    },
+    {
+      sequelize,
+      modelName: 'Subscription',
+      tableName: 'Subscriptions',
+      timestamps: false
+    }
+  );
 
   // hooks
   Subscription.beforeSave(async (subscription, options) => {

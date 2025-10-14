@@ -4,7 +4,7 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     const cabinets = await queryInterface.sequelize.query(
-      `SELECT cabinet_id, capacity FROM "Cabinets"`,
+      `SELECT cabinet_id, battery_capacity FROM "Cabinets"`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -12,7 +12,7 @@ module.exports = {
     const statuses = ['empty', 'charging', 'charged', 'faulty'];
     
     cabinets.forEach(cabinet => {
-      for (let i = 1; i <= cabinet.capacity; i++) {
+      for (let i = 1; i <= cabinet.battery_capacity; i++) {
         const statusIndex = Math.floor(Math.random() * 100);
         let status;
         if (statusIndex < 20) status = 'empty';

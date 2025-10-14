@@ -10,19 +10,49 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-  this.hasMany(models.Vehicle, { as: 'vehicles', foreignKey: 'model_id' });
-  this.belongsTo(models.BatteryType, { as: 'batteryType', foreignKey: 'battery_type_id' });
+      this.hasMany(models.Vehicle, { as: 'vehicles', foreignKey: 'model_id' });
+      this.belongsTo(models.BatteryType, { as: 'batteryType', foreignKey: 'battery_type_id' });
     }
   }
-  VehicleModel.init({
-    model_id: DataTypes.INTEGER,
-    battery_type_id: DataTypes.INTEGER,
-    model_name: DataTypes.STRING,
-    brand: DataTypes.STRING,
-    avg_energy_consumption: DataTypes.DECIMAL
-  }, {
-    sequelize,
-    modelName: 'VehicleModel',
-  });
+  VehicleModel.init(
+    {
+      model_id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
+      battery_type_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'BatteryTypes',
+          key: 'battery_type_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
+      },
+      name: {
+        type: DataTypes.STRING(100),
+        allowNull: false
+      },
+      brand: {
+        type: DataTypes.STRING(50),
+        allowNull: false
+      },
+      avg_energy_usage: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      }
+    },
+    {
+      sequelize,
+      modelName: 'VehicleModel',
+      tableName: 'VehicleModels',
+      timestamps: false
+    }
+  );
   return VehicleModel;
 };

@@ -18,11 +18,11 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      cabinet_name: {
+      cabinet_code: {
         type: Sequelize.STRING(50),
         allowNull: true
       },
-      capacity: {
+      battery_capacity: {
         type: Sequelize.INTEGER,
         allowNull: false,
         validate: {

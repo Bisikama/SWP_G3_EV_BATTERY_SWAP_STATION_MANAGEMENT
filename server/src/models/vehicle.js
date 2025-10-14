@@ -12,22 +12,53 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
         this.hasMany(models.SwapRecord, { as: 'swapRecords', foreignKey: 'vehicle_id' });
         this.hasMany(models.Battery, { as: 'batteries', foreignKey: 'vehicle_id' });
+        this.hasMany(models.Booking, { as: 'booking', foreignKey: 'vehicle_id' });
         this.hasOne(models.Subscription, { as: 'subscription', foreignKey: 'vehicle_id' });
-        this.hasOne(models.Booking, { as: 'booking', foreignKey: 'vehicle_id' });
         this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
         this.belongsTo(models.VehicleModel, { as: 'model', foreignKey: 'model_id' });
     }
   }
-  Vehicle.init({
-    vehicle_id: DataTypes.UUID,
-    driver_id: DataTypes.UUID,
-    model_id: DataTypes.INTEGER,
-    license_plate: DataTypes.STRING,
-    vin: DataTypes.STRING
-  }, {
-    sequelize,
-    modelName: 'Vehicle',
-  });
+  Vehicle.init(
+    {
+      vehicle_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      driver_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      model_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'VehicleModels',
+          key: 'model_id'
+        }
+      },
+      license_plate: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        unique: true
+      },
+      vin: {
+        type: DataTypes.STRING(17),
+        allowNull: false,
+        unique: true
+      }
+    },
+    {
+      sequelize,
+      modelName: 'Vehicle',
+      tableName: 'Vehicles',
+      timestamps: false
+    }
+  );
 
   // hooks
   Vehicle.beforeSave(async (vehicle, options) => {

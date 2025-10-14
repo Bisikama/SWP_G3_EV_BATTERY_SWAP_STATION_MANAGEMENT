@@ -10,8 +10,8 @@ module.exports = {
       cabinets.push({
         cabinet_id: cabinets.length + 1,
         station_id: 1,
-        cabinet_name: `Cabinet A${i}`,
-        capacity: 10,
+        cabinet_code: `Cabinet A${i}`,
+        battery_capacity: 10,
         power_capacity_kw: 150.00,
         status: 'operational'
       });
@@ -22,8 +22,8 @@ module.exports = {
       cabinets.push({
         cabinet_id: cabinets.length + 1,
         station_id: 2,
-        cabinet_name: `Cabinet B${i}`,
-        capacity: 8,
+        cabinet_code: `Cabinet B${i}`,
+        battery_capacity: 8,
         power_capacity_kw: 120.00,
         status: 'operational'
       });
@@ -34,8 +34,8 @@ module.exports = {
       cabinets.push({
         cabinet_id: cabinets.length + 1,
         station_id: 3,
-        cabinet_name: `Cabinet C${i}`,
-        capacity: 12,
+        cabinet_code: `Cabinet C${i}`,
+        battery_capacity: 12,
         power_capacity_kw: 180.00,
         status: 'operational'
       });
@@ -46,8 +46,8 @@ module.exports = {
       cabinets.push({
         cabinet_id: cabinets.length + 1,
         station_id: 4,
-        cabinet_name: `Cabinet D${i}`,
-        capacity: 10,
+        cabinet_code: `Cabinet D${i}`,
+        battery_capacity: 10,
         power_capacity_kw: 150.00,
         status: 'operational'
       });
@@ -57,8 +57,8 @@ module.exports = {
     cabinets.push({
       cabinet_id: cabinets.length + 1,
       station_id: 5,
-      cabinet_name: `Cabinet E1`,
-      capacity: 8,
+      cabinet_code: `Cabinet E1`,
+      battery_capacity: 8,
       power_capacity_kw: 120.00,
       status: 'maintenance'
     });

@@ -31,7 +31,7 @@ module.exports = {
           driver_id: driver.driver_id,
           vehicle_id: driver.vehicle_id,
           station_id: stations[day % stations.length].station_id,
-          booking_time: new Date(),
+          create_time: new Date(),
           scheduled_start_time: bookingDate,
           scheduled_end_time: new Date(bookingDate.getTime() + 15 * 60000) // 15 minutes later
         });

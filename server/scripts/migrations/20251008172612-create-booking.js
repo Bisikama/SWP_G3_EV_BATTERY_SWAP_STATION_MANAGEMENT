@@ -38,7 +38,7 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      booking_time: {
+      create_time: {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.NOW

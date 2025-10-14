@@ -10,20 +10,56 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-  this.belongsTo(models.Invoice, { as: 'invoice', foreignKey: 'invoice_id' });
+      this.belongsTo(models.Invoice, { as: 'invoice', foreignKey: 'invoice_id' });
     }
   }
-  PaymentRecord.init({
-    payment_id: DataTypes.UUID,
-    invoice_id: DataTypes.UUID,
-    transaction_num: DataTypes.STRING,
-    payment_date: DataTypes.DATE,
-    payment_method: DataTypes.STRING,
-    amount: DataTypes.DECIMAL,
-    status: DataTypes.ENUM('success','fail')
-  }, {
-    sequelize,
-    modelName: 'PaymentRecord',
-  });
+  PaymentRecord.init(
+    {
+      payment_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      invoice_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Invoices',
+          key: 'invoice_id'
+        }
+      },
+      transaction_num: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true
+      },
+      payment_date: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+      },
+      payment_method: {
+        type: DataTypes.STRING(50),
+        allowNull: false
+      },
+      amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      status: {
+        type: DataTypes.ENUM('success', 'fail'),
+        allowNull: false
+      }
+    },
+    {
+      sequelize,
+      modelName: 'PaymentRecord',
+      tableName: 'PaymentRecords',
+      timestamps: false
+    }
+  );
   return PaymentRecord;
 };

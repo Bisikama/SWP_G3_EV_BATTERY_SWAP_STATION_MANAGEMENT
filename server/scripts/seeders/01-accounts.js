@@ -11,7 +11,6 @@ module.exports = {
       // Admins
       {
         account_id: uuidv4(),
-        username: 'admin_john',
         password_hash: hashedPassword,
         fullname: 'John Admin',
         phone_number: '+84901234567',
@@ -21,7 +20,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'admin_sarah',
         password_hash: hashedPassword,
         fullname: 'Sarah Administrator',
         phone_number: '+84901234568',
@@ -30,32 +28,9 @@ module.exports = {
         permission: 'admin'
       },
       
-      // Warehouse Managers
-      {
-        account_id: uuidv4(),
-        username: 'manager_mike',
-        password_hash: hashedPassword,
-        fullname: 'Mike Manager',
-        phone_number: '+84901234569',
-        email: 'mike.manager@evswap.com',
-        status: 'active',
-        permission: 'manager'
-      },
-      {
-        account_id: uuidv4(),
-        username: 'manager_lisa',
-        password_hash: hashedPassword,
-        fullname: 'Lisa Warehouse',
-        phone_number: '+84901234570',
-        email: 'lisa.manager@evswap.com',
-        status: 'active',
-        permission: 'manager'
-      },
-      
       // Staff
       {
         account_id: uuidv4(),
-        username: 'staff_tom',
         password_hash: hashedPassword,
         fullname: 'Tom Staff',
         phone_number: '+84901234571',
@@ -65,7 +40,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'staff_anna',
         password_hash: hashedPassword,
         fullname: 'Anna Technician',
         phone_number: '+84901234572',
@@ -75,7 +49,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'staff_kevin',
         password_hash: hashedPassword,
         fullname: 'Kevin Support',
         phone_number: '+84901234573',
@@ -87,7 +60,6 @@ module.exports = {
       // Drivers
       {
         account_id: uuidv4(),
-        username: 'driver_nguyen',
         password_hash: hashedPassword,
         fullname: 'Nguyen Van A',
         phone_number: '+84912345678',
@@ -97,7 +69,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'driver_tran',
         password_hash: hashedPassword,
         fullname: 'Tran Thi B',
         phone_number: '+84912345679',
@@ -107,7 +78,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'driver_le',
         password_hash: hashedPassword,
         fullname: 'Le Van C',
         phone_number: '+84912345680',
@@ -117,7 +87,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'driver_pham',
         password_hash: hashedPassword,
         fullname: 'Pham Thi D',
         phone_number: '+84912345681',
@@ -127,7 +96,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'driver_hoang',
         password_hash: hashedPassword,
         fullname: 'Hoang Van E',
         phone_number: '+84912345682',
@@ -137,7 +105,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'driver_vu',
         password_hash: hashedPassword,
         fullname: 'Vu Thi F',
         phone_number: '+84912345683',
@@ -147,7 +114,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'driver_do',
         password_hash: hashedPassword,
         fullname: 'Do Van G',
         phone_number: '+84912345684',
@@ -157,7 +123,6 @@ module.exports = {
       },
       {
         account_id: uuidv4(),
-        username: 'driver_ngo',
         password_hash: hashedPassword,
         fullname: 'Ngo Thi H',
         phone_number: '+84912345685',

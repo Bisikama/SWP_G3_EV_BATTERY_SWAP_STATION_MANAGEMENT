@@ -8,24 +8,6 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true
       },
-      username: {
-        type: Sequelize.STRING(50),
-        allowNull: false,
-        unique: true
-      },
-      password_hash: {
-        type: Sequelize.STRING(255),
-        allowNull: false
-      },
-      fullname: {
-        type: Sequelize.STRING(100),
-        allowNull: false
-      },
-      phone_number: {
-        type: Sequelize.STRING(20),
-        allowNull: true,
-        unique: true
-      },
       email: {
         type: Sequelize.STRING(100),
         allowNull: false,
@@ -34,13 +16,36 @@ module.exports = {
           isEmail: true
         }
       },
+      phone_number: {
+        type: Sequelize.STRING(20),
+        allowNull: true,
+        unique: true
+      },
+      fullname: {
+        type: Sequelize.STRING(100),
+        allowNull: false
+      },
+      password_hash: {
+        type: Sequelize.STRING(255),
+        allowNull: false
+      },
+      citizen_id: {
+        type: Sequelize.STRING(20),
+        allowNull: true,
+        unique: true
+      },
+      driving_license: {
+        type: Sequelize.STRING(20),
+        allowNull: true,
+        unique: true
+      },
       status: {
         type: Sequelize.ENUM('active', 'inactive'),
         allowNull: false,
         defaultValue: 'active'
       },
       permission: {
-        type: Sequelize.ENUM('driver', 'admin', 'manager', 'staff'),
+        type: Sequelize.ENUM('driver', 'admin', 'staff'),
         allowNull: false
       }
     });

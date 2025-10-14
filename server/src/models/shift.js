@@ -10,23 +10,63 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-  this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
-  this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
-  this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
+      this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
+      this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
+      this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
     }
   }
-  Shift.init({
-    shift_id: DataTypes.UUID,
-    admin_id: DataTypes.UUID,
-    staff_id: DataTypes.UUID,
-    station_id: DataTypes.INTEGER,
-    start_time: DataTypes.DATE,
-    end_time: DataTypes.DATE,
-    status: DataTypes.ENUM('assigned', 'confirmed', 'cancelled')
-  }, {
-    sequelize,
-    modelName: 'Shift',
-  });
+  Shift.init(
+    {
+      shift_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      admin_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      staff_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      station_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Stations',
+          key: 'station_id'
+        }
+      },
+      start_time: {
+        type: DataTypes.DATE,
+        allowNull: false
+      },
+      end_time: {
+        type: DataTypes.DATE,
+        allowNull: false
+      },
+      status: {
+        type: DataTypes.ENUM('assigned', 'confirmed', 'cancelled'),
+        allowNull: false,
+        defaultValue: 'assigned'
+      }
+    },
+    {
+      sequelize,
+      modelName: 'Shift',
+      tableName: 'Shifts',
+      timestamps: false
+    }
+  );
 
   // hooks
   Shift.beforeSave(async (shift, options) => {

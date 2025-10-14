@@ -17,15 +17,45 @@ module.exports = (sequelize, DataTypes) => {
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
     }
   }
-  SwapRecord.init({
-    swap_id: DataTypes.UUID,
-    driver_id: DataTypes.UUID,
-    vehicle_id: DataTypes.UUID,
-    station_id: DataTypes.INTEGER
-  }, {
-    sequelize,
-    modelName: 'SwapRecord',
-  });
+  SwapRecord.init(
+    {
+      swap_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      driver_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      vehicle_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Vehicles',
+          key: 'vehicle_id'
+        }
+      },
+      station_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Stations',
+          key: 'station_id'
+        }
+      }
+    },
+    {
+      sequelize,
+      modelName: 'SwapRecord',
+      tableName: 'SwapRecords',
+      timestamps: false
+    }
+  );
 
   SwapRecord.beforeSave(async (swap, options) => {
     const Account = sequelize.models.Account;

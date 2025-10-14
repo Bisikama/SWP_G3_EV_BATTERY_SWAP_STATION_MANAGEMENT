@@ -14,15 +14,50 @@ module.exports = (sequelize, DataTypes) => {
       this.belongsTo(models.Battery, { foreignKey: 'battery_id', as: 'battery' });
     }
   }
-  RetrievedSwapBattery.init({
-    swap_id: DataTypes.UUID,
-    battery_id: DataTypes.UUID,
-    soc: DataTypes.DECIMAL,
-    soh: DataTypes.DECIMAL,
-    swap_time: DataTypes.DATE
-  }, {
-    sequelize,
-    modelName: 'RetrievedSwapBattery',
-  });
+  RetrievedSwapBattery.init(
+    {
+      swap_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'SwapRecords',
+          key: 'swap_id'
+        }
+      },
+      battery_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Batteries',
+          key: 'battery_id'
+        }
+      },
+      soc: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      soh: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      swap_time: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+      }
+    },
+    {
+      sequelize,
+      modelName: 'RetrievedSwapBattery',
+      tableName: 'RetrievedSwapBatteries',
+      timestamps: false
+    }
+  );
   return RetrievedSwapBattery;
 };

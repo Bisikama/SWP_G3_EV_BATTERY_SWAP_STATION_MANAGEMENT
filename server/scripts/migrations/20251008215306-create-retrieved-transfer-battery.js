@@ -7,7 +7,7 @@ module.exports = {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'TransferRecords',
+          model: 'Transfers',
           key: 'transfer_id'
         },
         onUpdate: 'CASCADE',
@@ -37,7 +37,7 @@ module.exports = {
           min: 0
         }
       },
-      swap_time: {
+      transfer_time: {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.NOW

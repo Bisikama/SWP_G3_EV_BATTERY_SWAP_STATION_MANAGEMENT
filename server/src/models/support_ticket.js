@@ -10,30 +10,70 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-  this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
-  this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
+      this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
+      this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
     }
   }
-  SupportTicket.init({
-    ticket_id: DataTypes.UUID,
-    driver_id: DataTypes.UUID,
-    admin_id: DataTypes.UUID,
-    create_date: DataTypes.DATE,
-    resolve_date: DataTypes.DATE,
-    subject: DataTypes.ENUM(
-      'battery_issue',
-      'vehicle_issue',
-      'station_issue',
-      'account_issue',
-      'payment_issue',
-      'other'
-    ),
-    description: DataTypes.TEXT,
-    status: DataTypes.ENUM('pending','resolved')
-  }, {
-    sequelize,
-    modelName: 'SupportTicket',
-  });
+  SupportTicket.init(
+    {
+      ticket_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      driver_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      admin_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      create_date: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+      },
+      resolve_date: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      subject: {
+        type: DataTypes.ENUM(
+          'battery_issue',
+          'vehicle_issue',
+          'station_issue',
+          'account_issue',
+          'payment_issue',
+          'other'
+        ),
+        allowNull: false
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+      },
+      status: {
+        type: DataTypes.ENUM('pending', 'resolved'),
+        allowNull: false,
+        defaultValue: 'pending'
+      }
+    },
+    {
+      sequelize,
+      modelName: 'SupportTicket',
+      tableName: 'SupportTickets',
+      timestamps: false
+    }
+  );
 
   // hooks
   SupportTicket.beforeSave(async (ticket, options) => {

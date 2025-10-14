@@ -10,19 +10,54 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.belongsTo(models.TransferRecord, { foreignKey: 'transfer_id', as: 'transfer' });
+      this.belongsTo(models.Transfer, { foreignKey: 'transfer_id', as: 'transfer' });
       this.belongsTo(models.Battery, { foreignKey: 'battery_id', as: 'battery' });
     }
   }
-  RetrievedTransferBattery.init({
-    transfer_id: DataTypes.UUID,
-    battery_id: DataTypes.UUID,
-    soc: DataTypes.DECIMAL,
-    soh: DataTypes.DECIMAL,
-    transfer_time: DataTypes.DATE
-  }, {
-    sequelize,
-    modelName: 'RetrievedTransferBattery',
-  });
+  RetrievedTransferBattery.init(
+    {
+      transfer_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Transfers',
+          key: 'transfer_id'
+        }
+      },
+      battery_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Batteries',
+          key: 'battery_id'
+        }
+      },
+      soc: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      soh: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      transfer_time: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+      }
+    },
+    {
+      sequelize,
+      modelName: 'RetrievedTransferBattery',
+      tableName: 'RetrievedTransferBatteries',
+      timestamps: false
+    }
+  );
   return RetrievedTransferBattery;
 };

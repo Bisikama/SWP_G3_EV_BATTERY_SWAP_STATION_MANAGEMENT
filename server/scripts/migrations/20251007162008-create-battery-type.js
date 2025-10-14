@@ -8,7 +8,7 @@ module.exports = {
         primaryKey: true,
         autoIncrement: true
       },
-      battery_type_name: {
+      battery_type_code: {
         type: Sequelize.STRING(100),
         allowNull: false
       },
@@ -26,14 +26,28 @@ module.exports = {
           min: 0
         }
       },
-      energy_capacity_wh: {
+      min_voltage: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
         validate: {
           min: 0
         }
       },
-      rated_power: {
+      max_voltage: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      rated_charge_current: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      max_charge_current: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
         validate: {
@@ -43,14 +57,7 @@ module.exports = {
       cell_chemistry: {
         type: Sequelize.ENUM('Li-ion','LFP'),
         allowNull: false
-      },
-      weight: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
+      }
     });
   },
   

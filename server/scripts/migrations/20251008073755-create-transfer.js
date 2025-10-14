@@ -2,23 +2,13 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('TransferRecords', {
+    await queryInterface.createTable('Transfers', {
       transfer_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true
       },
-      warehouse_id: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'Warehouses',
-          key: 'warehouse_id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
-      },
-      station_id: {
+      origin_station_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
@@ -28,7 +18,17 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      manager_id: {
+      destination_station_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Stations',
+          key: 'station_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
+      },
+      admin_id: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
@@ -40,7 +40,7 @@ module.exports = {
       },
       staff_id: {
         type: Sequelize.UUID,
-        allowNull: true,
+        allowNull: false,
         references: {
           model: 'Accounts',
           key: 'account_id'
@@ -53,16 +53,16 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.NOW
       },
-      accept_time: {
+      approve_time: {
         type: Sequelize.DATE,
         allowNull: true
       },
-      confirm_time: {
+      complete_time: {
         type: Sequelize.DATE,
         allowNull: true
       },
       status: {
-        type: Sequelize.ENUM('pending', 'accepted', 'rejected', 'confirmed'),
+        type: Sequelize.ENUM('pending', 'approved', 'rejected', 'transfering', 'completed'),
         allowNull: false,
         defaultValue: 'pending'
       },
@@ -74,6 +74,6 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('TransferRecords');
+    await queryInterface.dropTable('Transfers');
   }
 };

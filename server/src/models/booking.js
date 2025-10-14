@@ -16,18 +16,58 @@ module.exports = (sequelize, DataTypes) => {
         this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
     }
   }
-  Booking.init({
-    booking_id: DataTypes.UUID,
-    driver_id: DataTypes.UUID,
-    vehicle_id: DataTypes.UUID,
-    station_id: DataTypes.INTEGER,
-    booking_time: DataTypes.DATE,
-    scheduled_start_time: DataTypes.DATE,
-    scheduled_end_time: DataTypes.DATE
-  }, {
-    sequelize,
-    modelName: 'Booking',
-  });
+  Booking.init(
+    {
+      booking_id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+      },
+      driver_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        }
+      },
+      vehicle_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Vehicles',
+          key: 'vehicle_id'
+        }
+      },
+      station_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Stations',
+          key: 'station_id'
+        }
+      },
+      create_time: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+      },
+      scheduled_start_time: {
+        type: DataTypes.DATE,
+        allowNull: false
+      },
+      scheduled_end_time: {
+        type: DataTypes.DATE,
+        allowNull: false
+      }
+    },
+    {
+      sequelize,
+      modelName: 'Booking',
+      tableName: 'Bookings',
+      timestamps: false
+    }
+  );
 
   // hooks
   Booking.beforeSave(async (booking, options) => {

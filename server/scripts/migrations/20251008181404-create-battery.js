@@ -18,16 +18,6 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL'
       },
-      warehouse_id: {
-        type: Sequelize.INTEGER,
-        allowNull: true,
-        references: {
-          model: 'Warehouses',
-          key: 'warehouse_id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
-      },
       slot_id: {
         type: Sequelize.INTEGER,
         allowNull: true,
@@ -40,8 +30,8 @@ module.exports = {
       },
       battery_serial: {
         type: Sequelize.STRING(50),
-        unique: true,
-        allowNull: false
+        allowNull: false,
+        unique: true
       },
       current_soc: {
         type: Sequelize.DECIMAL(5, 2),

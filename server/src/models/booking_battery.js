@@ -14,12 +14,31 @@ module.exports = (sequelize, DataTypes) => {
       this.belongsTo(models.Battery, { foreignKey: 'battery_id', as: 'battery' });
     }
   }
-  BookingBattery.init({
-    booking_id: DataTypes.UUID,
-    battery_id: DataTypes.UUID
-  }, {
-    sequelize,
-    modelName: 'BookingBattery',
-  });
+  BookingBattery.init(
+    {
+      booking_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Bookings',
+          key: 'booking_id'
+        }
+      },
+      battery_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Batteries',
+          key: 'battery_id'
+        }
+      }
+    },
+    {
+      sequelize,
+      modelName: 'BookingBattery',
+      tableName: 'BookingBatteries',
+      timestamps: false
+    }
+  );
   return BookingBattery;
 };

@@ -4,12 +4,12 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     const transfers = await queryInterface.sequelize.query(
-      `SELECT transfer_id FROM "TransferRecords" WHERE status IN ('accepted', 'confirmed')`,
+      `SELECT transfer_id FROM "Transfers" WHERE status IN ('approved', 'completed')`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
-    const warehouseBatteries = await queryInterface.sequelize.query(
-      `SELECT battery_id FROM "Batteries" WHERE warehouse_id IS NOT NULL`,
+    const unassignedBatteries = await queryInterface.sequelize.query(
+      `SELECT battery_id FROM "Batteries" WHERE vehicle_id IS NULL AND slot_id IS NULL`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -20,10 +20,11 @@ module.exports = {
       const batteryCount = 3 + Math.floor(Math.random() * 3);
       
       for (let i = 0; i < batteryCount; i++) {
-        const batteryIndex = (index * 5 + i) % warehouseBatteries.length;
+        if (unassignedBatteries.length === 0) break;
+        const batteryIndex = (index * 5 + i) % unassignedBatteries.length;
         retrievedTransferBatteries.push({
           transfer_id: transfer.transfer_id,
-          battery_id: warehouseBatteries[batteryIndex].battery_id,
+          battery_id: unassignedBatteries[batteryIndex].battery_id,
           soc: 95.00 + Math.random() * 5, // 95-100%
           soh: 92.00 + Math.random() * 8, // 92-100%
           swap_time: new Date(Date.now() - Math.random() * 15 * 24 * 60 * 60 * 1000)
@@ -31,7 +32,11 @@ module.exports = {
       }
     });
 
-    await queryInterface.bulkInsert('RetrievedTransferBatteries', retrievedTransferBatteries);
+    if (retrievedTransferBatteries.length > 0) {
+      await queryInterface.bulkInsert('RetrievedTransferBatteries', retrievedTransferBatteries);
+    } else {
+      console.info('No RetrievedTransferBatteries to insert, skipping.');
+    }
   },
 
   async down(queryInterface, Sequelize) {
