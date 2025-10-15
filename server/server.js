@@ -8,6 +8,7 @@ const errorHandler = require('./src/middlewares/errorHandler');
 
 const userRoutes = require('./src/routes/user.route');
 const batteryRoutes = require('./src/routes/battery.route');
+const subscriptionRoutes = require('./src/routes/subscriptions.route');
 
 const app = express();
 app.use(express.json());
@@ -17,6 +18,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // routes
 app.use('/api/user', userRoutes);
 app.use('/api/battery', batteryRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 // catch errors
 app.use(errorHandler);

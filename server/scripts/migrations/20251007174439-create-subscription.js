@@ -46,10 +46,10 @@ module.exports = {
         type: Sequelize.DATEONLY,
         allowNull: false
       },
-      status: {
-        type: Sequelize.ENUM('in-use','used','cancelled'),
-        allowNull: false
-      }
+      cancel_time: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
     });
   },
 

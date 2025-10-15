@@ -2,10 +2,9 @@ const cors = require('cors');
 require('dotenv').config();
 
 const options = {
-  origin: [
-    'http://localhost:3000',
-    `http://localhost:${process.env.PORT}`,
-    ],
+  origin: (origin, callback) => {
+    callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
