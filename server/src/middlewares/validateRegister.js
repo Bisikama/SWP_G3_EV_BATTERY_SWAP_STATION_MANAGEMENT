@@ -2,7 +2,7 @@
 const { validatePassword } = require('./validatePassword');
 
 function validateRegister(req, res, next) {
-  const { username, email, password } = req.body || {};
+  const { email, password } = req.body || {};
 
   if (!email || !password)
     return res.status(400).json({ message: 'Email and password are required' });
