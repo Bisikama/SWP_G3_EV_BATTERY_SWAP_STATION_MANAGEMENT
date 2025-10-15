@@ -21,7 +21,7 @@ module.exports = {
       plan_id: (index % 4) + 1, // Distribute across 4 plans
       start_date: new Date('2024-10-01'),
       end_date: new Date('2024-12-31'),
-      status: 'in-use'
+      cancel_time: null
     }));
 
     await queryInterface.bulkInsert('Subscriptions', subscriptions);
