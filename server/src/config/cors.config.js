@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const options = {
   origin: [
-    'http://localhost:3000',
+    'http://localhost:5173',
     `http://localhost:${process.env.PORT}`,
     ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
