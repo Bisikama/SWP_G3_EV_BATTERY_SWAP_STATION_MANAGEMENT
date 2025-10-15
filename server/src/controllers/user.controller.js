@@ -48,11 +48,11 @@ async function login(req, res) {
 
 async function register(req, res) {
   try {
-    const { username, email, password, fullname, phone_number } = req.body || {};
+    const { email, password, fullname, phone_number } = req.body || {};
     // force default permission to 'driver' for self-register
     const permission = 'driver';
-    if (!email || !password || !username) {
-      return res.status(400).json({ message: 'username, email and password are required' });
+    if (!email || !password ) {
+      return res.status(400).json({ message: 'email and password are required' });
     }
 
     // check existing
@@ -60,12 +60,11 @@ async function register(req, res) {
     if (exists) return res.status(409).json({ message: 'Email already registered' });
 
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    const newAccount = await Account.create({ username, email, password_hash: hash, fullname, phone_number, permission });
+    const newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, permission });
 
     // return safe fields
     const safeAccount = {
       account_id: newAccount.account_id,
-      username: newAccount.username,
       email: newAccount.email,
       fullname: newAccount.fullname,
       phone_number: newAccount.phone_number,

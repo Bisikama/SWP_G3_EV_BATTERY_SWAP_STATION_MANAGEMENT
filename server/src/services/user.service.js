@@ -100,19 +100,14 @@ async function authenticate({ email, password }) {
   }
 }
 
-async function createAccount({ username, email, password, fullname, phone_number, permission = 'driver' }) {
-  if (!username || !email || !password) {
-    const err = new Error('Username, email and password are required');
+async function createAccount({ email, password, fullname, phone_number, permission = 'driver' }) {
+  if (!email || !password) {
+    const err = new Error('Email and password are required');
     err.status = 400;
     throw err;
   }
 
-  const usernameExists = await Account.findOne({ where: { username } });
-  if (usernameExists) {
-    const err = new Error('Username already registered');
-    err.status = 409;
-    throw err;
-  }
+  
 
   const emailExists = await Account.findOne({ where: { email } });
   if (emailExists) {
@@ -131,7 +126,7 @@ async function createAccount({ username, email, password, fullname, phone_number
   let newAccount;
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    newAccount = await Account.create({ username, email, password_hash: hash, fullname, phone_number, permission });
+    newAccount = await Account.create({  email, password_hash: hash, fullname, phone_number, permission });
   } catch (err) {
     console.error('DB error in createAccount (create)', err);
     const e = new Error('Database error');
