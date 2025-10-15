@@ -55,9 +55,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATEONLY,
         allowNull: false
       },
-      status: {
-        type: DataTypes.ENUM('in-use', 'used', 'cancelled'),
-        allowNull: false
+      cancel_time: {
+        type: DataTypes.DATE,
+        allowNull: true
       }
     },
     {
