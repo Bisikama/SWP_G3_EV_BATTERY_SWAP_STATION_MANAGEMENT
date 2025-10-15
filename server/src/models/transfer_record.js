@@ -14,13 +14,13 @@ module.exports = (sequelize, DataTypes) => {
         this.belongsToMany(models.Battery, { through: 'ReturnedTransferBattery', as: 'returnedBatteries', foreignKey: 'transfer_id', otherKey: 'battery_id' });
         this.belongsTo(models.Account, { as: 'manager', foreignKey: 'manager_id' });
         this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
-        this.belongsTo(models.Warehouse, { as: 'warehouse', foreignKey: 'warehouse_id' });
+     
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
     }
   }
   TransferRecord.init({
     transfer_id: DataTypes.UUID,
-    warehouse_id: DataTypes.INTEGER,
+
     station_id: DataTypes.INTEGER,
     manager_id: DataTypes.UUID,
     staff_id: DataTypes.UUID,

@@ -2,10 +2,10 @@
 const { validatePassword } = require('./validatePassword');
 
 function validateRegister(req, res, next) {
-  const { username, email, password } = req.body || {};
+  const { email, password } = req.body || {};
 
-  if (!email || !password || !username)
-    return res.status(400).json({ message: 'username, email and password are required' });
+  if (!email || !password)
+    return res.status(400).json({ message: 'email and password are required' });
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email))

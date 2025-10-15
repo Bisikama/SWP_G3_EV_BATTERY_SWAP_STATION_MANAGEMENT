@@ -20,15 +20,15 @@ async function getAll(req, res) {
 async function countByStationAndType(req, res) {
   try {
     const stationName = req.query.stationName || req.body.stationName;
-    const batteryTypeName = req.query.batteryTypeName || req.body.batteryTypeName;
+    const batteryTypeCode = req.query.batteryTypeCode || req.body.batteryTypeCode;
 
-    if (!stationName || !batteryTypeName) {
-      return res.status(400).json({ message: 'stationName and batteryTypeName are required' });
+    if (!stationName || !batteryTypeCode) {
+      return res.status(400).json({ message: 'stationName and batteryTypeCode are required' });
     }
 
     const count = await Battery.count({
       include: [
-        { model: BatteryType, as: 'batteryType', where: { battery_type_name: batteryTypeName }, required: true },
+        { model: BatteryType, as: 'batteryType', where: { battery_type_code: batteryTypeCode }, required: true },
         {
           model: CabinetSlot, as: 'cabinetSlot',
           required: true,

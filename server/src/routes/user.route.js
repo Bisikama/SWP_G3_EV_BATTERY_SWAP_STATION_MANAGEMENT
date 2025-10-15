@@ -76,11 +76,20 @@ router.post('/register', validateRegister, userController.register);
  *   post:
  *     tags: [Auth]
  *     summary: Logout user
+ *     description: Logout the currently authenticated user by invalidating their JWT token. Requires a valid Bearer token in the Authorization header.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *         description: JWT token with Bearer prefix
  *     responses:
  *       200:
- *         description: Logout successful
+ *         description: Logout successful - token has been blacklisted
  *         content:
  *           application/json:
  *             schema:
@@ -90,9 +99,35 @@ router.post('/register', validateRegister, userController.register);
  *                   type: string
  *                   example: Logged out
  *       400:
- *         description: Invalid authorization header
+ *         description: Invalid authorization header format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid authorization header
+ *       401:
+ *         description: Missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: No token provided
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Internal server error
  */
 router.post('/logout', userController.logout);
 
@@ -116,8 +151,127 @@ router.post('/logout', userController.logout);
  */
 router.get('/', userController.findAll);
 
-// password reset routes
+/**
+ * @swagger
+ * /api/user/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Request password reset
+ *     description: Send a password reset email to the user with a reset token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *                 description: Email address of the user requesting password reset
+ *     responses:
+ *       200:
+ *         description: Reset email sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Reset email sent if email exists
+ *                 resetToken:
+ *                   type: string
+ *                   example: abc123def456...
+ *                   description: Reset token (only in development mode)
+ *       400:
+ *         description: Invalid input - email is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Email is required
+ *       404:
+ *         description: Email not found in database
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Email not found
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/forgot-password', userController.requestPasswordReset);
+
+/**
+ * @swagger
+ * /api/user/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Reset password with token
+ *     description: Reset user password using the token received via email. Password must be at least 8 characters with uppercase, lowercase, and numbers.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: abc123def456ghi789jkl012mno345pqr678
+ *                 description: Reset token received via email
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: NewSecurePass123!
+ *                 description: New password (min 8 chars, must contain uppercase, lowercase, and number)
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Password reset successful
+ *       400:
+ *         description: Invalid input or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Reset token has expired
+ *       404:
+ *         description: Invalid reset token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid or expired reset token
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/reset-password', validateResetPassword, userController.resetPassword);
 
 /**

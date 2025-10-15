@@ -9,7 +9,6 @@ async function findAll() {
   return Account.findAll({
     attributes: [
       'account_id',
-      'username',
       'email',
       'fullname',
       'phone_number',
@@ -24,7 +23,6 @@ async function findById(id) {
   return Account.findByPk(id, {
     attributes: [
       'account_id',
-      'username',
       'email',
       'fullname',
       'phone_number',
@@ -40,7 +38,6 @@ async function findByEmail(email) {
     where: { email },
     attributes: [
       'account_id',
-      'username',
       'email',
       'fullname',
       'phone_number',
