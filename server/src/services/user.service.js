@@ -9,7 +9,6 @@ async function findAll() {
   return Account.findAll({
     attributes: [
       'account_id',
-      'username',
       'email',
       'fullname',
       'phone_number',
@@ -24,7 +23,6 @@ async function findById(id) {
   return Account.findByPk(id, {
     attributes: [
       'account_id',
-      'username',
       'email',
       'fullname',
       'phone_number',
@@ -40,7 +38,6 @@ async function findByEmail(email) {
     where: { email },
     attributes: [
       'account_id',
-      'username',
       'email',
       'fullname',
       'phone_number',
@@ -59,7 +56,7 @@ async function authenticate({ email, password }) {
 
   const account = await Account.findOne({ where: { email } });
   if (!account) {
-    const err = new Error('Incorrect email');
+    const err = new Error('Email or password is incorrect');
     err.status = 401;
     throw err;
   }
@@ -75,7 +72,7 @@ async function authenticate({ email, password }) {
   }
 
   if (!match) {
-    const err = new Error('Incorrect password');
+    const err = new Error('Email or password is incorrect');
     err.status = 401;
     throw err;
   }
@@ -103,17 +100,10 @@ async function authenticate({ email, password }) {
   }
 }
 
-async function createAccount({ username, email, password, fullname, phone_number, permission = 'driver' }) {
-  if (!username || !email || !password) {
-    const err = new Error('Username, email and password are required');
+async function createAccount({ email, password, fullname, phone_number, permission = 'driver' }) {
+  if (!email || !password) {
+    const err = new Error('Email and password are required');
     err.status = 400;
-    throw err;
-  }
-
-  const usernameExists = await Account.findOne({ where: { username } });
-  if (usernameExists) {
-    const err = new Error('Username already registered');
-    err.status = 409;
     throw err;
   }
 

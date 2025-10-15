@@ -47,37 +47,30 @@ async function login(req, res) {
 }
 
 async function register(req, res) {
-  try {
-    const { username, email, password, fullname, phone_number } = req.body || {};
-    // force default permission to 'driver' for self-register
-    const permission = 'driver';
-    if (!email || !password || !username) {
-      return res.status(400).json({ message: 'username, email and password are required' });
-    }
-
-    // check existing
-    const exists = await Account.findOne({ where: { email } });
-    if (exists) return res.status(409).json({ message: 'Email already registered' });
-
-    const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    const newAccount = await Account.create({ username, email, password_hash: hash, fullname, phone_number, permission });
-
-    // return safe fields
-    const safeAccount = {
-      account_id: newAccount.account_id,
-      username: newAccount.username,
-      email: newAccount.email,
-      fullname: newAccount.fullname,
-      phone_number: newAccount.phone_number,
-      permission: newAccount.permission,
-      status: newAccount.status
-    };
-    return res.status(201).json({ account: safeAccount });
-  } catch (err) {
-    console.error('Register error:', err.message);
-  if (err.parent) console.error('Database says:', err.parent.message);
-    return res.status(500).json({ message: 'Internal server error' });
+  const { email, password, fullname, phone_number } = req.body || {};
+  const permission = 'driver';
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
   }
+
+  const exists = await Account.findOne({ where: { email } });
+  if (exists) return res.status(409).json({ message: 'Email already registered' });
+
+  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, permission });
+
+  const safeAccount = {
+    account_id: newAccount.account_id,
+    email: newAccount.email,
+    fullname: newAccount.fullname,
+    phone_number: newAccount.phone_number,
+    permission: newAccount.permission,
+    status: newAccount.status
+  };
+  return res.status(201).json({ 
+    success: true,
+    payload: { account: safeAccount } 
+  });
 }
 
 // logout: add token to blacklist (expects Authorization: Bearer <token>)
