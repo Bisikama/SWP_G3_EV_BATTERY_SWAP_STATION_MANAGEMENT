@@ -124,7 +124,7 @@ async function createAccount({ email, password, fullname, phone_number, permissi
   let newAccount;
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    newAccount = await Account.create({ username, email, password_hash: hash, fullname, phone_number, permission });
+    newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, permission });
   } catch (err) {
     console.error('DB error in createAccount (create)', err);
     const e = new Error('Database error');
