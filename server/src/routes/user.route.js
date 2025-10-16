@@ -3,7 +3,9 @@ const router = express.Router();
 const validateRegister = require('../middlewares/validateRegister');
 const { validateResetPassword } = require('../middlewares/validatePassword');
 const userController = require('../controllers/user.controller');
+const vehicleController = require('../controllers/vehicle.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+const validateVin = require('../middlewares/validateVin');
 
 /**
  * @swagger
@@ -324,6 +326,90 @@ router.get('/id/:id', userController.findById);
  *         description: Internal server error
  */
 router.get('/email/:email', userController.findByEmail);
+
+/**
+ * @swagger
+ * /api/user/vehicle/register:
+ *   post:
+ *     tags: [Vehicle]
+ *     summary: Register a new vehicle
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - vin
+ *               - model_id
+ *               - license_plate
+ *             properties:
+ *               vin:
+ *                 type: string
+ *                 example: 1HGBH41JXMN109186
+ *                 description: Vehicle Identification Number (17 characters)
+ *               model_id:
+ *                 type: integer
+ *                 example: 1
+ *                 description: ID of the vehicle model
+ *               license_plate:
+ *                 type: string
+ *                 example: 30A-12345
+ *                 description: Vehicle license plate number
+ *     responses:
+ *       201:
+ *         description: Vehicle registered successfully
+ *       400:
+ *         description: Invalid VIN format or missing required fields
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *       403:
+ *         description: Only drivers can register vehicles
+ *       409:
+ *         description: VIN or license plate already exists
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/vehicle/register', verifyToken, validateVin, vehicleController.registerVehicle);
+
+/**
+ * @swagger
+ * /api/user/vehicle/my-vehicles:
+ *   get:
+ *     tags: [Vehicle]
+ *     summary: Get all vehicles of authenticated driver
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vehicles retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/vehicle/my-vehicles', verifyToken, vehicleController.getMyVehicles);
+
+/**
+ * @swagger
+ * /api/user/vehicle/{vin}:
+ *   get:
+ *     tags: [Vehicle]
+ *     summary: Get vehicle by VIN
+ *     parameters:
+ *       - in: path
+ *         name: vin
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Vehicle Identification Number
+ *     responses:
+ *       200:
+ *         description: Vehicle found
+ *       404:
+ *         description: Vehicle not found
+ */
+router.get('/vehicle/:vin', vehicleController.getVehicleByVin);
 
 // 🔐 Route chỉ cho phép Admin truy cập
 router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {
