@@ -1,6 +1,6 @@
 // seeders/14-shifts.js
 'use strict';
-const { v4: uuidv4 } = require('uuid');
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -30,7 +30,6 @@ module.exports = {
       stations.forEach((station, stationIndex) => {
         // Morning shift: 6 AM - 2 PM
         shifts.push({
-          shift_id: uuidv4(),
           admin_id: admins[0].account_id,
           staff_id: staff[stationIndex % staff.length].account_id,
           station_id: station.station_id,
@@ -41,7 +40,6 @@ module.exports = {
 
         // Afternoon shift: 2 PM - 10 PM
         shifts.push({
-          shift_id: uuidv4(),
           admin_id: admins[0].account_id,
           staff_id: staff[(stationIndex + 1) % staff.length].account_id,
           station_id: station.station_id,
@@ -52,7 +50,7 @@ module.exports = {
       });
     }
 
-    await queryInterface.bulkInsert('Shifts', shifts);
+  await db.Shift.bulkCreate(shifts, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

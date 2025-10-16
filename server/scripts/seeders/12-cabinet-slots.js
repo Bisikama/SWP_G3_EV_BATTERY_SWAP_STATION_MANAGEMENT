@@ -1,5 +1,6 @@
 // seeders/12-cabinet-slots.js
 'use strict';
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -31,7 +32,7 @@ module.exports = {
       }
     });
 
-    await queryInterface.bulkInsert('CabinetSlots', slots);
+  await db.CabinetSlot.bulkCreate(slots, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

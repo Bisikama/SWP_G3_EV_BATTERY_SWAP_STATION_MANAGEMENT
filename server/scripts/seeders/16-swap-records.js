@@ -1,6 +1,6 @@
 // seeders/16-swap-records.js
 'use strict';
-const { v4: uuidv4 } = require('uuid');
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -25,14 +25,13 @@ module.exports = {
       swapDate.setDate(swapDate.getDate() - daysAgo);
 
       swaps.push({
-        swap_id: uuidv4(),
         driver_id: drivers[i % drivers.length].driver_id,
         vehicle_id: drivers[i % drivers.length].vehicle_id,
         station_id: stations[i % stations.length].station_id
       });
     }
 
-    await queryInterface.bulkInsert('SwapRecords', swaps);
+  await db.SwapRecord.bulkCreate(swaps, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

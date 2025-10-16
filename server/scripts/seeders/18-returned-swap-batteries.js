@@ -1,5 +1,6 @@
 // seeders/18-returned-swap-batteries.js
 'use strict';
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -21,7 +22,7 @@ module.exports = {
       swap_time: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
     }));
 
-    await queryInterface.bulkInsert('ReturnedSwapBatteries', returnedBatteries);
+  await db.ReturnedSwapBattery.bulkCreate(returnedBatteries, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {
