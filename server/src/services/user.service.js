@@ -56,7 +56,7 @@ async function authenticate({ email, password }) {
 
   const account = await Account.findOne({ where: { email } });
   if (!account) {
-    const err = new Error('Incorrect email');
+    const err = new Error('Email or password is incorrect');
     err.status = 401;
     throw err;
   }
@@ -72,7 +72,7 @@ async function authenticate({ email, password }) {
   }
 
   if (!match) {
-    const err = new Error('Incorrect password');
+    const err = new Error('Email or password is incorrect');
     err.status = 401;
     throw err;
   }
@@ -107,8 +107,6 @@ async function createAccount({ email, password, fullname, phone_number, permissi
     throw err;
   }
 
-  
-
   const emailExists = await Account.findOne({ where: { email } });
   if (emailExists) {
     const err = new Error('Email already registered');
@@ -126,7 +124,7 @@ async function createAccount({ email, password, fullname, phone_number, permissi
   let newAccount;
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    newAccount = await Account.create({  email, password_hash: hash, fullname, phone_number, permission });
+    newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, permission });
   } catch (err) {
     console.error('DB error in createAccount (create)', err);
     const e = new Error('Database error');

@@ -1,6 +1,6 @@
 // seeders/13-batteries.js
 'use strict';
-const { v4: uuidv4 } = require('uuid');
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -32,7 +32,6 @@ module.exports = {
     // Batteries in vehicles (one per vehicle)
     vehicles.forEach((vehicle, index) => {
       batteries.push({
-        battery_id: uuidv4(),
         battery_type_id: randomBatteryType(),
         vehicle_id: vehicle.vehicle_id,
         slot_id: null,
@@ -45,7 +44,6 @@ module.exports = {
     // Batteries in cabinet slots
     chargedSlots.slice(0, 50).forEach((slot, index) => {
       batteries.push({
-        battery_id: uuidv4(),
         battery_type_id: randomBatteryType(),
         vehicle_id: null,
         slot_id: slot.slot_id,
@@ -62,29 +60,27 @@ module.exports = {
       if (chargedSlots.length > 0) {
         const slot = chargedSlots[i % chargedSlots.length];
           batteries.push({
-            battery_id: uuidv4(),
-            battery_type_id: randomBatteryType(),
-            vehicle_id: null,
-            slot_id: slot.slot_id,
-            battery_serial: `BAT-SLT-EX-${String(i + 1).padStart(4, '0')}`,
-            current_soc: 70.00 + Math.random() * 30,
-            current_soh: 85.00 + Math.random() * 15
-          });
+              battery_type_id: randomBatteryType(),
+              vehicle_id: null,
+              slot_id: slot.slot_id,
+              battery_serial: `BAT-SLT-EX-${String(i + 1).padStart(4, '0')}`,
+              current_soc: 70.00 + Math.random() * 30,
+              current_soh: 85.00 + Math.random() * 15
+            });
       } else if (vehicles.length > 0) {
         const vehicle = vehicles[i % vehicles.length];
           batteries.push({
-            battery_id: uuidv4(),
-            battery_type_id: randomBatteryType(),
-            vehicle_id: vehicle.vehicle_id,
-            slot_id: null,
-            battery_serial: `BAT-VEH-EX-${String(i + 1).padStart(4, '0')}`,
-            current_soc: 50.00 + Math.random() * 50,
-            current_soh: 80.00 + Math.random() * 20
-          });
+          battery_type_id: randomBatteryType(),
+          vehicle_id: vehicle.vehicle_id,
+          slot_id: null,
+          battery_serial: `BAT-VEH-EX-${String(i + 1).padStart(4, '0')}`,
+          current_soc: 50.00 + Math.random() * 50,
+          current_soh: 80.00 + Math.random() * 20
+        });
       }
     }
 
-    await queryInterface.bulkInsert('Batteries', batteries);
+  await db.Battery.bulkCreate(batteries, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

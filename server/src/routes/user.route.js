@@ -3,7 +3,9 @@ const router = express.Router();
 const validateRegister = require('../middlewares/validateRegister');
 const { validateResetPassword } = require('../middlewares/validatePassword');
 const userController = require('../controllers/user.controller');
+const vehicleController = require('../controllers/vehicle.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+const validateVin = require('../middlewares/validateVin');
 
 /**
  * @swagger
@@ -35,10 +37,13 @@ router.post('/login', userController.login);
 
 /**
  * @swagger
- * /api/user/register:
+ * /api/user/request-verification:
  *   post:
  *     tags: [Auth]
- *     summary: Register a new user
+ *     summary: Request email verification (Step 1 of registration)
+ *     description: |
+ *       Initiates the registration process by sending a 6-digit verification code to the user's email.
+ *       User must enter this code on the website to verify their email before completing registration.
  *     requestBody:
  *       required: true
  *       content:
@@ -46,11 +51,141 @@ router.post('/login', userController.login);
  *           schema:
  *             type: object
  *             required:
- *             
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *                 description: Email address to verify
+ *     responses:
+ *       200:
+ *         description: Verification code sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Mã xác thực đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.
+ *       400:
+ *         description: Invalid input or email already registered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Email already registered. Please login instead.
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Internal server error
+ */
+router.post('/request-verification', userController.requestEmailVerification);
+
+/**
+ * @swagger
+ * /api/user/verify-email:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Verify email with code (Step 2 of registration)
+ *     description: |
+ *       User enters the 6-digit code received via email.
+ *       After successful verification, user can proceed to complete registration.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *                 description: Email address being verified
+ *               code:
+ *                 type: string
+ *                 example: "123456"
+ *                 description: The 6-digit verification code received via email
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Email verified successfully! You can now complete your registration.
+ *                 verified:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Invalid or expired code, or email already verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid verification code. Please try again.
+ *       404:
+ *         description: Email not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Email not found. Please request verification first.
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Internal server error
+ */
+router.post('/verify-email', userController.verifyEmailCode);
+
+/**
+ * @swagger
+ * /api/user/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Register a new user (Step 3 - Complete registration)
+ *     description: |
+ *       Final step of registration after email verification.
+ *       User must have verified their email first using /request-verification and /verify-email.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
  *               - email
  *               - password
  *             properties:
- *              
  *               email:
  *                 type: string
  *               password:
@@ -156,7 +291,7 @@ router.get('/', userController.findAll);
  *   post:
  *     tags: [Auth]
  *     summary: Request password reset
- *     description: Send a password reset email to the user with a reset token
+ *     description: Send a 6-digit verification code to the user's email for password reset
  *     requestBody:
  *       required: true
  *       content:
@@ -173,7 +308,7 @@ router.get('/', userController.findAll);
  *                 description: Email address of the user requesting password reset
  *     responses:
  *       200:
- *         description: Reset email sent successfully
+ *         description: Verification code sent successfully
  *         content:
  *           application/json:
  *             schema:
@@ -181,11 +316,7 @@ router.get('/', userController.findAll);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Reset email sent if email exists
- *                 resetToken:
- *                   type: string
- *                   example: abc123def456...
- *                   description: Reset token (only in development mode)
+ *                   example: Mã xác thực đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.
  *       400:
  *         description: Invalid input - email is required
  *         content:
@@ -216,8 +347,8 @@ router.post('/forgot-password', userController.requestPasswordReset);
  * /api/user/reset-password:
  *   post:
  *     tags: [Auth]
- *     summary: Reset password with token
- *     description: Reset user password using the token received via email. Password must be at least 8 characters with uppercase, lowercase, and numbers.
+ *     summary: Reset password with 6-digit code
+ *     description: Reset user password using the 6-digit code received via email. Password must be at least 8 characters with uppercase, lowercase, and numbers.
  *     requestBody:
  *       required: true
  *       content:
@@ -225,13 +356,19 @@ router.post('/forgot-password', userController.requestPasswordReset);
  *           schema:
  *             type: object
  *             required:
- *               - token
+ *               - email
+ *               - code
  *               - newPassword
  *             properties:
- *               token:
+ *               email:
  *                 type: string
- *                 example: abc123def456ghi789jkl012mno345pqr678
- *                 description: Reset token received via email
+ *                 format: email
+ *                 example: user@example.com
+ *                 description: Email address of the user
+ *               code:
+ *                 type: string
+ *                 example: "123456"
+ *                 description: 6-digit verification code received via email
  *               newPassword:
  *                 type: string
  *                 format: password
@@ -247,9 +384,9 @@ router.post('/forgot-password', userController.requestPasswordReset);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Password reset successful
+ *                   example: Đặt lại mật khẩu thành công
  *       400:
- *         description: Invalid input or expired token
+ *         description: Invalid input or expired code
  *         content:
  *           application/json:
  *             schema:
@@ -257,9 +394,9 @@ router.post('/forgot-password', userController.requestPasswordReset);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Reset token has expired
+ *                   example: Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới.
  *       404:
- *         description: Invalid reset token
+ *         description: Invalid code or email not found
  *         content:
  *           application/json:
  *             schema:
@@ -267,7 +404,7 @@ router.post('/forgot-password', userController.requestPasswordReset);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Invalid or expired reset token
+ *                   example: Mã xác thực không hợp lệ
  *       500:
  *         description: Internal server error
  */
@@ -326,6 +463,90 @@ router.get('/id/:id', userController.findById);
  *         description: Internal server error
  */
 router.get('/email/:email', userController.findByEmail);
+
+/**
+ * @swagger
+ * /api/user/vehicle/register:
+ *   post:
+ *     tags: [Vehicle]
+ *     summary: Register a new vehicle
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - vin
+ *               - model_id
+ *               - license_plate
+ *             properties:
+ *               vin:
+ *                 type: string
+ *                 example: 1HGBH41JXMN109186
+ *                 description: Vehicle Identification Number (17 characters)
+ *               model_id:
+ *                 type: integer
+ *                 example: 1
+ *                 description: ID of the vehicle model
+ *               license_plate:
+ *                 type: string
+ *                 example: 30A-12345
+ *                 description: Vehicle license plate number
+ *     responses:
+ *       201:
+ *         description: Vehicle registered successfully
+ *       400:
+ *         description: Invalid VIN format or missing required fields
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *       403:
+ *         description: Only drivers can register vehicles
+ *       409:
+ *         description: VIN or license plate already exists
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/vehicle/register', verifyToken, validateVin, vehicleController.registerVehicle);
+
+/**
+ * @swagger
+ * /api/user/vehicle/my-vehicles:
+ *   get:
+ *     tags: [Vehicle]
+ *     summary: Get all vehicles of authenticated driver
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vehicles retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/vehicle/my-vehicles', verifyToken, vehicleController.getMyVehicles);
+
+/**
+ * @swagger
+ * /api/user/vehicle/{vin}:
+ *   get:
+ *     tags: [Vehicle]
+ *     summary: Get vehicle by VIN
+ *     parameters:
+ *       - in: path
+ *         name: vin
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Vehicle Identification Number
+ *     responses:
+ *       200:
+ *         description: Vehicle found
+ *       404:
+ *         description: Vehicle not found
+ */
+router.get('/vehicle/:vin', vehicleController.getVehicleByVin);
 
 // 🔐 Route chỉ cho phép Admin truy cập
 router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {

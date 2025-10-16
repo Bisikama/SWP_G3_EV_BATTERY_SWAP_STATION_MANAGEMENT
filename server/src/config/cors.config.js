@@ -12,18 +12,14 @@
 //   optionsSuccessStatus: 200
 // };
 
+
 // module.exports = cors(options);
 
 const cors = require('cors');
 
 const options = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Cho phép request nội bộ như Postman
-    if (origin.startsWith('http://localhost')) {
-      callback(null, true); //  Cho phép mọi localhost:* gọi tới
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+  origin: (origin, callback) => {
+    callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],

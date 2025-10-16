@@ -1,5 +1,6 @@
 // seeders/06-subscription-plans.js
 'use strict';
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -8,9 +9,8 @@ module.exports = {
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
-    await queryInterface.bulkInsert('SubscriptionPlans', [
+  await db.SubscriptionPlan.bulkCreate([
       {
-        plan_id: 1,
         admin_id: admins[0].account_id,
         plan_name: 'Basic Plan',
         plan_fee: 500000.00,
@@ -20,7 +20,6 @@ module.exports = {
         is_active: true
       },
       {
-        plan_id: 2,
         admin_id: admins[0].account_id,
         plan_name: 'Standard Plan',
         plan_fee: 900000.00,
@@ -30,7 +29,6 @@ module.exports = {
         is_active: true
       },
       {
-        plan_id: 3,
         admin_id: admins[0].account_id,
         plan_name: 'Premium Plan',
         plan_fee: 1500000.00,
@@ -40,7 +38,6 @@ module.exports = {
         is_active: true
       },
       {
-        plan_id: 4,
         admin_id: admins[0].account_id,
         plan_name: 'Enterprise Plan',
         plan_fee: 2500000.00,
@@ -49,7 +46,7 @@ module.exports = {
         description: '150 battery swaps per month - For fleet operators',
         is_active: true
       }
-    ]);
+  ], { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

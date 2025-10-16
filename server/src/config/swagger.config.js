@@ -31,7 +31,6 @@ const options = {
               format: 'uuid',
               example: '550e8400-e29b-41d4-a716-446655440000'
             },
-            username: { type: 'string', example: 'john.admin' },
             email: { type: 'string', example: 'john.admin@evswap.com' },
             fullname: { type: 'string', example: 'John Admin' },
             phone_number: { type: 'string', example: '123456789' },
