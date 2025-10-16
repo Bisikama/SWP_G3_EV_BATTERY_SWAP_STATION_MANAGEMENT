@@ -47,6 +47,14 @@ module.exports = {
       permission: {
         type: Sequelize.ENUM('driver', 'admin', 'staff'),
         allowNull: false
+      },
+      reset_token: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+      reset_token_expires: {
+        type: Sequelize.DATE,
+        allowNull: true
       }
     });
   },
