@@ -332,10 +332,11 @@ router.get('/email/:email', userController.findByEmail);
 
 /**
  * @swagger
- * /api/user/vehicle/register:
+ * /api/user/vehicles:
  *   post:
  *     tags: [Vehicle]
  *     summary: Register a new vehicle
+ *     description: Create a new vehicle registration for the authenticated driver
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -375,48 +376,80 @@ router.get('/email/:email', userController.findByEmail);
  *       500:
  *         description: Internal server error
  */
-router.post('/vehicle/register', verifyToken, validateVin, vehicleController.registerVehicle);
+router.post('/vehicles', verifyToken, validateVin, vehicleController.registerVehicle);
 
 /**
  * @swagger
- * /api/user/vehicle/my-vehicles:
+ * /api/user/vehicles:
  *   get:
  *     tags: [Vehicle]
  *     summary: Get all vehicles of authenticated driver
+ *     description: Retrieve a list of all vehicles registered by the current driver
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Vehicles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicles retrieved successfully
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 vehicles:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - missing or invalid token
+ *       500:
+ *         description: Internal server error
  */
-router.get('/vehicle/my-vehicles', verifyToken, vehicleController.getMyVehicles);
+router.get('/vehicles', verifyToken, vehicleController.getMyVehicles);
 
 /**
  * @swagger
- * /api/user/vehicle/{vin}:
+ * /api/user/vehicles/vin/{vin}:
  *   get:
  *     tags: [Vehicle]
- *     summary: Get vehicle by VIN
+ *     summary: Search vehicle by VIN
+ *     description: Public endpoint to look up vehicle information by VIN number
  *     parameters:
  *       - in: path
  *         name: vin
  *         required: true
  *         schema:
  *           type: string
- *         description: Vehicle Identification Number
+ *         description: Vehicle Identification Number (17 characters)
+ *         example: 1HGBH41JXMN109186
  *     responses:
  *       200:
  *         description: Vehicle found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicle found
+ *                 vehicle:
+ *                   type: object
  *       404:
  *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
  */
-router.get('/vehicle/:vin', vehicleController.getVehicleByVin);
+router.get('/vehicles/vin/:vin', vehicleController.getVehicleByVin);
 
 /**
  * @swagger
- * /api/user/vehicle/{vehicle_id}:
+ * /api/user/vehicles/{id}:
  *   delete:
  *     tags: [Vehicle]
  *     summary: Delete a vehicle
@@ -425,7 +458,7 @@ router.get('/vehicle/:vin', vehicleController.getVehicleByVin);
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: vehicle_id
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
@@ -502,7 +535,7 @@ router.get('/vehicle/:vin', vehicleController.getVehicleByVin);
  *       500:
  *         description: Internal server error
  */
-router.delete('/vehicle/:vehicle_id', verifyToken, vehicleController.deleteVehicle);
+router.delete('/vehicles/:id', verifyToken, vehicleController.deleteVehicle);
 
 // 🔐 Route chỉ cho phép Admin truy cập
 router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {

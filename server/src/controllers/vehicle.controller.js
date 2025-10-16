@@ -8,6 +8,7 @@
 // 1. registerVehicle - Đăng ký xe mới cho tài xế
 // 2. getMyVehicles - Lấy danh sách xe của tài xế đang đăng nhập
 // 3. getVehicleByVin - Tra cứu thông tin xe theo VIN (public)
+// 4. deleteVehicle - Xóa xe đã đăng ký
 // ========================================
 
 'use strict';
@@ -17,7 +18,7 @@ const { Vehicle, VehicleModel, Account } = require('../models');
  * ========================================
  * REGISTER VEHICLE
  * ========================================
- * Endpoint: POST /api/user/vehicle/register
+ * Endpoint: POST /api/user/vehicles
  * 
  * Mục đích: Đăng ký xe mới cho tài xế đã đăng nhập
  * 
@@ -196,7 +197,7 @@ async function registerVehicle(req, res) {
  * ========================================
  * GET MY VEHICLES
  * ========================================
- * Endpoint: GET /api/user/vehicle/my-vehicles
+ * Endpoint: GET /api/user/vehicles
  * 
  * Mục đích: Lấy danh sách tất cả xe của tài xế đang đăng nhập
  * 
@@ -270,7 +271,7 @@ async function getMyVehicles(req, res) {
  * ========================================
  * GET VEHICLE BY VIN
  * ========================================
- * Endpoint: GET /api/user/vehicle/:vin
+ * Endpoint: GET /api/user/vehicles/vin/:vin
  * 
  * Mục đích: Tra cứu thông tin chi tiết xe theo VIN
  * 
@@ -296,8 +297,8 @@ async function getVehicleByVin(req, res) {
   try {
     // ===== BƯỚC 1: LẤY VIN TỪ URL PARAMS =====
     
-    // req.params.vin: lấy từ URL /api/user/vehicle/:vin
-    // Ví dụ: URL = /api/user/vehicle/1HGBH41JXMN109186
+    // req.params.vin: lấy từ URL /api/user/vehicles/vin/:vin
+    // Ví dụ: URL = /api/user/vehicles/vin/1HGBH41JXMN109186
     //        → req.params.vin = "1HGBH41JXMN109186"
     const { vin } = req.params;
 
@@ -378,7 +379,7 @@ async function getVehicleByVin(req, res) {
  * ========================================
  * DELETE VEHICLE
  * ========================================
- * Endpoint: DELETE /api/user/vehicle/:vehicle_id
+ * Endpoint: DELETE /api/user/vehicles/:id
  * 
  * Mục đích: Xóa xe đã đăng ký của tài xế
  * 
@@ -388,7 +389,7 @@ async function getVehicleByVin(req, res) {
  * - Không thể xóa xe của người khác
  * 
  * Request params:
- * - vehicle_id: UUID của xe cần xóa
+ * - id: UUID của xe cần xóa (vehicle_id)
  * 
  * Flow hoạt động:
  * 1. Lấy driver_id từ JWT token
@@ -413,9 +414,10 @@ async function deleteVehicle(req, res) {
     // ===== BƯỚC 1: LẤY THÔNG TIN TỪ REQUEST =====
     
     // Lấy vehicle_id từ URL params
-    // Ví dụ: DELETE /api/user/vehicle/550e8400-e29b-41d4-a716-446655440000
-    //        → req.params.vehicle_id = "550e8400-e29b-41d4-a716-446655440000"
-    const { vehicle_id } = req.params;
+    // Route: DELETE /api/user/vehicles/:id
+    // Ví dụ: DELETE /api/user/vehicles/550e8400-e29b-41d4-a716-446655440000
+    //        → req.params.id = "550e8400-e29b-41d4-a716-446655440000"
+    const vehicle_id = req.params.id;
     
     // Lấy driver_id từ JWT token (đã decode bởi verifyToken middleware)
     // req.user chứa: { account_id, email, permission }
