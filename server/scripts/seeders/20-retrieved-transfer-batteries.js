@@ -1,5 +1,6 @@
 // seeders/20-retrieved-transfer-batteries.js
 'use strict';
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -33,7 +34,7 @@ module.exports = {
     });
 
     if (retrievedTransferBatteries.length > 0) {
-      await queryInterface.bulkInsert('RetrievedTransferBatteries', retrievedTransferBatteries);
+  await db.RetrievedTransferBattery.bulkCreate(retrievedTransferBatteries, { validate: true });
     } else {
       console.info('No RetrievedTransferBatteries to insert, skipping.');
     }

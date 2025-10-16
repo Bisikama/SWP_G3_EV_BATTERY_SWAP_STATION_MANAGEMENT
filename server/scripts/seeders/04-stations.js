@@ -1,11 +1,11 @@
 // seeders/04-stations.js
 'use strict';
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.bulkInsert('Stations', [
+  await db.Station.bulkCreate([
       {
-        station_id: 1,
         station_name: 'District 1 Central Station',
         address: '123 Nguyen Hue, District 1, HCMC',
         latitude: 10.7769,
@@ -13,7 +13,6 @@ module.exports = {
         status: 'operational'
       },
       {
-        station_id: 2,
         station_name: 'District 3 Tech Hub',
         address: '456 Vo Van Tan, District 3, HCMC',
         latitude: 10.7829,
@@ -21,7 +20,6 @@ module.exports = {
         status: 'operational'
       },
       {
-        station_id: 3,
         station_name: 'Binh Thanh Station',
         address: '789 Xo Viet Nghe Tinh, Binh Thanh, HCMC',
         latitude: 10.8142,
@@ -29,7 +27,6 @@ module.exports = {
         status: 'operational'
       },
       {
-        station_id: 4,
         station_name: 'Thu Duc Service Center',
         address: '321 Vo Van Ngan, Thu Duc, HCMC',
         latitude: 10.8505,
@@ -37,14 +34,13 @@ module.exports = {
         status: 'operational'
       },
       {
-        station_id: 5,
         station_name: 'Tan Binh Airport Station',
         address: '147 Hoang Van Thu, Tan Binh, HCMC',
         latitude: 10.8124,
         longitude: 106.6657,
         status: 'maintenance'
       }
-    ]);
+  ], { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

@@ -1,6 +1,6 @@
 // seeders/19-transfer-records.js
 'use strict';
-const { v4: uuidv4 } = require('uuid');
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -42,7 +42,6 @@ module.exports = {
       }
 
       transfers.push({
-        transfer_id: uuidv4(),
         origin_station_id: stations[i % stations.length].station_id,
         destination_station_id: stations[(i + 1) % stations.length].station_id,
         admin_id: admins[i % admins.length] ? admins[i % admins.length].account_id : null,
@@ -55,7 +54,7 @@ module.exports = {
       });
     }
 
-    await queryInterface.bulkInsert('Transfers', transfers);
+  await db.Transfer.bulkCreate(transfers, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

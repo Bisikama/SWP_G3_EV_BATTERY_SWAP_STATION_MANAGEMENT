@@ -1,5 +1,6 @@
 // seeders/22-booking-batteries.js
 'use strict';
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -18,7 +19,7 @@ module.exports = {
       battery_id: chargedBatteries[index % chargedBatteries.length].battery_id
     }));
 
-    await queryInterface.bulkInsert('BookingBatteries', bookingBatteries);
+  await db.BookingBattery.bulkCreate(bookingBatteries, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

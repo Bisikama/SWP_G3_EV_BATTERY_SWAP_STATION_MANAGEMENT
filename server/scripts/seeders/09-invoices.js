@@ -1,6 +1,6 @@
 // seeders/09-invoices.js
 'use strict';
-const { v4: uuidv4 } = require('uuid');
+const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -12,7 +12,6 @@ module.exports = {
     );
 
     const invoices = subscriptions.map((sub, index) => ({
-      invoice_id: uuidv4(),
       driver_id: sub.driver_id,
       subscription_id: sub.subscription_id,
       invoice_number: `INV-2024-10-${String(index + 1).padStart(4, '0')}`,
@@ -21,7 +20,7 @@ module.exports = {
       total_fee: sub.plan_fee
     }));
 
-    await queryInterface.bulkInsert('Invoices', invoices);
+  await db.Invoice.bulkCreate(invoices, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {
