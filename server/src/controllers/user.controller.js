@@ -56,8 +56,11 @@ async function register(req, res) {
     }
 
     // check existing
-    const exists = await Account.findOne({ where: { email } });
-    if (exists) return res.status(409).json({ message: 'Email already registered' });
+    const emailExists = await Account.findOne({ where: { email } });
+    if (emailExists) return res.status(409).json({ message: 'Email already registered' });
+
+    const phoneExists = await Account.findOne({ where: { phone_number } });
+    if (phoneExists) return res.status(409).json({ message: 'Phone number already registered' });
 
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     const newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, permission });
