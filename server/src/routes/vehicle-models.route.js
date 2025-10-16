@@ -83,12 +83,12 @@ router.get('/:id',
  *         description: Internal server error
  */
 router.post('/', 
-    [
-        vehicleModelRules.name,
-        vehicleModelRules.brand,
-        vehicleModelRules.avg_energy_usage,
-        handleValidation
-    ],
+    // [
+    //     vehicleModelRules.name,
+    //     vehicleModelRules.brand,
+    //     vehicleModelRules.avg_energy_usage,
+    //     handleValidation
+    // ],
     verifyToken, 
     authorizeRole('admin'), 
     vehicleModelController.create
@@ -138,12 +138,12 @@ router.post('/',
  *         description: Internal server error
  */
 router.put('/:id', 
-    [
-        vehicleModelRules.name.optional(),
-        vehicleModelRules.brand.optional(),
-        vehicleModelRules.avg_energy_usage.optional(),
-        handleValidation
-    ],
+    // [
+    //     vehicleModelRules.name.optional(),
+    //     vehicleModelRules.brand.optional(),
+    //     vehicleModelRules.avg_energy_usage.optional(),
+    //     handleValidation
+    // ],
     verifyToken, 
     authorizeRole('admin'), 
     vehicleModelController.update);

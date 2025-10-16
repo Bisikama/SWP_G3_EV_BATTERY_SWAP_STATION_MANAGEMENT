@@ -2,11 +2,11 @@
 const { body } = require('express-validator');
 
 exports.vehicleModelRules = {
-  name: body('name').optional()
+  name: body('name')
     .isString().withMessage('Name must be a string')
     .isLength({ max: 100 }).withMessage('Name max length is 100'),
 
-  brand: body('brand').optional()
+  brand: body('brand')
     .isString().withMessage('Brand must be a string')
     .isLength({ max: 50 }).withMessage('Brand max length is 50'),
 

@@ -2,7 +2,6 @@ const { body } = require('express-validator');
 
 exports.batteryTypeRules = {
   battery_type_code: body('battery_type_code')
-    .exists('falsy')
     .isString()
     .isLength({ min: 1, max: 100 })
     .withMessage('Battery type code must be 1->100 chars'),

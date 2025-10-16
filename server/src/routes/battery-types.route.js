@@ -115,17 +115,17 @@ router.get('/:id',
  *         description: Internal server error
  */
 router.post('/',
-	[
-		batteryTypeRules.battery_type_code,
-		batteryTypeRules.nominal_capacity,
-		batteryTypeRules.nominal_voltage,
-		batteryTypeRules.min_voltage,
-		batteryTypeRules.max_voltage,
-		batteryTypeRules.rated_charge_current,
-		batteryTypeRules.max_charge_current,
-		batteryTypeRules.cell_chemistry,
-		handleValidation
-	],
+	// [
+	// 	batteryTypeRules.battery_type_code,
+	// 	batteryTypeRules.nominal_capacity,
+	// 	batteryTypeRules.nominal_voltage,
+	// 	batteryTypeRules.min_voltage,
+	// 	batteryTypeRules.max_voltage,
+	// 	batteryTypeRules.rated_charge_current,
+	// 	batteryTypeRules.max_charge_current,
+	// 	batteryTypeRules.cell_chemistry,
+	// 	handleValidation
+	// ],
 	verifyToken,
 	authorizeRole('admin'),
 	batteryTypeController.create
@@ -183,17 +183,17 @@ router.post('/',
  *         description: Internal server error
  */
 router.put('/:id',
-	[
-		batteryTypeRules.battery_type_code.optional(),
-		batteryTypeRules.nominal_capacity.optional(),
-		batteryTypeRules.nominal_voltage.optional(),
-		batteryTypeRules.min_voltage.optional(),
-		batteryTypeRules.max_voltage.optional(),
-		batteryTypeRules.rated_charge_current.optional(),
-		batteryTypeRules.max_charge_current.optional(),
-		batteryTypeRules.cell_chemistry.optional(),
-		handleValidation
-	],
+	// [
+	// 	batteryTypeRules.battery_type_code.optional(),
+	// 	batteryTypeRules.nominal_capacity.optional(),
+	// 	batteryTypeRules.nominal_voltage.optional(),
+	// 	batteryTypeRules.min_voltage.optional(),
+	// 	batteryTypeRules.max_voltage.optional(),
+	// 	batteryTypeRules.rated_charge_current.optional(),
+	// 	batteryTypeRules.max_charge_current.optional(),
+	// 	batteryTypeRules.cell_chemistry.optional(),
+	// 	handleValidation
+	// ],
 	verifyToken,
 	authorizeRole('admin'),
 	batteryTypeController.update
