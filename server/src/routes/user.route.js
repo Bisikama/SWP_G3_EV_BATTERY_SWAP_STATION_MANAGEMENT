@@ -466,10 +466,11 @@ router.get('/email/:email', userController.findByEmail);
 
 /**
  * @swagger
- * /api/user/vehicle/register:
+ * /api/user/vehicles:
  *   post:
  *     tags: [Vehicle]
  *     summary: Register a new vehicle
+ *     description: Create a new vehicle registration for the authenticated driver
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -509,44 +510,283 @@ router.get('/email/:email', userController.findByEmail);
  *       500:
  *         description: Internal server error
  */
-router.post('/vehicle/register', verifyToken, validateVin, vehicleController.registerVehicle);
+router.post('/vehicles', verifyToken, validateVin, vehicleController.registerVehicle);
 
 /**
  * @swagger
- * /api/user/vehicle/my-vehicles:
+ * /api/user/vehicles:
  *   get:
  *     tags: [Vehicle]
  *     summary: Get all vehicles of authenticated driver
+ *     description: Retrieve a list of all vehicles registered by the current driver
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Vehicles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicles retrieved successfully
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 vehicles:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - missing or invalid token
+ *       500:
+ *         description: Internal server error
  */
-router.get('/vehicle/my-vehicles', verifyToken, vehicleController.getMyVehicles);
+router.get('/vehicles', verifyToken, vehicleController.getMyVehicles);
 
 /**
  * @swagger
- * /api/user/vehicle/{vin}:
+ * /api/user/vehicles/vin/{vin}:
  *   get:
  *     tags: [Vehicle]
- *     summary: Get vehicle by VIN
+ *     summary: Search vehicle by VIN
+ *     description: Public endpoint to look up vehicle information by VIN number
  *     parameters:
  *       - in: path
  *         name: vin
  *         required: true
  *         schema:
  *           type: string
- *         description: Vehicle Identification Number
+ *         description: Vehicle Identification Number (17 characters)
+ *         example: 1HGBH41JXMN109186
  *     responses:
  *       200:
  *         description: Vehicle found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicle found
+ *                 vehicle:
+ *                   type: object
  *       404:
  *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
  */
-router.get('/vehicle/:vin', vehicleController.getVehicleByVin);
+router.get('/vehicles/vin/:vin', vehicleController.getVehicleByVin);
+
+/**
+ * @swagger
+ * /api/user/vehicles/{id}:
+ *   put:
+ *     tags: [Vehicle]
+ *     summary: Update vehicle information
+ *     description: Update vehicle information (license_plate or model_id) for the authenticated driver. VIN cannot be changed. Only the owner can update their own vehicles.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the vehicle to update
+ *         example: 550e8400-e29b-41d4-a716-446655440000
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               license_plate:
+ *                 type: string
+ *                 description: New license plate number (optional)
+ *                 example: 30B-67890
+ *               model_id:
+ *                 type: integer
+ *                 description: New vehicle model ID (optional)
+ *                 example: 2
+ *           examples:
+ *             updateLicensePlate:
+ *               summary: Update license plate only
+ *               value:
+ *                 license_plate: "30B-67890"
+ *             updateModelId:
+ *               summary: Update model ID only
+ *               value:
+ *                 model_id: 2
+ *             updateBoth:
+ *               summary: Update both fields
+ *               value:
+ *                 license_plate: "30B-67890"
+ *                 model_id: 2
+ *     responses:
+ *       200:
+ *         description: Vehicle updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicle updated successfully
+ *                 vehicle:
+ *                   type: object
+ *                   description: Updated vehicle information including model details
+ *       400:
+ *         description: Bad request - no fields to update or validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: At least one field (license_plate or model_id) is required to update
+ *       401:
+ *         description: Unauthorized - No token provided
+ *       403:
+ *         description: Forbidden - Vehicle belongs to another driver
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: You can only update your own vehicles
+ *                 hint:
+ *                   type: string
+ *                   example: This vehicle belongs to another driver
+ *       404:
+ *         description: Vehicle not found or model_id not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicle not found
+ *                 vehicle_id:
+ *                   type: string
+ *                   example: 550e8400-e29b-41d4-a716-446655440000
+ *       409:
+ *         description: Conflict - License plate already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: License plate already exists
+ *                 license_plate:
+ *                   type: string
+ *                   example: 30B-67890
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/vehicles/:id', verifyToken, vehicleController.updateVehicle);
+
+/**
+ * @swagger
+ * /api/user/vehicles/{id}:
+ *   delete:
+ *     tags: [Vehicle]
+ *     summary: Delete a vehicle
+ *     description: Delete a vehicle that belongs to the authenticated driver. Only the owner can delete their own vehicles.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the vehicle to delete
+ *         example: 550e8400-e29b-41d4-a716-446655440000
+ *     responses:
+ *       200:
+ *         description: Vehicle deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicle deleted successfully
+ *                 deleted_vehicle:
+ *                   type: object
+ *                   properties:
+ *                     vehicle_id:
+ *                       type: string
+ *                       example: 550e8400-e29b-41d4-a716-446655440000
+ *                     vin:
+ *                       type: string
+ *                       example: 1HGBH41JXMN109186
+ *                     license_plate:
+ *                       type: string
+ *                       example: 30A-12345
+ *       401:
+ *         description: Unauthorized - No token provided
+ *       403:
+ *         description: Forbidden - Vehicle belongs to another driver
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: You can only delete your own vehicles
+ *                 hint:
+ *                   type: string
+ *                   example: This vehicle belongs to another driver
+ *       404:
+ *         description: Vehicle not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicle not found
+ *                 vehicle_id:
+ *                   type: string
+ *                   example: 550e8400-e29b-41d4-a716-446655440000
+ *       409:
+ *         description: Conflict - Vehicle is being used in other records
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Cannot delete vehicle
+ *                 reason:
+ *                   type: string
+ *                   example: Vehicle is being used in swap records or bookings
+ *                 hint:
+ *                   type: string
+ *                   example: Please contact admin to delete this vehicle
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/vehicles/:id', verifyToken, vehicleController.deleteVehicle);
 
 // 🔐 Route chỉ cho phép Admin truy cập
 router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {
