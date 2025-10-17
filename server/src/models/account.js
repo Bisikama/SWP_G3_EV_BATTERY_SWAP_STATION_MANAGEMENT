@@ -73,14 +73,6 @@ module.exports = (sequelize, DataTypes) => {
       permission: {
         type: DataTypes.ENUM('driver', 'admin', 'staff'),
         allowNull: false
-      },
-      reset_token: {
-        type: DataTypes.STRING,
-        allowNull: true
-      },
-      reset_token_expires: {
-        type: DataTypes.DATE,
-        allowNull: true
       }
     },
     {
