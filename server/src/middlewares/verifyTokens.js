@@ -31,11 +31,11 @@ function verifyToken(req, res, next) {
 function authorizeRole(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user || !req.user.permission) {
-      return res.status(403).json({ message: 'No permission information' });
+      throw new ApiError(403, 'No permission information');
     }
 
     if (!allowedRoles.includes(req.user.permission)) {
-      return res.status(403).json({ message: 'Access denied: insufficient permissions' });
+      throw new ApiError(403, 'Access denied: insufficient permissions');
     }
 
     next();
