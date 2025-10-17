@@ -9,6 +9,7 @@
 // 2. getMyVehicles - Lấy danh sách xe của tài xế đang đăng nhập
 // 3. getVehicleByVin - Tra cứu thông tin xe theo VIN (public)
 // 4. deleteVehicle - Xóa xe đã đăng ký
+// 5. updateVehicle - Cập nhật xe đã đăng ký
 // ========================================
 
 'use strict';
@@ -377,6 +378,193 @@ async function getVehicleByVin(req, res) {
 
 /**
  * ========================================
+ * UPDATE VEHICLE
+ * ========================================
+ * Endpoint: PUT /api/user/vehicles/:id
+ * 
+ * Mục đích: Cập nhật thông tin xe đã đăng ký
+ * 
+ * Yêu cầu:
+ * - Phải đăng nhập (có JWT token)
+ * - Chỉ cập nhật được xe của chính mình
+ * - Không thể cập nhật xe của người khác
+ * 
+ * Request params:
+ * - id: UUID của xe cần cập nhật (vehicle_id)
+ * 
+ * Request body có thể có:
+ * - license_plate: string (biển số xe mới)
+ * - model_id: number (ID model xe mới)
+ * - Lưu ý: Không cho phép thay đổi VIN (VIN là unique identifier)
+ * 
+ * Flow hoạt động:
+ * 1. Lấy driver_id từ JWT token
+ * 2. Tìm xe theo vehicle_id
+ * 3. Kiểm tra xe có tồn tại không
+ * 4. Kiểm tra xe có phải của driver này không
+ * 5. Validate dữ liệu cập nhật
+ * 6. Kiểm tra license_plate mới có trùng với xe khác không
+ * 7. Kiểm tra model_id có hợp lệ không (nếu có)
+ * 8. Cập nhật thông tin xe
+ * 9. Trả về thông tin xe đã cập nhật
+ * 
+ * Use case:
+ * - Tài xế đổi biển số xe
+ * - Tài xế nhập sai thông tin, muốn sửa
+ * - Cập nhật model xe (nếu đăng ký sai model)
+ * 
+ * Security:
+ * - Chỉ cập nhật được xe của chính mình (check driver_id)
+ * - Không cho phép thay đổi VIN
+ * - Không thể cập nhật xe của người khác
+ * ========================================
+ */
+async function updateVehicle(req, res) {
+  try {
+    // ===== BƯỚC 1: LẤY THÔNG TIN TỪ REQUEST =====
+    
+    // Lấy vehicle_id từ URL params
+    // Route: PUT /api/user/vehicles/:id
+    const vehicle_id = req.params.id;
+    
+    // Lấy driver_id từ JWT token
+    const driver_id = req.user.account_id;
+    
+    // Lấy dữ liệu cập nhật từ request body
+    const { license_plate, model_id } = req.body;
+
+    // ===== BƯỚC 2: VALIDATE DỮ LIỆU =====
+    
+    // Kiểm tra có ít nhất 1 trường để cập nhật
+    if (!license_plate && !model_id) {
+      return res.status(400).json({ 
+        message: 'At least one field (license_plate or model_id) is required to update'
+      });
+    }
+
+    // ===== BƯỚC 3: TÌM XE THEO VEHICLE_ID =====
+    
+    const vehicle = await Vehicle.findByPk(vehicle_id);
+    
+    // Kiểm tra xe có tồn tại không
+    if (!vehicle) {
+      return res.status(404).json({ 
+        message: 'Vehicle not found',
+        vehicle_id: vehicle_id
+      });
+    }
+
+    // ===== BƯỚC 4: KIỂM TRA QUYỀN SỞ HỮU =====
+    
+    // Kiểm tra xe có phải của driver này không
+    if (vehicle.driver_id !== driver_id) {
+      return res.status(403).json({ 
+        message: 'You can only update your own vehicles',
+        hint: 'This vehicle belongs to another driver'
+      });
+    }
+
+    // ===== BƯỚC 5: VALIDATE VÀ CẬP NHẬT LICENSE_PLATE (NẾU CÓ) =====
+    
+    if (license_plate) {
+      // Kiểm tra license_plate mới có khác với license_plate hiện tại không
+      if (license_plate !== vehicle.license_plate) {
+        // Kiểm tra license_plate mới có trùng với xe khác không
+        const existingVehicle = await Vehicle.findOne({ 
+          where: { license_plate } 
+        });
+        
+        if (existingVehicle) {
+          return res.status(409).json({ 
+            message: 'License plate already exists',
+            license_plate: license_plate
+          });
+        }
+        
+        // Cập nhật license_plate mới
+        vehicle.license_plate = license_plate;
+      }
+    }
+
+    // ===== BƯỚC 6: VALIDATE VÀ CẬP NHẬT MODEL_ID (NẾU CÓ) =====
+    
+    if (model_id) {
+      // Kiểm tra model_id mới có khác với model_id hiện tại không
+      if (model_id !== vehicle.model_id) {
+        // Kiểm tra model_id có tồn tại trong database không
+        const vehicleModel = await VehicleModel.findByPk(model_id);
+        
+        if (!vehicleModel) {
+          return res.status(404).json({ 
+            message: 'Vehicle model not found',
+            model_id: model_id
+          });
+        }
+        
+        // Cập nhật model_id mới
+        vehicle.model_id = model_id;
+      }
+    }
+
+    // ===== BƯỚC 7: LƯU THÔNG TIN ĐÃ CẬP NHẬT =====
+    
+    await vehicle.save();
+
+    // ===== BƯỚC 8: LẤY LẠI THÔNG TIN XE ĐẦY ĐỦ =====
+    
+    // Lấy lại thông tin xe kèm theo model
+    const updatedVehicle = await Vehicle.findByPk(vehicle_id, {
+      include: [
+        { 
+          model: VehicleModel, 
+          as: 'model',
+          attributes: ['model_id', 'name', 'brand', 'avg_energy_usage']
+        }
+      ]
+    });
+
+    // ===== BƯỚC 9: TRẢ VỀ KẾT QUẢ =====
+    
+    return res.status(200).json({
+      message: 'Vehicle updated successfully',
+      vehicle: updatedVehicle
+    });
+
+  } catch (error) {
+    // ===== XỬ LÝ LỖI =====
+    
+    console.error('Update vehicle error:', error);
+    
+    // Xử lý lỗi unique constraint
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const field = error.errors[0].path;
+      return res.status(409).json({ 
+        message: `${field} already exists`,
+        field: field
+      });
+    }
+    
+    // Xử lý lỗi validation
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ 
+        message: 'Validation error',
+        errors: error.errors.map(e => ({
+          field: e.path,
+          message: e.message
+        }))
+      });
+    }
+    
+    // Lỗi không xác định
+    return res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+
+/**
+ * ========================================
  * DELETE VEHICLE
  * ========================================
  * Endpoint: DELETE /api/user/vehicles/:id
@@ -502,8 +690,9 @@ async function deleteVehicle(req, res) {
 // ========================================
 // Export các function để sử dụng trong routes
 module.exports = {
-  registerVehicle,   // POST /api/user/vehicle/register
-  getMyVehicles,     // GET /api/user/vehicle/my-vehicles
-  getVehicleByVin,   // GET /api/user/vehicle/:vin
-  deleteVehicle      // DELETE /api/user/vehicle/:vehicle_id
+  registerVehicle,   // POST /api/user/vehicles
+  getMyVehicles,     // GET /api/user/vehicles
+  getVehicleByVin,   // GET /api/user/vehicles/vin/:vin
+  updateVehicle,     // PUT /api/user/vehicles/:id
+  deleteVehicle      // DELETE /api/user/vehicles/:id
 };
