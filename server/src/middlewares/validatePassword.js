@@ -53,34 +53,6 @@ function validatePassword(req, res, next) {
       message: 'Password must contain at least one number'
     });
   }
-
-  // Optional: Check for special characters (uncomment if needed)
-  // if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordToValidate)) {
-  //   return res.status(400).json({
-  //     message: 'Password must contain at least one special character'
-  //   });
-  // }
-
-  // Check for common weak passwords
-  const weakPasswords = [
-    'password', 'Password1', '12345678', 'Abcd1234', 
-    'Qwerty123', 'Admin123', 'Welcome1', 'Password123'
-  ];
-  
-  if (weakPasswords.includes(passwordToValidate)) {
-    return res.status(400).json({
-      message: 'Password is too common. Please choose a stronger password'
-    });
-  }
-
-  // Check for sequential characters (optional)
-  const hasSequential = /(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(passwordToValidate);
-  if (hasSequential) {
-    return res.status(400).json({
-      message: 'Password should not contain sequential characters (e.g., abc, 123)'
-    });
-  }
-
   next();
 }
 
