@@ -7,6 +7,7 @@ require('dotenv').config();
 const errorHandler = require('./src/middlewares/errorHandler');
 
 const userRoutes = require('./src/routes/user.route');
+const vehicleRoutes = require('./src/routes/vehicles.route');
 const batteryRoutes = require('./src/routes/battery.route');
 const subscriptionRoutes = require('./src/routes/subscriptions.route');
 const batteryTypeRoutes = require('./src/routes/battery-types.route');
@@ -22,6 +23,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // routes
 app.use('/api/user', userRoutes);
+app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/battery', batteryRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/battery-type', batteryTypeRoutes);
