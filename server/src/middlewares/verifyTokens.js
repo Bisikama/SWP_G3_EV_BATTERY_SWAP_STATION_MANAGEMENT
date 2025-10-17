@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const tokenBlacklist = require('../utils/tokenBlacklist');
+const ApiError = require('../utils/ApiError');
 
 function verifyToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -31,11 +32,14 @@ function verifyToken(req, res, next) {
 function authorizeRole(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user || !req.user.permission) {
-      return res.status(403).json({ message: 'No permission information' });
+      throw new ApiError(403, 'Access denied: user role not found');
     }
 
     if (!allowedRoles.includes(req.user.permission)) {
-      return res.status(403).json({ message: 'Access denied: insufficient permissions' });
+      throw new ApiError(
+        403,
+        `Access denied: your role '${req.user.permission}' is not allowed. Allowed role(s): ${allowedRoles.join(', ')}`
+      );
     }
 
     next();
