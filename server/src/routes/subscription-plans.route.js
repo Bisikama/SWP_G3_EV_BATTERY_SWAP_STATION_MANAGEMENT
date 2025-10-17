@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const subscriptionPlanController = require('../controllers/subscriptionPlan.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
-const subscriptionPlanValidator = require('../middlewares/subscriptionPlan.validation');
+const subscriptionPlanValidator = require('../validations/subscriptionPlan.validation');
 const { validate } = require('../middlewares/validateHandler');
 
 router.get('/',

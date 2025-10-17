@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const batteryTypeController = require('../controllers/batteryType.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
-const { handleValidation } = require('../middlewares/validateHandler');
-const { batteryTypeRules } = require('../middlewares/validateBatteryType');
+const batteryTypeValidator = require('../validations/batteryType.validation');
+const { validate } = require('../middlewares/validateHandler');
 
 /**
  * @swagger
@@ -44,6 +44,7 @@ router.get('/',
  *         description: Internal server error
  */
 router.get('/:id',
+	validate(batteryTypeValidator.findById),
 	batteryTypeController.findById
 );
 
@@ -115,19 +116,9 @@ router.get('/:id',
  *         description: Internal server error
  */
 router.post('/',
-	// [
-	// 	batteryTypeRules.battery_type_code,
-	// 	batteryTypeRules.nominal_capacity,
-	// 	batteryTypeRules.nominal_voltage,
-	// 	batteryTypeRules.min_voltage,
-	// 	batteryTypeRules.max_voltage,
-	// 	batteryTypeRules.rated_charge_current,
-	// 	batteryTypeRules.max_charge_current,
-	// 	batteryTypeRules.cell_chemistry,
-	// 	handleValidation
-	// ],
 	verifyToken,
 	authorizeRole('admin'),
+	validate(batteryTypeValidator.create),
 	batteryTypeController.create
 );
 
@@ -183,19 +174,9 @@ router.post('/',
  *         description: Internal server error
  */
 router.put('/:id',
-	// [
-	// 	batteryTypeRules.battery_type_code.optional(),
-	// 	batteryTypeRules.nominal_capacity.optional(),
-	// 	batteryTypeRules.nominal_voltage.optional(),
-	// 	batteryTypeRules.min_voltage.optional(),
-	// 	batteryTypeRules.max_voltage.optional(),
-	// 	batteryTypeRules.rated_charge_current.optional(),
-	// 	batteryTypeRules.max_charge_current.optional(),
-	// 	batteryTypeRules.cell_chemistry.optional(),
-	// 	handleValidation
-	// ],
 	verifyToken,
 	authorizeRole('admin'),
+	validate(batteryTypeValidator.update),
 	batteryTypeController.update
 );
 
@@ -227,6 +208,7 @@ router.put('/:id',
 router.delete('/:id',
 	verifyToken, 
 	authorizeRole('admin'), 
+	validate(batteryTypeValidator.remove),
 	batteryTypeController.remove
 );
 

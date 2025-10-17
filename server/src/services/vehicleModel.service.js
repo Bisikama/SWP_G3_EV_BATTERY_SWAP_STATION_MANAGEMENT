@@ -1,43 +1,38 @@
-const { BatteryType, VehicleModel } = require('../models');
+const db = require('../models');
+const ApiError = require('../utils/ApiError');
 
 async function findAll() {
-  return VehicleModel.findAll();
+  return db.VehicleModel.findAll();
 }
 
 async function findById(id) {
-  const vm = BatteryType.findByPk(id);
-  if (!vm) throw new Error('Vehicle model not found');
-  return vm;
+  return db.VehicleModel.findByPk(id);
 }
 
 async function createVehicleModel(data) {
   if (data.battery_type_id) {
-    const batteryType = await BatteryType.findByPk(data.battery_type_id);
-    if (!batteryType) {
-      throw new Error('Invalid battery_type_id: battery type not found');
-    }
+    const bt = await db.BatteryType.findByPk(data.battery_type_id);
+    if (!bt) throw new ApiError(400, 'Invalid battery_type_id');
   }
-  return VehicleModel.create(data);
+  return db.VehicleModel.create(data);
 }
 
 async function updateVehicleModel(id, data) {
-  const vm = await VehicleModel.findByPk(id);
-  if (!vm) throw new Error('Vehicle model not found');
+  const vm = await db.VehicleModel.findByPk(id);
+  if (!vm) throw new ApiError(404, 'Vehicle model not found');
   if (data.battery_type_id) {
-    const batteryType = await BatteryType.findByPk(data.battery_type_id);
-    if (!batteryType) {
-      throw new Error('Invalid battery_type_id: battery type not found');
-    }
+    const bt = await db.BatteryType.findByPk(data.battery_type_id);
+    if (!bt) throw new ApiError(400, 'Invalid battery_type_id');
   }
   await vm.update(data);
   return vm;
 }
 
 async function deleteVehicleModel(id) {
-  const vm = await VehicleModel.findByPk(id);
-  if (!vm) throw new Error('Vehicle model not found');
+  const vm = await db.VehicleModel.findByPk(id);
+  if (!vm) throw new ApiError(404, 'Vehicle model not found');
   await vm.destroy();
-  return true;
+  return vm;
 }
 
 module.exports = { findAll, findById, createVehicleModel, updateVehicleModel, deleteVehicleModel };

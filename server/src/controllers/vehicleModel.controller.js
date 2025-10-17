@@ -7,8 +7,8 @@ async function findAll(req, res) {
 
 async function findById(req, res) {
   const { id } = req.params;
-  if (!id) return res.status(400).json({ message: 'Id is required' });
   const model = await vehicleModelService.findById(id);
+  if (!model) throw new ApiError(404, 'Vehicle model not found');
   return res.status(200).json({ success: true, payload: { vehicleModel: model } });
 }
 
@@ -21,16 +21,14 @@ async function create(req, res) {
 async function update(req, res) {
   const { id } = req.params;
   const data = req.body || {};
-  if (!id) return res.status(400).json({ message: 'Id is required' });
   const updated = await vehicleModelService.updateVehicleModel(id, data);
   return res.status(200).json({ success: true, payload: { vehicleModel: updated } });
 }
 
 async function remove(req, res) {
   const { id } = req.params;
-  if (!id) return res.status(400).json({ message: 'Id is required' });
-  const deleted = await vehicleModelService.deleteVehicleModel(id);
-  if (deleted) return res.status(200).json({ success: true, message: 'Vehicle model deleted successfully' });
+  await vehicleModelService.deleteVehicleModel(id);
+  return res.status(200).json({ success: true });
 }
 
 module.exports = { findAll, findById, create, update, remove };

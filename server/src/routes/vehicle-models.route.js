@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const vehicleModelController = require('../controllers/vehicleModel.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
-const { handleValidation } = require('../middlewares/validateHandler');
-const { vehicleModelRules } = require('../middlewares/validateVehicleModel');
+const vehicleModelValidator = require('../validations/vehicleModel.validation');
+const { validate } = require('../middlewares/validateHandler');
 
 /**
  * @swagger
@@ -45,6 +45,7 @@ router.get('/',
  *         description: Internal server error
  */
 router.get('/:id', 
+    validate(vehicleModelValidator.findById),
     vehicleModelController.findById
 );
 
@@ -83,14 +84,9 @@ router.get('/:id',
  *         description: Internal server error
  */
 router.post('/', 
-    // [
-    //     vehicleModelRules.name,
-    //     vehicleModelRules.brand,
-    //     vehicleModelRules.avg_energy_usage,
-    //     handleValidation
-    // ],
     verifyToken, 
-    authorizeRole('admin'), 
+    authorizeRole('admin'),
+    validate(vehicleModelValidator.create), 
     vehicleModelController.create
 );
 
@@ -146,6 +142,7 @@ router.put('/:id',
     // ],
     verifyToken, 
     authorizeRole('admin'), 
+    validate(vehicleModelValidator.update),
     vehicleModelController.update);
 
 /**
@@ -176,6 +173,7 @@ router.put('/:id',
 router.delete('/:id',
     verifyToken, 
     authorizeRole('admin'), 
+    validate(vehicleModelValidator.remove),
     vehicleModelController.remove);
 
 module.exports = router;
