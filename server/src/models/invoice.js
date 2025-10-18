@@ -58,7 +58,12 @@ module.exports = (sequelize, DataTypes) => {
         validate: {
           min: 0
         }
-      }
+      },
+      payment_status: {
+        type: DataTypes.ENUM('paid', 'unpaid'),
+        allowNull: false,
+        defaultValue: 'unpaid'
+      },
     },
     {
       sequelize,

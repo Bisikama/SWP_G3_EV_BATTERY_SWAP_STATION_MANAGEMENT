@@ -52,6 +52,21 @@ module.exports = (sequelize, DataTypes) => {
       status: {
         type: DataTypes.ENUM('success', 'fail'),
         allowNull: false
+      },
+      message: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+        comment: 'Payment result message from MoMo'
+      },
+      payment_type: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        comment: 'Payment type: qr, app, web, etc.'
+      },
+      signature: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+        comment: 'MoMo signature for verification'
       }
     },
     {
