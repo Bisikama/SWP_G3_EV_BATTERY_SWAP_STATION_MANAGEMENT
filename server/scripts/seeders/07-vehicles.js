@@ -20,54 +20,53 @@ module.exports = {
     const vehicles = [
       {
         driver_id: drivers[0].account_id,
-        model_id: byName['Model 3'],
+        model_id: byName['Ludo'],
         license_plate: '51A-12345',
-        vin: '5YJ3E1EA1KF000001'
+        vin: 'VF9LUDO00A0000017'
       },
       {
         driver_id: drivers[1].account_id,
-        model_id: byName['VF8'],
+        model_id: byName['Impes'],
         license_plate: '51B-67890',
-        vin: '1N4AZ1CP0KC000002'
+        vin: 'VF9IMPE00B0000027'
       },
       {
         driver_id: drivers[2].account_id,
-        model_id: byName['Model Y'],
+        model_id: byName['Klara S'],
         license_plate: '51C-11111',
-        vin: '5YJ3E1EB2KF000003'
+        vin: 'VF9KLAR00C0000037'
       },
       {
         driver_id: drivers[3].account_id,
-        model_id: byName['ID.4'],
+        model_id: byName['Theon'],
         license_plate: '51D-22222',
-        vin: 'WVGBV7AX0MW000004'
+        vin: 'VF9THEO00D0000047'
       },
       {
         driver_id: drivers[4].account_id,
-        model_id: byName['Kona Electric'],
+        model_id: byName['Vento'],
         license_plate: '51E-33333',
-        vin: 'KM8K53AG0LU000005'
+        vin: 'VF9VENT00E0000057'
       },
       {
         driver_id: drivers[5].account_id,
-        model_id: byName['VF8'],
+        model_id: byName['Theon S'],
         license_plate: '51F-44444',
-        vin: 'LVVDB1DK5NP000006'
+        vin: 'VF9THES00F0000067'
       },
       {
         driver_id: drivers[6].account_id,
-        model_id: byName['Model 3'],
+        model_id: byName['Vento S'],
         license_plate: '51G-55555',
-        vin: '5YJ3E1EA3KF000007'
+        vin: 'VF9VENS00G0000077'
       },
       {
         driver_id: drivers[7].account_id,
-        model_id: byName['e-Golf'],
+        model_id: byName['Feliz S'],
         license_plate: '51H-66666',
-        vin: 'WVWKP7AU9GW000008'
+        vin: 'VF9FELS00H0000087'
       }
     ];
-
     await db.Vehicle.bulkCreate(vehicles, { validate: true });
   },
 
