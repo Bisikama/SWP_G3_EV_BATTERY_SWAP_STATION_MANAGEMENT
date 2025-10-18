@@ -48,6 +48,11 @@ module.exports = {
         validate: {
           min: 0
         }
+      },
+      payment_status: {
+        type: Sequelize.ENUM('paid', 'unpaid'),
+        allowNull: false,
+        defaultValue: 'unpaid'
       }
     });
   },
