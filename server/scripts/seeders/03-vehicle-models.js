@@ -14,46 +14,58 @@ module.exports = {
 
     await db.VehicleModel.bulkCreate([
       {
-        battery_type_id: byCode['NMC-75'],
-        name: 'Model 3',
-        brand: 'Tesla',
-        avg_energy_usage: 15.50
-      },
-      {
-        battery_type_id: byCode['LFP-60'],
-        name: 'Model Y',
-        brand: 'Tesla',
-        avg_energy_usage: 17.20
-      },
-      {
-        battery_type_id: byCode['NMC-50'],
-        name: 'Leaf',
-        brand: 'Nissan',
-        avg_energy_usage: 16.80
-      },
-      {
-        battery_type_id: byCode['LFP-60'],
-        name: 'ID.4',
-        brand: 'Volkswagen',
-        avg_energy_usage: 18.00
+        battery_type_id: byCode['LFP-40'],
+        name: 'Ludo',
+        brand: 'VinFast',
+        avg_energy_usage: 2.10
       },
       {
         battery_type_id: byCode['LFP-40'],
-        name: 'e-Golf',
-        brand: 'Volkswagen',
-        avg_energy_usage: 14.50
+        name: 'Impes',
+        brand: 'VinFast',
+        avg_energy_usage: 2.20
+      },
+      {
+        battery_type_id: byCode['LFP-60'],
+        name: 'Klara S',
+        brand: 'VinFast',
+        avg_energy_usage: 2.50
       },
       {
         battery_type_id: byCode['NMC-75'],
-        name: 'Kona Electric',
-        brand: 'Hyundai',
-        avg_energy_usage: 15.00
+        name: 'Theon',
+        brand: 'VinFast',
+        avg_energy_usage: 2.80
       },
       {
-        battery_type_id: byCode['NMC-50'],
-        name: 'VF8',
+        battery_type_id: byCode['LFP-60'],
+        name: 'Vento',
         brand: 'VinFast',
-        avg_energy_usage: 16.50
+        avg_energy_usage: 2.60
+      },
+      {
+        battery_type_id: byCode['NMC-75'],
+        name: 'Theon S',
+        brand: 'VinFast',
+        avg_energy_usage: 2.90
+      },
+      {
+        battery_type_id: byCode['LFP-60'],
+        name: 'Vento S',
+        brand: 'VinFast',
+        avg_energy_usage: 2.70
+      },
+      {
+        battery_type_id: byCode['LFP-60'],
+        name: 'Feliz S',
+        brand: 'VinFast',
+        avg_energy_usage: 2.40
+      },
+      {
+        battery_type_id: byCode['LFP-40'],
+        name: 'Evo200',
+        brand: 'VinFast',
+        avg_energy_usage: 2.30
       }
     ], { validate: true });
   },
