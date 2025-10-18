@@ -27,6 +27,14 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true
       },
+      battery_type_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'BatteryTypes',
+          key: 'battery_type_id'
+        }
+      },
       vehicle_id: {
         type: DataTypes.UUID,
         allowNull: true,
@@ -72,14 +80,14 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   // hooks
-  Battery.beforeSave(async (battery, options) => {
-    const locations = [battery.vehicle_id, battery.slot_id];
-    const count = locations.filter(loc => loc !== null && loc !== undefined).length;
+  // Battery.beforeSave(async (battery, options) => {
+  //   const locations = [battery.vehicle_id, battery.slot_id];
+  //   const count = locations.filter(loc => loc !== null && loc !== undefined).length;
 
-    if (count !== 1) {
-      throw new Error('Battery must be assigned to exactly 1 location: vehicle, or cabinet slot');
-    }
-  });
+  //   if (count !== 1) {
+  //     throw new Error('Battery must be assigned to exactly 1 location: vehicle, or cabinet slot');
+  //   }
+  // });
 
   return Battery;
 };
