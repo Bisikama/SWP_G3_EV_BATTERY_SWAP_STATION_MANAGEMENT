@@ -26,7 +26,7 @@ async function createPayment (req, res)  {
     }
     
     // ✅ Lấy amount từ invoice
-    const amount = 888888;
+    const amount = invoice.total_fee.toString();
     
     // ✅ Tạo orderId UNIQUE bằng cách thêm timestamp
     // Format: INV_<invoice_id>_<timestamp>
@@ -132,61 +132,22 @@ async function createPayment (req, res)  {
 }
 
 // ⚠️ HÀM NÀY CHỈ ĐỂ HIỂN THỊ KẾT QUẢ CHO USER
-// KHÔNG CẬP NHẬT DATABASE Ở ĐÂY vì có thể không nhận được request
+// Cập nhật database chỉ thực hiện trong `handlePaymentIPN` (IPN từ MoMo via ngrok/prod)
 async function getPaymentResult (req, res)  {
   const { resultCode, orderId } = req.query;
   console.log('📱 User redirect from MoMo:', req.query);
-  
-  // 🔧 WORKAROUND: Vì localhost không nhận được IPN từ MoMo
-  // Tự động gọi handlePaymentIPN từ đây
-  console.log('\n⚠️ WORKAROUND: Simulating IPN call (because localhost cannot receive real IPN)');
-  
-  try {
-    // Tạo fake request object
-    const fakeReq = {
-      body: {
-        partnerCode: req.query.partnerCode || 'MOMO',
-        orderId: req.query.orderId,
-        requestId: req.query.requestId || req.query.orderId,
-        amount: parseInt(req.query.amount) || 0,
-        orderInfo: req.query.orderInfo || '',
-        orderType: req.query.orderType || 'momo_wallet',
-        transId: parseInt(req.query.transId) || 0,
-        resultCode: parseInt(req.query.resultCode) || 0,
-        message: req.query.message || '',
-        payType: req.query.payType || 'qr',
-        responseTime: parseInt(req.query.responseTime) || Date.now(),
-        extraData: req.query.extraData || '',
-        signature: req.query.signature || ''
-      }
-    };
-    
-    // Tạo fake response object
-    const fakeRes = {
-      status: (code) => ({
-        send: () => console.log(`IPN simulation returned status ${code}`),
-        json: (data) => console.log('IPN simulation returned:', data)
-      })
-    };
-    
-    // Gọi handlePaymentIPN
-    await handlePaymentIPN(fakeReq, fakeRes);
-    
-    console.log('✅ IPN simulation completed\n');
-  } catch (error) {
-    console.error('❌ Error simulating IPN:', error);
-  }
-  
-  // Trả response cho user
-  if (resultCode === '0') {
-    // Thanh toán thành công - chỉ hiển thị kết quả
+
+  // Không thực hiện simulation IPN nữa — khi dùng ngrok hoặc production, MoMo sẽ gọi
+  // trực tiếp vào endpoint /api/payment/ipn và `handlePaymentIPN` sẽ xử lý lưu DB.
+
+  // Trả response cho user dựa trên query params
+  if (resultCode === '0' || resultCode === 0) {
     res.status(200).json({ 
       message: 'Payment successful', 
       orderId,
       data: req.query 
     });
   } else {
-    // Thanh toán thất bại - chỉ hiển thị kết quả
     res.status(400).json({ 
       message: 'Payment failed', 
       orderId,
@@ -222,7 +183,6 @@ async function handlePaymentIPN (req, res)  {
   try {
     // ✅ Parse orderId để lấy invoice_id
     // Format: INV_<invoice_id>_<timestamp>
-    console.log('\n🔍 Step 1: Parsing orderId to extract invoice_id...');
     
     let invoice_id;
     if (orderId.startsWith('INV_')) {
@@ -245,7 +205,6 @@ async function handlePaymentIPN (req, res)  {
     }
     
     // Kiểm tra invoice có tồn tại không
-    console.log('\n🔍 Step 2: Checking if invoice exists...');
     const invoice = await Invoice.findByPk(invoice_id);
     if (!invoice) {
       console.error(`❌ Invoice not found: ${invoice_id}`);
@@ -259,9 +218,7 @@ async function handlePaymentIPN (req, res)  {
     
     if (resultCode === 0) {
       // ✅ THANH TOÁN THÀNH CÔNG
-      console.log('\n✅ ========== PAYMENT SUCCESS ==========');
-      console.log(`📝 Creating payment record with data:`);
-      
+      console.log('\n✅ ========== PAYMENT SUCCESSFUL ==========');
       const paymentData = {
         invoice_id: invoice_id,              // ← Dùng invoice_id đã parse
         transaction_num: transId.toString(),
@@ -273,11 +230,6 @@ async function handlePaymentIPN (req, res)  {
         payment_type: payType || 'qr',
         signature: signature || ''
       };
-      
-      console.log(JSON.stringify(paymentData, null, 2));
-      
-      // Tạo payment record mới
-      console.log('\n💾 Step 3: Creating payment record...');
       const paymentRecord = await PaymentRecord.create(paymentData);
       
       console.log(`✅ Payment record created successfully!`);
@@ -287,7 +239,6 @@ async function handlePaymentIPN (req, res)  {
       console.log(`   - status: ${paymentRecord.status}`);
       
       // Verify record was saved
-      console.log('\n🔍 Step 4: Verifying payment record in database...');
       const verifyRecord = await PaymentRecord.findByPk(paymentRecord.payment_id);
       if (verifyRecord) {
         console.log(`✅ Verification SUCCESS - Record exists in database!`);
@@ -297,7 +248,6 @@ async function handlePaymentIPN (req, res)  {
       }
       
       // Cập nhật invoice status
-      console.log('\n📄 Step 5: Updating invoice payment_status...');
       const [updatedRows] = await Invoice.update({ 
         payment_status: 'paid' 
       }, { 
@@ -380,99 +330,6 @@ async function handlePaymentIPN (req, res)  {
   }
 }
 
-// 🔍 Helper function để kiểm tra payment records trong database
-async function checkPaymentRecords(req, res) {
-  try {
-    const { invoice_id } = req.query;
-    
-    console.log('\n🔍 ========== CHECKING PAYMENT RECORDS ==========');
-    
-    if (invoice_id) {
-      // Kiểm tra payment records cho invoice cụ thể
-      console.log(`📋 Searching for invoice_id: ${invoice_id}`);
-      
-      const invoice = await Invoice.findByPk(invoice_id);
-      if (!invoice) {
-        return res.status(404).json({
-          error: 'Invoice not found',
-          invoice_id: invoice_id
-        });
-      }
-      
-      console.log(`✅ Invoice found:`, {
-        invoice_id: invoice.invoice_id,
-        total_fee: invoice.total_fee,
-        
-      });
-      
-      const paymentRecords = await PaymentRecord.findAll({
-        where: { invoice_id: invoice_id },
-        order: [['payment_date', 'DESC']]
-      });
-      
-      console.log(`📊 Found ${paymentRecords.length} payment record(s)`);
-      
-      return res.status(200).json({
-        message: 'Payment records retrieved',
-        invoice: {
-          invoice_id: invoice.invoice_id,
-          total_fee: invoice.total_fee,
-         
-        },
-        payment_records: paymentRecords.map(record => ({
-          payment_id: record.payment_id,
-          transaction_num: record.transaction_num,
-          payment_date: record.payment_date,
-          payment_method: record.payment_method,
-          amount: record.amount,
-          status: record.status,
-          message: record.message,
-          payment_type: record.payment_type
-        })),
-        total_records: paymentRecords.length
-      });
-      
-    } else {
-      // Lấy tất cả payment records (giới hạn 20 records mới nhất)
-      console.log('📋 Fetching all recent payment records...');
-      
-      const paymentRecords = await PaymentRecord.findAll({
-        limit: 20,
-        order: [['payment_date', 'DESC']],
-        include: [{
-          model: Invoice,
-          as: 'invoice',
-          attributes: ['invoice_id']
-        }]
-      });
-      
-      console.log(`📊 Found ${paymentRecords.length} payment record(s)`);
-      
-      return res.status(200).json({
-        message: 'Recent payment records retrieved',
-        payment_records: paymentRecords.map(record => ({
-          payment_id: record.payment_id,
-          invoice_id: record.invoice_id,
-          transaction_num: record.transaction_num,
-          payment_date: record.payment_date,
-          payment_method: record.payment_method,
-          amount: record.amount,
-          status: record.status,
-          message: record.message,
-          payment_type: record.payment_type,
-         
-        })),
-        total_records: paymentRecords.length
-      });
-    }
-    
-  } catch (error) {
-    console.error('❌ Error checking payment records:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
-    });
-  }
-}
 
-module.exports = { createPayment, getPaymentResult, handlePaymentIPN, checkPaymentRecords };
+
+module.exports = { createPayment, getPaymentResult, handlePaymentIPN};
