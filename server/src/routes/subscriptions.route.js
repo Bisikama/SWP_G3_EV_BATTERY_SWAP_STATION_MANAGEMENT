@@ -146,6 +146,87 @@ router.get('/active/:vehicle_id',
 
 /**
  * @swagger
+ * /api/subscription/vehicles-without-subscription:
+ *   get:
+ *     tags: [Subscription]
+ *     summary: Get vehicles without active subscription
+ *     description: |
+ *       Quy trình:
+ *       - Lấy driver_id từ JWT token
+ *       - Tìm tất cả xe của driver
+ *       - Check xe nào chưa có subscription active
+ *       - Trả về danh sách
+ *       
+ *       Active subscription criteria:
+ *       - cancel_time = null (chưa bị hủy)
+ *       - start_date <= today (đã bắt đầu)
+ *       - end_date >= today (chưa hết hạn)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved vehicles without subscription
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     vehicles:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           vehicle_id:
+ *                             type: string
+ *                             format: uuid
+ *                           license_plate:
+ *                             type: string
+ *                             example: "30A-12345"
+ *                           hasActiveSubscription:
+ *                             type: boolean
+ *                             example: false
+ *                           message:
+ *                             type: string
+ *                             example: "This vehicle needs to subscribe to a plan before booking"
+ *                           model:
+ *                             type: object
+ *                             properties:
+ *                               model_name:
+ *                                 type: string
+ *                                 example: "VinFast VF e34"
+ *                               batteryType:
+ *                                 type: object
+ *                                 properties:
+ *                                   type_name:
+ *                                     type: string
+ *                                     example: "Lithium-ion 42kWh"
+ *                     count:
+ *                       type: integer
+ *                       example: 2
+ *                     message:
+ *                       type: string
+ *                       example: "You have 2 vehicle(s) without active subscription"
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - Not a driver role
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/vehicles-without-subscription',
+    verifyToken,
+    authorizeRole('driver'),
+    subscriptionController.getVehiclesWithoutSubscription
+);
+
+/**
+ * @swagger
  * /api/subscription:
  *   post:
  *     tags: [Subscription]
