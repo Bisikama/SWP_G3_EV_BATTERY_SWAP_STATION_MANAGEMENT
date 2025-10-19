@@ -520,7 +520,8 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime) {
     where: {
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
-      current_soc: { [Op.gt]: 90 } // Pin phải có hơn 90% SOC
+      current_soc: { [Op.gt]: 90 }, // Pin phải có hơn 90% SOC
+      current_soh: { [Op.gte]: 90 } // Pin phải có SOH >= 90%
     },
     include: [{
       model: CabinetSlot,
@@ -589,22 +590,33 @@ async function checkDuplicateBooking(driver_id, vehicle_id, startTime, excludeBo
 
 /**
  * ========================================
- * CHECK AVAILABILITY
+ * CHECK AVAILABILITY (Current time only)
  * ========================================
- * Kiểm tra station có sẵn battery và capacity tại thời điểm cụ thể
+ * Kiểm tra station hiện tại có pin phù hợp với loại xe hay không
  * 
  * @param {number} station_id - ID của station
- * @param {string} vehicle_id - UUID của vehicle
- * @param {Date} datetime - Thời gian muốn check
+ * @param {string} vehicle_id - UUID của vehicle (để check battery type)
  * @returns {Promise<object>} - Availability info
  */
-async function checkAvailability(station_id, vehicle_id, datetime) {
-  // 1. Check station exists
+async function checkAvailability(station_id, vehicle_id) {
+  // 1. Check station exists and is operational
   const station = await Station.findByPk(station_id);
   if (!station) {
     const err = new Error('Station not found');
     err.status = 404;
     throw err;
+  }
+
+  if (station.status !== 'operational') {
+    return {
+      available: false,
+      message: `Station is currently ${station.status}`,
+      details: {
+        station_id: station.station_id,
+        station_name: station.station_name,
+        status: station.status
+      }
+    };
   }
 
   // 2. Get vehicle and its battery type
@@ -628,26 +640,19 @@ async function checkAvailability(station_id, vehicle_id, datetime) {
   const battery_type_id = vehicle.model.battery_type_id;
   const battery_type_code = vehicle.model.batteryType.battery_type_code;
 
-  // 3. Find available batteries
-  const checkTime = new Date(datetime);
-  const availableBatteries = await findAvailableBatteries(station_id, battery_type_id, checkTime);
+  // 3. Find available batteries for this battery type RIGHT NOW
+  const now = new Date();
+  const availableBatteries = await findAvailableBatteries(station_id, battery_type_id, now);
 
-  // 4. Count bookings in time slot
-  const timeSlotStart = new Date(checkTime);
-  timeSlotStart.setMinutes(timeSlotStart.getMinutes() - 30);
+  // 4. Count current pending bookings at this station (within next 30 minutes)
+  const next30Min = new Date(now.getTime() + 30 * 60000);
   
-  const timeSlotEnd = new Date(checkTime);
-  timeSlotEnd.setMinutes(timeSlotEnd.getMinutes() + 30);
-
-  // Count only pending bookings in the time slot (cancelled/completed should not reduce availability)
-  const bookingsInSlot = await Booking.count({
+  const currentPendingBookings = await Booking.count({
     where: {
       station_id,
+      status: 'pending',
       scheduled_start_time: {
-        [Op.between]: [timeSlotStart, timeSlotEnd]
-      },
-      status: {
-        [Op.in]: ['pending']
+        [Op.between]: [now, next30Min]
       }
     }
   });
@@ -661,19 +666,15 @@ async function checkAvailability(station_id, vehicle_id, datetime) {
     }]
   });
 
-  // 6. Generate suggested times if not available
-  const suggestedTimes = [];
-  if (availableBatteries.length === 0) {
-    // Suggest next 3 time slots (every 30 minutes)
-    for (let i = 1; i <= 3; i++) {
-      const suggestedTime = new Date(checkTime);
-      suggestedTime.setMinutes(suggestedTime.getMinutes() + (i * 30));
-      suggestedTimes.push(suggestedTime.toISOString());
-    }
-  }
+  // 6. Calculate effective availability
+  const effectiveAvailable = Math.max(0, availableBatteries.length - currentPendingBookings);
+  const isAvailable = effectiveAvailable > 0;
 
   return {
-    available: availableBatteries.length > 0 && station.status === 'operational',
+    available: isAvailable,
+    message: isAvailable 
+      ? `Station has available batteries for ${battery_type_code}` 
+      : `No ${battery_type_code} batteries available at this station right now`,
     station: {
       station_id: station.station_id,
       station_name: station.station_name,
@@ -687,15 +688,10 @@ async function checkAvailability(station_id, vehicle_id, datetime) {
     availability_details: {
       available_batteries_count: availableBatteries.length,
       total_slots: totalSlots,
-      bookings_in_time_slot: bookingsInSlot,
+      current_pending_bookings: currentPendingBookings,
+      effective_available: effectiveAvailable,
       station_status: station.status
-    },
-    suggested_times: suggestedTimes.length > 0 ? suggestedTimes : null,
-    message: availableBatteries.length > 0 
-      ? 'Station is available for booking at this time'
-      : station.status !== 'operational'
-        ? `Station is currently ${station.status}`
-        : 'No available batteries at this time. Please try suggested times.'
+    }
   };
 }
 

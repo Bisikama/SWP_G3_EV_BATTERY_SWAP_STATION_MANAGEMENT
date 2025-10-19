@@ -127,23 +127,12 @@ const cancelBooking = [
 /**
  * Validation cho việc kiểm tra availability
  * GET /api/booking/check-availability
+ * Check availability hiện tại cho loại pin của xe
  */
 const checkAvailability = [
   query('station_id')
     .notEmpty().withMessage('Station ID is required')
     .isInt({ gt: 0 }).withMessage('Station ID must be a positive integer'),
-
-  query('datetime')
-    .notEmpty().withMessage('Datetime is required')
-    .isISO8601().withMessage('Datetime must be a valid ISO 8601 date')
-    .custom((value) => {
-      const inputDate = new Date(value);
-      const now = new Date();
-      if (inputDate <= now) {
-        throw new Error('Datetime must be in the future');
-      }
-      return true;
-    }),
 
   query('vehicle_id')
     .notEmpty().withMessage('Vehicle ID is required')

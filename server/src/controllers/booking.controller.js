@@ -145,16 +145,15 @@ const cancelBooking = asyncHandler(async (req, res) => {
  * ========================================
  * GET /api/booking/check-availability
  * 
- * @description Kiểm tra station có sẵn battery tại thời điểm cụ thể
+ * @description Kiểm tra station hiện tại có pin phù hợp với loại xe không
  * @access Private (driver)
  */
 const checkAvailability = asyncHandler(async (req, res) => {
-  const { station_id, datetime, vehicle_id } = req.query;
+  const { station_id, vehicle_id } = req.query;
 
   const result = await bookingService.checkAvailability(
     parseInt(station_id),
-    vehicle_id,
-    datetime
+    vehicle_id
   );
 
   return res.status(200).json({
