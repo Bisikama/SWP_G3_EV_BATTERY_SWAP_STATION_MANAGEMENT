@@ -53,12 +53,17 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false
       },
       total_fee: {
-        type: DataTypes.DECIMAL(10, 2),
+        type: DataTypes.INTEGER,
         allowNull: false,
         validate: {
           min: 0
         }
-      }
+      },
+      payment_status: {
+        type: DataTypes.ENUM('paid', 'unpaid'),
+        allowNull: false,
+        defaultValue: 'unpaid'
+      },
     },
     {
       sequelize,

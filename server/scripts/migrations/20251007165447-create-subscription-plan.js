@@ -24,20 +24,26 @@ module.exports = {
       },
       plan_fee: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-          min: 0
-        }
+        allowNull: false
+      },
+      deposit_fee: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false
+      },
+      penalty_fee: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false
       },
       battery_cap: {
         type: Sequelize.INTEGER,
-        allowNull: false,
-        validate: {
-          min: 0
-        }
+        allowNull: false
       },
-      usage_cap: {
+      soh_cap: {
         type: Sequelize.DECIMAL(10, 2),
+        allowNull: false
+      },
+      duration_days: {
+        type: Sequelize.INTEGER,
         allowNull: false,
         validate: {
           min: 0

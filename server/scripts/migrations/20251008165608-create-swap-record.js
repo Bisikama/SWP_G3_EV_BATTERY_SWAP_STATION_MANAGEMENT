@@ -38,6 +38,41 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
+      battery_id_in: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: 'Batteries',
+          key: 'battery_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
+      battery_id_out: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: 'Batteries',
+          key: 'battery_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
+      soh_in: {
+        type: Sequelize.DECIMAL(5, 2),
+        allowNull: true,
+        validate: { min: 0 }
+      },
+      soh_out: {
+        type: Sequelize.DECIMAL(5, 2),
+        allowNull: true,
+        validate: { min: 0 }
+      },
+      swap_time: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW
+      }
     });
   },
 

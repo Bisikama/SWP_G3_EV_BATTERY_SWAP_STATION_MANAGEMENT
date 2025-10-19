@@ -5,6 +5,32 @@ const { validateResetPassword } = require('../middlewares/validatePassword');
 const userController = require('../controllers/user.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 
+router.post('/login', userController.login);
+router.post('/request-verification', userController.requestEmailVerification);
+router.post('/verify-email', userController.verifyEmailCode);
+router.post('/register', validateRegister, userController.register);
+router.post('/logout', userController.logout);
+router.get('/', userController.findAll);
+router.post('/forgot-password', userController.requestPasswordReset);
+router.post('/reset-password', validateResetPassword, userController.resetPassword);
+router.get('/id/:id', userController.findById);
+router.get('/email/:email', userController.findByEmail);
+
+// 🔐 Route chỉ cho phép Admin truy cập
+router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {
+  res.json({ message: `Welcome, Admin ${req.user.email}` });
+});
+
+// 🔐 Route cho phép cả Admin và Staff
+router.post('/station/update', verifyToken, authorizeRole('Admin', 'Staff'), (req, res) => {
+  res.json({ message: `Station updated by ${req.user.permission}` });
+});
+
+// 🔐 Route cho phép mọi user đăng nhập (không cần giới hạn role)
+router.get('/profile', verifyToken, (req, res) => {
+  res.json({ message: `Hello ${req.user.email}`, role: req.user.permission });
+});
+
 /**
  * @swagger
  * /api/user/login:
@@ -31,7 +57,7 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', userController.login);
+
 
 /**
  * @swagger
@@ -88,7 +114,7 @@ router.post('/login', userController.login);
  *                   type: string
  *                   example: Internal server error
  */
-router.post('/request-verification', userController.requestEmailVerification);
+
 
 /**
  * @swagger
@@ -163,7 +189,7 @@ router.post('/request-verification', userController.requestEmailVerification);
  *                   type: string
  *                   example: Internal server error
  */
-router.post('/verify-email', userController.verifyEmailCode);
+
 
 /**
  * @swagger
@@ -200,7 +226,7 @@ router.post('/verify-email', userController.verifyEmailCode);
  *       409:
  *         description: Email already registered
  */
-router.post('/register', validateRegister, userController.register);
+
 
 /**
  * @swagger
@@ -261,7 +287,7 @@ router.post('/register', validateRegister, userController.register);
  *                   type: string
  *                   example: Internal server error
  */
-router.post('/logout', userController.logout);
+
 
 /**
  * @swagger
@@ -281,7 +307,7 @@ router.post('/logout', userController.logout);
  *       500:
  *         description: Internal server error
  */
-router.get('/', userController.findAll);
+
 
 /**
  * @swagger
@@ -338,7 +364,7 @@ router.get('/', userController.findAll);
  *       500:
  *         description: Internal server error
  */
-router.post('/forgot-password', userController.requestPasswordReset);
+
 
 /**
  * @swagger
@@ -406,7 +432,7 @@ router.post('/forgot-password', userController.requestPasswordReset);
  *       500:
  *         description: Internal server error
  */
-router.post('/reset-password', validateResetPassword, userController.resetPassword);
+
 
 /**
  * @swagger
@@ -433,7 +459,7 @@ router.post('/reset-password', validateResetPassword, userController.resetPasswo
  *       500:
  *         description: Internal server error
  */
-router.get('/id/:id', userController.findById);
+
 
 /**
  * @swagger
@@ -460,7 +486,7 @@ router.get('/id/:id', userController.findById);
  *       500:
  *         description: Internal server error
  */
-router.get('/email/:email', userController.findByEmail);
+
 
 // ========================================
 // VEHICLE ROUTES MOVED TO vehicles.route.js
@@ -471,19 +497,6 @@ router.get('/email/:email', userController.findByEmail);
 // - This improves code organization and follows single responsibility principle
 // ========================================
 
-// 🔐 Route chỉ cho phép Admin truy cập
-router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {
-  res.json({ message: `Welcome, Admin ${req.user.email}` });
-});
 
-// 🔐 Route cho phép cả Admin và Staff
-router.post('/station/update', verifyToken, authorizeRole('Admin', 'Staff'), (req, res) => {
-  res.json({ message: `Station updated by ${req.user.permission}` });
-});
-
-// 🔐 Route cho phép mọi user đăng nhập (không cần giới hạn role)
-router.get('/profile', verifyToken, (req, res) => {
-  res.json({ message: `Hello ${req.user.email}`, role: req.user.permission });
-});
 
 module.exports = router;
