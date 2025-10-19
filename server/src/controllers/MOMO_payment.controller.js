@@ -25,6 +25,20 @@ async function createPayment (req, res)  {
       });
     }
     
+    // ✅ Kiểm tra invoice đã paid chưa
+    if (invoice.payment_status === 'paid') {
+      console.log(`⚠️ Invoice ${invoice.invoice_number} is already paid`);
+      return res.status(400).json({
+        success: false,
+        message: 'This invoice has already been paid',
+        invoice: {
+          invoice_number: invoice.invoice_number,
+          payment_status: invoice.payment_status,
+          pay_date: invoice.pay_date
+        }
+      });
+    }
+    
     // ✅ Lấy amount từ invoice
     const amount = invoice.total_fee.toString();
     
@@ -247,18 +261,29 @@ async function handlePaymentIPN (req, res)  {
         console.error(`❌ Verification FAILED - Record NOT found in database!`);
       }
       
-      // Cập nhật invoice status
+      // Cập nhật invoice: payment_status, pay_date, due_date
+      const pay_date = new Date();
+      const due_date = new Date(pay_date);
+      due_date.setMonth(due_date.getMonth() + 1); // due_date = pay_date + 1 tháng
+      
       const [updatedRows] = await Invoice.update({ 
-        payment_status: 'paid' 
+        payment_status: 'paid',
+        pay_date: pay_date,
+        due_date: due_date
       }, { 
         where: { invoice_id: invoice_id }    // ← Dùng invoice_id đã parse
       });
       
       console.log(`✅ Invoice updated: ${updatedRows} row(s) affected`);
+      console.log(`   - payment_status: paid`);
+      console.log(`   - pay_date: ${pay_date.toISOString().split('T')[0]}`);
+      console.log(`   - due_date: ${due_date.toISOString().split('T')[0]}`);
       
       // Verify invoice update
       const updatedInvoice = await Invoice.findByPk(invoice_id);
-      console.log(`   - New payment_status: ${updatedInvoice.payment_status}`);
+      console.log(`   - Verified payment_status: ${updatedInvoice.payment_status}`);
+      console.log(`   - Verified pay_date: ${updatedInvoice.pay_date}`);
+      console.log(`   - Verified due_date: ${updatedInvoice.due_date}`);
       
       console.log('\n✅ ========== IPN PROCESSING COMPLETE ==========\n');
       

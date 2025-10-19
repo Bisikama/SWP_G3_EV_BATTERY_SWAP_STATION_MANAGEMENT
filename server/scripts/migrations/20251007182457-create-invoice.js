@@ -48,6 +48,11 @@ module.exports = {
         validate: {
           min: 0
         }
+      },
+      payment_status: {
+        type: DataTypes.ENUM('paid', 'unpaid', 'cancelled'),
+        allowNull: false,
+        defaultValue: 'unpaid'
       }
     });
   },
