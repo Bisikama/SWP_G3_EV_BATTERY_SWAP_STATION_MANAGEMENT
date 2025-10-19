@@ -48,9 +48,15 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: DataTypes.NOW
       },
+      pay_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+        comment: 'Ngày thanh toán thực tế - sẽ được cập nhật khi payment success'
+      },
       due_date: {
         type: DataTypes.DATEONLY,
-        allowNull: false
+        allowNull: true,
+        comment: 'Ngày hết hạn = pay_date + 1 tháng - sẽ được tính khi payment success'
       },
       total_fee: {
         type: DataTypes.INTEGER,
