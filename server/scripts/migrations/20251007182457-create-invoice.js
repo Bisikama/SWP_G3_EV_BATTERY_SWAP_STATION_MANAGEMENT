@@ -50,7 +50,7 @@ module.exports = {
         }
       },
       payment_status: {
-        type: DataTypes.ENUM('paid', 'unpaid', 'cancelled'),
+        type: Sequelize.ENUM('paid', 'unpaid'),
         allowNull: false,
         defaultValue: 'unpaid'
       }

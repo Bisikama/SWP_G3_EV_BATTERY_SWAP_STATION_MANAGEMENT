@@ -10,8 +10,8 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-        this.belongsToMany(models.Battery, { through: 'RetrievedSwapBattery', as: 'retrievedBatteries', foreignKey: 'swap_id', otherKey: 'battery_id' });
-        this.belongsToMany(models.Battery, { through: 'ReturnedSwapBattery', as: 'returnedBatteries', foreignKey: 'swap_id', otherKey: 'battery_id' });
+        this.belongsTo(models.Battery, { as: 'returnedBattery', foreignKey: 'battery_id_in' });
+        this.belongsTo(models.Battery, { as: 'retrievedBattery', foreignKey: 'battery_id_out' });
         this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
         this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
@@ -47,6 +47,37 @@ module.exports = (sequelize, DataTypes) => {
           model: 'Stations',
           key: 'station_id'
         }
+      },
+      battery_id_in: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'Batteries',
+          key: 'battery_id'
+        }
+      },
+      battery_id_out: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'Batteries',
+          key: 'battery_id'
+        }
+      },
+      soh_in: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        validate: { min: 0 }
+      },
+      soh_out: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        validate: { min: 0 }
+      },
+      swap_time: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
       }
     },
     {

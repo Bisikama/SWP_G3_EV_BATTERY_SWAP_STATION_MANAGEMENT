@@ -18,6 +18,7 @@ const supportTicketsRoutes = require('./src/routes/support-tickets.route');
 const paymentRoutes = require('./src/routes/payment.route');
 const shiftRoutes = require('./src/routes/shifts.route');
 const invoiceRoutes = require('./src/routes/invoice.route');
+const bookingRoutes = require('./src/routes/booking.route');
 
 const app = express();
 app.use(express.json());
@@ -35,6 +36,8 @@ app.use('/api/subscription-plan', subscriptionPlanRoutes);
 app.use('/api/station', stationRoutes);
 app.use('/api/support-ticket', supportTicketsRoutes);
 app.use('/api/shift', shiftRoutes);
+app.use('/api/booking', bookingRoutes);
+
 app.use('/api/payment', paymentRoutes);
 app.use('/api/invoice', invoiceRoutes);
 

@@ -50,6 +50,11 @@ module.exports = {
       scheduled_end_time: {
         type: Sequelize.DATE,
         allowNull: false
+      },
+      status: {  // ← THÊM 5 DÒNG NÀY
+        type: Sequelize.ENUM('pending', 'completed', 'cancelled'),
+        allowNull: false,
+        defaultValue: 'pending'
       }
     });
   },
