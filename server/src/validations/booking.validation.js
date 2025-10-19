@@ -27,15 +27,21 @@ const createBooking = [
     .custom((value) => {
       const inputDate = new Date(value);
       const now = new Date();
+      
+      // Kiểm tra không được là thời gian quá khứ
       if (inputDate <= now) {
         throw new Error('Scheduled start time must be in the future');
       }
-      // Chỉ cho đặt trong ngày hôm nay (đến 23:59:59)
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
-      if (inputDate > endOfToday) {
+      
+      // Chỉ cho đặt trong ngày hôm nay (theo local time của server)
+      // So sánh theo ngày, tháng, năm (local) thay vì timestamp
+      const inputLocalDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
+      const todayLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      if (inputLocalDate.getTime() !== todayLocalDate.getTime()) {
         throw new Error('Scheduled start time must be within today');
       }
+      
       return true;
     }),
 
@@ -60,15 +66,21 @@ const updateBooking = [
     .custom((value) => {
       const inputDate = new Date(value);
       const now = new Date();
+      
+      // Kiểm tra không được là thời gian quá khứ
       if (inputDate <= now) {
         throw new Error('Scheduled start time must be in the future');
       }
-      // Chỉ cho đặt trong ngày hôm nay (đến 23:59:59)
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
-      if (inputDate > endOfToday) {
+      
+      // Chỉ cho đặt trong ngày hôm nay (theo local time của server)
+      // So sánh theo ngày, tháng, năm (local) thay vì timestamp
+      const inputLocalDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
+      const todayLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      if (inputLocalDate.getTime() !== todayLocalDate.getTime()) {
         throw new Error('Scheduled start time must be within today');
       }
+      
       return true;
     })
 ];
