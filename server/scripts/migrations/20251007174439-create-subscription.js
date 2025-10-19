@@ -38,6 +38,11 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
+      soh_usage: {
+        type: Sequelize.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 0
+      },
       start_date: {
         type: Sequelize.DATEONLY,
         allowNull: false
@@ -49,7 +54,7 @@ module.exports = {
       cancel_time: {
         type: Sequelize.DATE,
         allowNull: true
-      },
+      }
     });
   },
 
