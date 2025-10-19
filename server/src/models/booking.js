@@ -59,6 +59,11 @@ module.exports = (sequelize, DataTypes) => {
       scheduled_end_time: {
         type: DataTypes.DATE,
         allowNull: false
+      },
+      status: {
+        type: DataTypes.ENUM('pending', 'completed', 'cancelled'),
+        allowNull: false,
+        defaultValue: 'pending'
       }
     },
     {
