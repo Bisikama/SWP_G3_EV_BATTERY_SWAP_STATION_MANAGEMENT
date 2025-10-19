@@ -11,7 +11,5 @@ router.get('/result', paymentController.getPaymentResult);
 // Nhận IPN (webhook) từ MoMo - để test trên Postman
 router.post('/ipn', paymentController.handlePaymentIPN);
 
-// 🔍 Kiểm tra payment records trong database (Helper function để debug)
-router.get('/check-records', paymentController.checkPaymentRecords);
 
 module.exports = router;

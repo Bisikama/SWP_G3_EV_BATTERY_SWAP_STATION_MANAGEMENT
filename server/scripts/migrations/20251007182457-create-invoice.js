@@ -43,7 +43,7 @@ module.exports = {
         allowNull: false
       },
       total_fee: {
-        type: Sequelize.DECIMAL(10, 2),
+        type: Sequelize.INTEGER,
         allowNull: false,
         validate: {
           min: 0
