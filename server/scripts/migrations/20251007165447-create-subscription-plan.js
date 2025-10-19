@@ -42,6 +42,13 @@ module.exports = {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false
       },
+      duration_days: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
       description: {
         type: Sequelize.TEXT,
         allowNull: true

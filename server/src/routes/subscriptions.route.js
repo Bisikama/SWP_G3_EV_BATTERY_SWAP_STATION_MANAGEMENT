@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const subscriptionController = require('../controllers/subscription.controller');
 const { authorizeRole, verifyToken } = require('../middlewares/verifyTokens');
+const { validate } = require('../middlewares/validateHandler');
+const subscriptionValidator = require('../validations/subscription.validation');
 
 /**
  * @swagger
@@ -15,7 +17,9 @@ const { authorizeRole, verifyToken } = require('../middlewares/verifyTokens');
  *       500:
  *         description: Internal server error
  */
-router.get('/', subscriptionController.findAll);
+router.get('/', 
+    subscriptionController.findAll
+);
 
 /**
  * @swagger
@@ -41,7 +45,10 @@ router.get('/', subscriptionController.findAll);
  *       500:
  *         description: Internal server error
  */
-router.get('/id/:id', subscriptionController.findById);
+router.get('/id/:id', 
+    validate(subscriptionValidator.findById),
+    subscriptionController.findById
+);
 
 /**
  * @swagger
@@ -67,7 +74,10 @@ router.get('/id/:id', subscriptionController.findById);
  *       500:
  *         description: Internal server error
  */
-router.get('/vehicle/:vehicle_id', subscriptionController.findByVehicle);
+router.get('/vehicle/:vehicle_id', 
+    validate(subscriptionValidator.findByVehicle),
+    subscriptionController.findByVehicle
+);
 
 /**
  * @swagger
@@ -93,7 +103,46 @@ router.get('/vehicle/:vehicle_id', subscriptionController.findByVehicle);
  *       500:
  *         description: Internal server error
  */
-router.get('/driver/:driver_id', subscriptionController.findByDriver);
+router.get('/driver/:driver_id', 
+    validate(subscriptionValidator.findByDriver),
+    subscriptionController.findByDriver
+);
+
+/**
+ * @swagger
+ * /api/subscription/active/{vehicle_id}:
+ *   get:
+ *     tags: [Subscription]
+ *     summary: Get the current active subscription for a vehicle
+ *     description: Retrieve the currently active subscription for a given vehicle. A subscription is considered active if it is not canceled and the current date is between its start and end dates.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vehicle_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Vehicle ID
+ *     responses:
+ *       200:
+ *         description: Active subscription found
+ *       400:
+ *         description: Invalid vehicle ID
+ *       403:
+ *         description: You are not authorized to access this vehicle
+ *       404:
+ *         description: No active subscription found for this vehicle
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/active/:vehicle_id', 
+    verifyToken,
+    authorizeRole('driver'),
+    validate(subscriptionValidator.findActiveByVehicle),
+    subscriptionController.findActiveByVehicle
+);
 
 /**
  * @swagger
@@ -118,14 +167,6 @@ router.get('/driver/:driver_id', subscriptionController.findByDriver);
  *                 format: uuid
  *               plan_id:
  *                 type: integer
- *               start_date:
- *                 type: string
- *                 format: date
- *                 description: Optional, defaults to today
- *               end_date:
- *                 type: string
- *                 format: date
- *                 description: Optional, defaults to start_date + 30 days
  *     responses:
  *       201:
  *         description: Subscription created successfully
@@ -138,7 +179,12 @@ router.get('/driver/:driver_id', subscriptionController.findByDriver);
  *       500:
  *         description: Internal server error
  */
-router.post('/', verifyToken, authorizeRole('driver'), subscriptionController.create);
+router.post('/',
+    verifyToken, 
+    authorizeRole('driver'), 
+    validate(subscriptionValidator.create), 
+    subscriptionController.create
+);
 
 /**
  * @swagger
@@ -185,6 +231,11 @@ router.post('/', verifyToken, authorizeRole('driver'), subscriptionController.cr
  *       500:
  *         description: Internal server error
  */
-router.put('/cancel/:id', verifyToken, authorizeRole('driver'), subscriptionController.cancel);
+router.put('/cancel/:id', 
+    verifyToken, 
+    authorizeRole('driver'),
+    validate(subscriptionValidator.cancel), 
+    subscriptionController.cancel
+);
 
 module.exports = router;
