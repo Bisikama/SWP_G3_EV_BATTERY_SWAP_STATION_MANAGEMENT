@@ -70,6 +70,13 @@ module.exports = (sequelize, DataTypes) => {
           min: 0
         }
       },
+      duration_days: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
       description: {
         type: DataTypes.TEXT,
         allowNull: true

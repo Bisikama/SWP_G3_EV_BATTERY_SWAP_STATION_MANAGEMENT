@@ -1,82 +1,49 @@
-const { Subscription, SubscriptionPlan, Vehicle, Sequelize, sequelize } = require('../models');
-const { Op } = Sequelize;
+const db = require('../models');
+const ApiError = require('../utils/ApiError');
 
 async function findAll() {
-  return Subscription.findAll();
+  return db.Subscription.findAll();
 }
 
 async function findById(id) {
-  if (!id) return null;
-  return Subscription.findByPk(id);
+  return db.Subscription.findByPk(id);
 }
 
 async function findByVehicle(vehicle_id) {
-  if (!vehicle_id) return null;
-  return Subscription.findOne({ where: { vehicle_id } });
+  return db.Subscription.findAll({ where: { vehicle_id } });
 }
 
 async function findByDriver(driver_id) {
-  if (!driver_id) return null;
-  return Subscription.findOne({ where: { driver_id } });
+  return db.Subscription.findAll({ where: { driver_id } });
 }
 
-async function createSubscription({ user, vehicle_id, plan_id, start_date, end_date }) {
-  if (!vehicle_id || plan_id == null) {
-    const err = new Error('Vehicle ID and Subscription Plan ID are required');
-    err.status = 400;
-    throw err;
-  }
-
-  const vehicle = await Vehicle.findByPk(vehicle_id);
-  if (!vehicle) {
-    const err = new Error('Vehicle not found');
-    err.status = 404;
-    throw err;
-  }
-
-  const plan = await SubscriptionPlan.findByPk(plan_id);
-  if (!plan) {
-    const err = new Error('Subscription Plan not found');
-    err.status = 404;
-    throw err;
-  }
-
-  if (!vehicle.driver_id) {
-    const err = new Error('Vehicle has not been assigned to any driver');
-    err.status = 400;
-    throw err;
-  }
-
-  if (vehicle.driver_id !== user.account_id) {
-    const err = new Error('You are not authorized to create subscription for this vehicle');
-    err.status = 403;
-    throw err;
-  }
-
-  // Check existing active subscription
-  const today = new Date().toISOString().split('T')[0];
-  const existingActive = await Subscription.findOne({
+async function findActiveSubscriptionByVehicle(user, vehicle_id) {
+  const vehicle = await db.Vehicle.findByPk(vehicle_id);
+  if (!vehicle) throw new ApiError(404, 'Vehicle not found');
+  if (vehicle.driver_id !== user.account_id) throw new ApiError(403, 'You are not authorized to access this vehicle');
+  const today = new Date();
+  return db.Subscription.findOne({
     where: {
       vehicle_id,
       cancel_time: null,
-      end_date: { [Op.gte]: today }
-    }
+      start_date: { [db.Sequelize.Op.lte]: today },
+      end_date: { [db.Sequelize.Op.gte]: today },
+    },
   });
-  if (existingActive) {
-    const err = new Error('This vehicle already has an active subscription');
-    err.status = 409;
-    throw err;
-  }
+}
 
-  const subscription_interval_days = 30;
-  const start = start_date ? new Date(start_date) : new Date();
-  const end = end_date ? new Date(end_date) : new Date(start);
-  end.setDate(start.getDate() + subscription_interval_days);
-  if (start >= end) {
-    const err = new Error('Start date must be earlier than end date');
-    err.status = 400;
-    throw err;
-  }
+async function createSubscription(user, { vehicle_id, plan_id } ) {
+  const plan = await db.SubscriptionPlan.findByPk(plan_id);
+  if (!plan) throw new ApiError(404, 'Subscription plan not found');
+
+  // Check existing active subscription
+  const existingActive = await findActiveSubscriptionByVehicle(user, vehicle_id);
+  if (existingActive) throw new ApiError(409, 'This vehicle already has an active subscription');
+
+  const planDurationDays = plan.duration_days;
+  const start = new Date();
+  const end = new Date(start);
+  end.setDate(start.getDate() + planDurationDays);
   
   const payload = {
     driver_id: user.account_id,
@@ -86,40 +53,20 @@ async function createSubscription({ user, vehicle_id, plan_id, start_date, end_d
     end_date: end,
     cancel_time: null
   };
-  const created = await Subscription.create(payload);
+  const created = await db.Subscription.create(payload);
   return created;
 }
 
 async function cancelSubscription({ user, subscription_id }) {
-  if (!subscription_id) {
-    const err = new Error('Subscription ID are required');
-    err.status = 400;
-    throw err;
-  }
+  const subscription = await db.Subscription.findByPk(subscription_id);
+  if (!subscription) throw new ApiError(404, 'Subscription not found');
+  if (subscription.driver_id !== user.account_id) throw new ApiError(403, 'You are not authorized to cancel this subscription');
 
-  const subscription = await Subscription.findByPk(subscription_id);
-  if (!subscription) {
-    const err = new Error('Subscription not found');
-    err.status = 404;
-    throw err;
-  }
-
-  if (subscription.driver_id !== user.account_id) {
-    const err = new Error('You are not authorized to cancel this subscription');
-    err.status = 403;
-    throw err;
-  }
-
-  if (subscription.cancel_time) {
-    const err = new Error('Subscription is already cancelled');
-    err.status = 400;
-    throw err;
-  }
-
+  if (subscription.cancel_time) throw new ApiError(400, 'Subscription is already cancelled');
   subscription.cancel_time = new Date();
   await subscription.save();
 
   return subscription;
 }
 
-module.exports = { findAll, findById, findByVehicle, findByDriver, createSubscription, cancelSubscription };
+module.exports = { findAll, findById, findByVehicle, findByDriver, findActiveSubscriptionByVehicle, createSubscription, cancelSubscription };

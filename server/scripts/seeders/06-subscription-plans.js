@@ -23,6 +23,7 @@ module.exports = {
           penalty_fee: 200.0,
           battery_cap: 1,
           soh_cap: 0.03,
+          duration_days: 30,
           description: 'Basic plan for light users - up to 1 battery at a time.',
           is_active: true
         },
@@ -34,6 +35,7 @@ module.exports = {
           penalty_fee: 300.0,
           battery_cap: 1,
           soh_cap: 0.05,
+          duration_days: 30,
           description: 'Standard plan - affordable option for daily commuters.',
           is_active: true
         },
@@ -45,6 +47,7 @@ module.exports = {
           penalty_fee: 400.0,
           battery_cap: 2,
           soh_cap: 0.08,
+          duration_days: 30,
           description: 'Premium plan for high-demand riders - up to 2 batteries.',
           is_active: true
         },
@@ -56,6 +59,7 @@ module.exports = {
           penalty_fee: 500.0,
           battery_cap: 2,
           soh_cap: 0.1,
+          duration_days: 30,
           description: 'Enterprise fleet plan - optimized for business operators.',
           is_active: true
         }
