@@ -38,6 +38,16 @@ const paymentController = require('../controllers/MOMO_payment.controller');
  *                 format: uuid
  *                 example: 550e8400-e29b-41d4-a716-446655440000
  *                 description: UUID of the invoice to pay
+ *               plan_id:
+ *                 type: integer
+ *                 example: 1
+ *                 description: ID of the subscription plan associated with the invoice
+ *               vehicle_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: 550e8400-e29b-41d4-a716-446655440000
+ *                 description: UUID of the vehicle associated with the invoice
+ *   
  *     responses:
  *       201:
  *         description: Payment link created successfully

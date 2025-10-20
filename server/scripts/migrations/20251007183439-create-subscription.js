@@ -38,6 +38,14 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
+      invoice_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'Invoices',
+          key: 'invoice_id'
+        }
+      },
       soh_usage: {
         type: Sequelize.DECIMAL(5, 2),
         allowNull: false,
@@ -54,7 +62,13 @@ module.exports = {
       cancel_time: {
         type: Sequelize.DATE,
         allowNull: true
+      },
+      sub_status: {
+        type: Sequelize.ENUM('active', 'inactive'),
+        allowNull: false,
+        defaultValue: 'inactive'
       }
+
     });
   },
 

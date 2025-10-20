@@ -27,6 +27,8 @@ async function findById(id) {
       'fullname',
       'phone_number',
       'permission',
+      'driving_license',
+      'citizen_id',
       'status'
     ]
   });
