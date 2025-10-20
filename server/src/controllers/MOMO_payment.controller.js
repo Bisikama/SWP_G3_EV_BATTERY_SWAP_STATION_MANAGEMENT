@@ -40,7 +40,7 @@ async function createPayment (req, res)  {
     }
     
     // ✅ Lấy amount từ invoice
-    const amount = invoice.total_fee.toString();
+    const amount = parseInt(invoice.total_fee.toString());
     
     // ✅ Tạo orderId UNIQUE bằng cách thêm timestamp
     // Format: INV_<invoice_id>_<timestamp>
