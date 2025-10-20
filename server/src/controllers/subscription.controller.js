@@ -50,4 +50,31 @@ async function cancel(req, res) {
   return res.status(200).json({ success: true, payload: { subscription: cancelled } });
 }
 
-module.exports = { findAll, findById, findByVehicle, findByDriver, findActiveByVehicle, create, cancel };
+/**
+ * Controller: Get vehicles without active subscription
+ * Driver CHỈ CẦN BẤM NÚT - không cần nhập gì
+ * GET /api/subscription/vehicles-without-subscription
+ * 
+ * @access Private - Driver only
+ * @param {Request} req - Express request (user.account_id tự động từ JWT)
+ * @param {Response} res - Express response
+ * @returns {Object} { success, payload: { vehicles, count, message } }
+ */
+async function getVehiclesWithoutSubscription(req, res) {
+  const driver_id = req.user.account_id; // Lấy driver_id từ token - TỰ ĐỘNG!
+  
+  const vehicles = await subscriptionService.getVehiclesWithoutSubscription(driver_id);
+  
+  return res.status(200).json({ 
+    success: true, 
+    payload: { 
+      vehicles,
+      count: vehicles.length,
+      message: vehicles.length > 0 
+        ? `You have ${vehicles.length} vehicle(s) without active subscription`
+        : 'All your vehicles have active subscriptions'
+    } 
+  });
+}
+
+module.exports = { findAll, findById, findByVehicle, findByDriver, findActiveByVehicle, create, cancel, getVehiclesWithoutSubscription };
