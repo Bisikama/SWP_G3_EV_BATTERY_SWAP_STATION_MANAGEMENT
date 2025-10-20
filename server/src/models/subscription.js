@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      this.hasOne(models.Invoice, { as: 'invoice', foreignKey: 'subscription_id' });
+      this.belongsTo(models.Invoice, { as: 'invoice', foreignKey: 'invoice_id' });
       this.belongsTo(models.SubscriptionPlan, { as: 'plan', foreignKey: 'plan_id' });
       this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
       this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
@@ -22,6 +22,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true
+      },
+      invoice_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'Invoices',
+          key: 'invoice_id'
+        }
       },
       driver_id: {
         type: DataTypes.UUID,
@@ -66,6 +74,11 @@ module.exports = (sequelize, DataTypes) => {
       cancel_time: {
         type: DataTypes.DATE,
         allowNull: true
+      },
+      sub_status: {
+        type: DataTypes.ENUM('active', 'inactive'),
+        allowNull: false,
+        defaultValue: 'inactive'
       }
     },
     {

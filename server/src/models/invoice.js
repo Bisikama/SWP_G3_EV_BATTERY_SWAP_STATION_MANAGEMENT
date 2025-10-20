@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       this.hasMany(models.PaymentRecord, { as: 'payments', foreignKey: 'invoice_id' });
-      this.belongsTo(models.Subscription, { as: 'subscription', foreignKey: 'subscription_id' });
+      this.hasOne(models.Subscription, { as: 'subscription', foreignKey: 'invoice_id' });
       this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
     }
   }
@@ -30,14 +30,6 @@ module.exports = (sequelize, DataTypes) => {
           key: 'account_id'
         }
       },
-      subscription_id: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        references: {
-          model: 'Subscriptions',
-          key: 'subscription_id'
-        }
-      },
       invoice_number: {
         type: DataTypes.STRING(50),
         allowNull: false,
@@ -48,28 +40,22 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: DataTypes.NOW
       },
-      pay_date: {
-        type: DataTypes.DATEONLY,
-        allowNull: true,
-        comment: 'Ngày thanh toán thực tế - sẽ được cập nhật khi payment success'
-      },
       due_date: {
         type: DataTypes.DATEONLY,
-        allowNull: true,
-        comment: 'Ngày hết hạn = pay_date + 1 tháng - sẽ được tính khi payment success'
+        allowNull: false
       },
       total_fee: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         validate: {
           min: 0
         }
       },
       payment_status: {
-        type: DataTypes.ENUM('paid', 'unpaid'),
+        type: DataTypes.ENUM('unpaid', 'paid'),
         allowNull: false,
         defaultValue: 'unpaid'
-      },
+      }
     },
     {
       sequelize,

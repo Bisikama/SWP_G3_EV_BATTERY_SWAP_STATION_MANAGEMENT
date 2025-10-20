@@ -18,16 +18,6 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      subscription_id: {
-        type: Sequelize.UUID,
-        allowNull: false,
-        references: {
-          model: 'Subscriptions',
-          key: 'subscription_id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
-      },
       invoice_number: {
         type: Sequelize.STRING(50),
         allowNull: false,

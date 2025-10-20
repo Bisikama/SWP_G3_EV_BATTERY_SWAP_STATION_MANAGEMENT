@@ -1,17 +1,24 @@
 const crypto = require('crypto');
 const https = require('https');
 const db = require('../models');
+const { create } = require('domain');
 const { Invoice, PaymentRecord, Subscription } = db;
 require('dotenv').config();
 
 async function createPayment (req, res)  {
-  // ✅ Nhận invoice_id từ request
-  const { invoice_id } = req.body;
+  // ✅ Nhận invoice_id, plan_id, vehicle_id từ request
+  const { invoice_id, plan_id, vehicle_id } = req.body;
   
-  // ✅ Validate invoice_id
+  // ✅ Validate input
   if (!invoice_id) {
     return res.status(400).json({
       message: 'invoice_id is required'
+    });
+  }
+
+  if (!plan_id || !vehicle_id) {
+    return res.status(400).json({
+      message: 'plan_id and vehicle_id are required'
     });
   }
   
@@ -58,7 +65,12 @@ async function createPayment (req, res)  {
     var ipnUrl = process.env.MOMO_IPN_URL;
     var requestType = "payWithMethod";
     var requestId = orderId;
-    var extraData = JSON.stringify({ invoice_id: invoice_id }); // ✅ Lưu invoice_id vào extraData
+    // ✅ Thêm plan_id và vehicle_id vào extraData
+    var extraData = JSON.stringify({ 
+      invoice_id: invoice_id,
+      plan_id: plan_id,
+      vehicle_id: vehicle_id
+    });
     var paymentCode = 'T8Qii53fAXyUftPV3m9ysyRhEanUs9KlOPfHgpMR0ON50U10Bh+vZdpJU7VY4z+Z2y77fJHkoDc69scwwzLuW5MzeUKTwPo3ZMaB29imm6YulqnWfTkgzqRaion+EuD7FN9wZ4aXE1+mRt0gHsU193y+yxtRgpmY7SDMU9hCKoQtYyHsfFR5FUAOAKMdw2fzQqpToei3rnaYvZuYaxolprm9+/+WIETnPUDlxCYOiw7vPeaaYQQH0BF0TxyU3zu36ODx980rJvPAgtJzH1gUrlxcSS1HQeQ9ZaVM1eOK/jl8KJm6ijOwErHGbgf/hVymUQG65rHU2MWz9U8QUjvDWA==';
     var orderGroupId = '';
     var autoCapture = true;
@@ -180,42 +192,41 @@ async function handlePaymentIPN (req, res)  {
     transId,        // = payment_record_id (transaction_num)
     message,
     payType,        // = payment_type
+    extraData,      // ← Chứa invoice_id, plan_id, vehicle_id
     signature 
   } = req.body;
   
-  console.log('\n🔔 ========== IPN Received from MoMo ==========');
-  console.log('📥 Full Request Body:', JSON.stringify(req.body, null, 2));
-  console.log('📋 Parsed Data:');
-  console.log('   - resultCode:', resultCode, `(type: ${typeof resultCode})`);
-  console.log('   - orderId:', orderId);
-  console.log('   - amount:', amount);
-  console.log('   - transId:', transId);
-  console.log('   - message:', message);
-  console.log('   - payType:', payType);
-  console.log('   - signature:', signature ? 'Present' : 'Missing');
-  
   try {
-    // ✅ Parse orderId để lấy invoice_id
-    // Format: INV_<invoice_id>_<timestamp>
+    // ✅ Parse extraData để lấy invoice_id, plan_id, vehicle_id
+    let invoice_id, plan_id, vehicle_id;
     
-    let invoice_id;
-    if (orderId.startsWith('INV_')) {
-      // Tách: "INV_uuid_timestamp" → ["INV", "uuid", "timestamp"]
+    if (extraData) {
+      try {
+        const parsedData = JSON.parse(extraData);
+        invoice_id = parsedData.invoice_id;
+        plan_id = parsedData.plan_id;
+        vehicle_id = parsedData.vehicle_id;
+        console.log(`✅ Parsed extraData: invoice_id=${invoice_id}, plan_id=${plan_id}, vehicle_id=${vehicle_id}`);
+      } catch (e) {
+        console.error(`❌ Failed to parse extraData: ${e.message}`);
+      }
+    }
+    
+    // Fallback: Parse từ orderId nếu không có extraData
+    if (!invoice_id && orderId.startsWith('INV_')) {
       const parts = orderId.split('_');
       if (parts.length === 3) {
-        invoice_id = parts[1];  // Lấy phần uuid
-        console.log(`✅ Extracted invoice_id: ${invoice_id}`);
-      } else {
-        console.error(`❌ Invalid orderId format: ${orderId}`);
-        return res.status(400).json({ 
-          error: 'Invalid orderId format',
-          orderId: orderId 
-        });
+        invoice_id = parts[1];
+        console.log(`✅ Extracted invoice_id from orderId: ${invoice_id}`);
       }
-    } else {
-      // Fallback: orderId chính là invoice_id (backward compatible)
-      invoice_id = orderId;
-      console.log(`⚠️ Using orderId as invoice_id (old format): ${invoice_id}`);
+    }
+    
+    if (!invoice_id) {
+      console.error(`❌ Cannot extract invoice_id from orderId: ${orderId}`);
+      return res.status(400).json({ 
+        error: 'Invalid orderId format',
+        orderId: orderId 
+      });
     }
     
     // Kiểm tra invoice có tồn tại không
@@ -233,8 +244,10 @@ async function handlePaymentIPN (req, res)  {
     if (resultCode === 0) {
       // ✅ THANH TOÁN THÀNH CÔNG
       console.log('\n✅ ========== PAYMENT SUCCESSFUL ==========');
+      
+      // Bước 1: Tạo PaymentRecord
       const paymentData = {
-        invoice_id: invoice_id,              // ← Dùng invoice_id đã parse
+        invoice_id: invoice_id,
         transaction_num: transId.toString(),
         payment_date: new Date(),
         payment_method: 'momo',
@@ -245,45 +258,53 @@ async function handlePaymentIPN (req, res)  {
         signature: signature || ''
       };
       const paymentRecord = await PaymentRecord.create(paymentData);
+      console.log(`✅ Payment record created: ${paymentRecord.payment_id}`);
       
-      console.log(`✅ Payment record created successfully!`);
-      console.log(`   - payment_id: ${paymentRecord.payment_id}`);
-      console.log(`   - invoice_id: ${paymentRecord.invoice_id}`);
-      console.log(`   - transaction_num: ${paymentRecord.transaction_num}`);
-      console.log(`   - status: ${paymentRecord.status}`);
-      
-      // Verify record was saved
-      const verifyRecord = await PaymentRecord.findByPk(paymentRecord.payment_id);
-      if (verifyRecord) {
-        console.log(`✅ Verification SUCCESS - Record exists in database!`);
-        console.log(`   - Verified payment_id: ${verifyRecord.payment_id}`);
-      } else {
-        console.error(`❌ Verification FAILED - Record NOT found in database!`);
-      }
-      
-      // Cập nhật invoice: payment_status, pay_date, due_date
+      // Bước 2: Cập nhật Invoice
       const pay_date = new Date();
       const due_date = new Date(pay_date);
-      due_date.setMonth(due_date.getMonth() + 1); // due_date = pay_date + 1 tháng
+      due_date.setMonth(due_date.getMonth() + 1);
       
-      const [updatedRows] = await Invoice.update({ 
+      await Invoice.update({ 
         payment_status: 'paid',
-        pay_date: pay_date,
+        create_date: pay_date,
         due_date: due_date
       }, { 
-        where: { invoice_id: invoice_id }    // ← Dùng invoice_id đã parse
+        where: { invoice_id: invoice_id }
       });
+      console.log(`✅ Invoice updated to 'paid'`);
       
-      console.log(`✅ Invoice updated: ${updatedRows} row(s) affected`);
-      console.log(`   - payment_status: paid`);
-      console.log(`   - pay_date: ${pay_date.toISOString().split('T')[0]}`);
-      console.log(`   - due_date: ${due_date.toISOString().split('T')[0]}`);
-      
-      // Verify invoice update
-      const updatedInvoice = await Invoice.findByPk(invoice_id);
-      console.log(`   - Verified payment_status: ${updatedInvoice.payment_status}`);
-      console.log(`   - Verified pay_date: ${updatedInvoice.pay_date}`);
-      console.log(`   - Verified due_date: ${updatedInvoice.due_date}`);
+      // Bước 3: TẠO MỚI SUBSCRIPTION (chỉ khi thanh toán thành công)
+      if (plan_id && vehicle_id) {
+        console.log('\n📦 Creating new subscription...');
+        
+        const subscriptionData = {
+          invoice_id: invoice_id,
+          driver_id: invoice.driver_id,
+          vehicle_id: vehicle_id,
+          plan_id: plan_id,
+          soh_usage: 0,
+          start_date: pay_date,
+          end_date: due_date,
+          cancel_time: null,
+          sub_status: 'active'  // ← Kích hoạt ngay
+        };
+        
+        const newSubscription = await Subscription.create(subscriptionData);
+        
+        console.log(`✅ Subscription created successfully!`);
+        console.log(`   - subscription_id: ${newSubscription.subscription_id}`);
+        console.log(`   - invoice_id: ${newSubscription.invoice_id}`);
+        console.log(`   - vehicle_id: ${newSubscription.vehicle_id}`);
+        console.log(`   - plan_id: ${newSubscription.plan_id}`);
+        console.log(`   - sub_status: ${newSubscription.sub_status}`);
+        console.log(`   - start_date: ${newSubscription.start_date}`);
+        console.log(`   - end_date: ${newSubscription.end_date}`);
+      } else {
+        console.warn(`⚠️ Missing plan_id or vehicle_id - cannot create subscription`);
+        console.warn(`   - plan_id: ${plan_id}`);
+        console.warn(`   - vehicle_id: ${vehicle_id}`);
+      }
       
       console.log('\n✅ ========== IPN PROCESSING COMPLETE ==========\n');
       
@@ -293,10 +314,10 @@ async function handlePaymentIPN (req, res)  {
     } else {
       // ❌ THANH TOÁN THẤT BẠI
       console.log('\n❌ ========== PAYMENT FAILED ==========');
-      console.log(`📝 Creating failed payment record with data:`);
       
+      // Chỉ tạo PaymentRecord, KHÔNG tạo Subscription
       const paymentData = {
-        invoice_id: invoice_id,              // ← Dùng invoice_id đã parse
+        invoice_id: invoice_id,
         transaction_num: transId ? transId.toString() : `FAILED_${Date.now()}`,
         payment_date: new Date(),
         payment_method: 'momo',
@@ -307,24 +328,12 @@ async function handlePaymentIPN (req, res)  {
         signature: signature || ''
       };
       
-      console.log(JSON.stringify(paymentData, null, 2));
-      
-      console.log('\n💾 Step 3: Creating failed payment record...');
       const paymentRecord = await PaymentRecord.create(paymentData);
       
-      console.log(`✅ Failed payment record created!`);
-      console.log(`   - payment_id: ${paymentRecord.payment_id}`);
+      console.log(`✅ Failed payment record created: ${paymentRecord.payment_id}`);
       console.log(`   - status: ${paymentRecord.status}`);
       console.log(`   - message: ${paymentRecord.message}`);
-      
-      // Verify record was saved
-      console.log('\n🔍 Step 4: Verifying failed payment record...');
-      const verifyRecord = await PaymentRecord.findByPk(paymentRecord.payment_id);
-      if (verifyRecord) {
-        console.log(`✅ Verification SUCCESS - Failed record exists in database!`);
-      } else {
-        console.error(`❌ Verification FAILED - Record NOT found!`);
-      }
+      console.log(`⚠️ Invoice and Subscription remain unchanged (payment failed)`);
       
       console.log('\n❌ ========== FAILED IPN PROCESSING COMPLETE ==========\n');
       
@@ -345,7 +354,7 @@ async function handlePaymentIPN (req, res)  {
     }
     
     if (error.name === 'SequelizeForeignKeyConstraintError') {
-      console.error('Foreign key constraint error - Invoice may not exist');
+      console.error('Foreign key constraint error');
     }
     
     console.error('===============================================\n');
