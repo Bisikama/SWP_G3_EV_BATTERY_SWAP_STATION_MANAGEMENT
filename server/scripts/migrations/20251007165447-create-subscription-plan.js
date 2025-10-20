@@ -26,9 +26,10 @@ module.exports = {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false
       },
-      deposit_fee: {
+      swap_fee: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        defaultValue: 0
       },
       penalty_fee: {
         type: Sequelize.DECIMAL(10, 2),
