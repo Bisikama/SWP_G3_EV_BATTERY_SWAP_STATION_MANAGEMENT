@@ -2,21 +2,11 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Transfers', {
-      transfer_id: {
+    await queryInterface.createTable('TransferRequests', {
+      transfer_request_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true
-      },
-      origin_station_id: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'Stations',
-          key: 'station_id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
       },
       destination_station_id: {
         type: Sequelize.INTEGER,
@@ -46,9 +36,9 @@ module.exports = {
           key: 'account_id'
         },
         onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onDelete: 'RESTRICT'
       },
-      create_time: {
+      request_time: {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.NOW
@@ -57,12 +47,12 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: true
       },
-      complete_time: {
-        type: Sequelize.DATE,
-        allowNull: true
+      request_quantity: {
+        type: Sequelize.INTEGER,
+        allowNull: false
       },
       status: {
-        type: Sequelize.ENUM('pending', 'approved', 'rejected', 'transfering', 'completed'),
+        type: Sequelize.ENUM('pending','approved','rejected'),
         allowNull: false,
         defaultValue: 'pending'
       },
@@ -74,6 +64,6 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Transfers');
+    await queryInterface.dropTable('TransferRequests');
   }
 };

@@ -119,7 +119,7 @@ module.exports = {
       }
     ];
 
-  await db.Account.bulkCreate(accounts, { validate: true });
+  await db.Account.bulkCreate(accounts, { validate: true, ignoreDuplicates: true });
   },
 
   async down(queryInterface, Sequelize) {
