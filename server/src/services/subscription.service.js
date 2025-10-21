@@ -64,8 +64,9 @@ async function cancelSubscription({ user, subscription_id }) {
 
   if (subscription.cancel_time) throw new ApiError(400, 'Subscription is already cancelled');
   subscription.cancel_time = new Date();
+  
   await subscription.save();
-
+  
   return subscription;
 }
 
