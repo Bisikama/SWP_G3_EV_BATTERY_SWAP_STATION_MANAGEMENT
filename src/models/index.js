@@ -17,16 +17,7 @@ const sequelizeConfig = {
     timestamps: false
   }
 };
-if (env === 'production' && config.dialect === 'postgres') {
-    // Chỉ thêm cấu hình SSL khi đang ở môi trường production và dùng Postgres
-    sequelizeConfig.dialectOptions = {
-        ...(sequelizeConfig.dialectOptions || {}),
-        ssl: {
-            require: true, 
-            rejectUnauthorized: false // Cần thiết để chấp nhận chứng chỉ của Supabase
-        }
-    };
-}
+
 
 if (config.use_env_variable) {
   sequelize = new Sequelize(process.env[config.use_env_variable], sequelizeConfig);
