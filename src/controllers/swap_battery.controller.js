@@ -63,13 +63,9 @@ async function validateAndPrepareSwap(req, res) {
     console.log(`Requested Quantity: ${requested_quantity}`);
     console.log(`Batteries IN: ${batteriesIn.length}`);
 
-    // Bước 1: Lấy danh sách ô pin trống
-    console.log('\n📍 Step 1: Getting empty slots...');
-    const emptySlots = await swapBatteryService.getEmptySlots(parseInt(station_id));
-    console.log(`✅ Found ${emptySlots.length} empty slot(s)`);
 
-    // Bước 2: Validate pin đưa vào
-    console.log('\n🔍 Step 2: Validating batteries IN...');
+    // Bước 1: Validate pin đưa vào
+    console.log('\n🔍 Step 1: Validating batteries IN...');
     const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn);
 
     // Lọc ra các pin hợp lệ
@@ -81,8 +77,8 @@ async function validateAndPrepareSwap(req, res) {
       console.log(`❌ Invalid batteries: ${invalidBatteries.length}`);
     }
 
-    // Bước 3: Kiểm tra pin sẵn sàng để đổi
-    console.log('\n🔋 Step 3: Checking available batteries for swap...');
+    // Bước 2: Kiểm tra pin sẵn sàng để đổi
+    console.log('\n🔋 Step 2: Checking available batteries for swap...');
     const availableSlots = await swapBatteryService.getAvailableBatteriesForSwap(
       parseInt(station_id),
       parseInt(battery_type_id),
@@ -109,7 +105,7 @@ async function validateAndPrepareSwap(req, res) {
     } else if (!hasEnoughAvailableBatteries) {
       // Không đủ pin để đổi
       responseStatus = 400;
-      responseMessage = `Không đủ pin sẵn sàng để đổi. Cần ${validBatteries.length} pin, chỉ có ${availableSlots.length} pin (SOC >= 90%)`;
+      responseMessage = `Không đủ pin sẵn sàng để đổi.`;
     } else if (!hasEnoughValidBatteries) {
       // Có pin hợp lệ nhưng ít hơn số lượng yêu cầu → Cần xác nhận
       responseStatus = 200;
@@ -427,8 +423,122 @@ async function getAvailableBatteries(req, res) {
   }
 }
 
+/**
+ * API: Lấy pin lần đầu cho xe mới
+ * POST /api/swap/first-time-pickup
+ * Body:
+ * {
+ *   "driver_id": "uuid",
+ *   "vehicle_id": "uuid",
+ *   "station_id": 1
+ * }
+ */
+async function firstTimeBatteryPickup(req, res) {
+  const transaction = await db.sequelize.transaction();
+  try {
+    const { driver_id, vehicle_id, station_id } = req.body;
+
+    // Validation input
+    if (!driver_id || !vehicle_id || !station_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'driver_id, vehicle_id và station_id là bắt buộc'
+      });
+    }
+
+    console.log(`\n🚗 First-time battery pickup: driver=${driver_id}, vehicle=${vehicle_id}, station=${station_id}`);
+
+    // Lấy thông tin xe và pin sẵn sàng
+    const pickupData = await swapBatteryService.getFirstTimeBatteries(driver_id, vehicle_id, station_id);
+    const { vehicle, battery_type_id, battery_quantity, available_slots } = pickupData;
+
+    console.log(`📦 Vehicle model: ${vehicle.model.name}, needs ${battery_quantity} batteries of type ${battery_type_id}`);
+    console.log(`✅ Found ${available_slots.length} available batteries`);
+
+    const swapRecords = [];
+
+    // Xử lý từng pin lấy ra
+    for (let i = 0; i < battery_quantity; i++) {
+      const slot = available_slots[i];
+      const batteryOut = slot.battery;
+
+      console.log(`\n🔋 Processing battery ${i + 1}/${battery_quantity}:`);
+      console.log(`   - Battery OUT: ${batteryOut.battery_id} (SOC: ${batteryOut.current_soc}%, SOH: ${batteryOut.current_soh}%)`);
+
+      // 1. Cập nhật slot thành empty
+      await swapBatteryService.updateSlotStatus(slot.slot_id, 'empty', transaction);
+      console.log(`   ✅ Slot ${slot.slot_id} set to 'empty'`);
+
+      // 2. Cập nhật battery: gán vào vehicle
+      await swapBatteryService.updateNewBatteryToVehicle(batteryOut.battery_id, vehicle_id, transaction);
+      console.log(`   ✅ Battery ${batteryOut.battery_id} assigned to vehicle ${vehicle_id}`);
+
+      // 3. Tạo SwapRecord với battery_id_in = null, soh_in = 0
+      const swapRecord = await swapBatteryService.createSwapRecord(
+        {
+          driver_id,
+          vehicle_id,
+          station_id,
+          battery_id_in: null,      // Không có pin trả về
+          battery_id_out: batteryOut.battery_id,
+          soh_in: 0,                // Không có pin trả về
+          soh_out: batteryOut.current_soh
+        },
+        transaction
+      );
+
+      console.log(`   ✅ SwapRecord created: ${swapRecord.swap_id}`);
+      swapRecords.push(swapRecord);
+    }
+
+    // 4. Cập nhật vehicle.take_first = true
+    const { Vehicle } = require('../models');
+    await Vehicle.update(
+      { take_first: true },
+      {
+        where: { vehicle_id: vehicle_id },
+        transaction
+      }
+    );
+    console.log(`✅ Vehicle ${vehicle_id} take_first updated to TRUE`);
+
+    // Commit transaction
+    await transaction.commit();
+    console.log('✅ First-time pickup completed successfully\n');
+
+    return res.status(200).json({
+      success: true,
+      message: `Lấy pin lần đầu thành công cho xe ${vehicle.license_plate}`,
+      data: {
+        vehicle: {
+          vehicle_id: vehicle.vehicle_id,
+          license_plate: vehicle.license_plate,
+          model: vehicle.model.name,
+          take_first: true
+        },
+        batteries_picked: swapRecords.length,
+        swap_records: swapRecords.map(record => ({
+          swap_id: record.swap_id,
+          battery_id_out: record.battery_id_out,
+          soh_out: record.soh_out,
+          swap_time: record.swap_time
+        }))
+      }
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error in firstTimeBatteryPickup:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi khi lấy pin lần đầu',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   validateAndPrepareSwap,
   executeSwap,
-  getAvailableBatteries
+  getAvailableBatteries,
+  firstTimeBatteryPickup
 };

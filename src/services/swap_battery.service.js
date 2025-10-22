@@ -300,6 +300,71 @@ async function createSwapRecord(swapData) {
   }
 }
 
+/**
+ * Service: Lấy pin lần đầu cho xe mới
+ * Kiểm tra:
+ * - Vehicle có thể lấy pin lần đầu không (take_first = false)
+ * - Trạm có đủ pin phù hợp với loại xe không (SOC >= 90%)
+ * @param {string} driver_id - ID của tài xế
+ * @param {string} vehicle_id - ID của xe
+ * @param {number} station_id - ID của trạm
+ * @returns {Object} - Thông tin pin và xe
+ */
+async function getFirstTimeBatteries(driver_id, vehicle_id, station_id) {
+  try {
+    const { Vehicle, VehicleModel } = require('../models');
+
+    // Lấy thông tin xe và model
+    const vehicle = await Vehicle.findByPk(vehicle_id, {
+      include: [
+        {
+          model: VehicleModel,
+          as: 'model',
+          include: [
+            { model: BatteryType, as: 'batteryType' }
+          ]
+        }
+      ]
+    });
+
+    if (!vehicle) {
+      throw new Error(`Vehicle ${vehicle_id} không tồn tại`);
+    }
+
+    // Kiểm tra xe đã lấy pin lần đầu chưa
+    if (vehicle.take_first === true) {
+      throw new Error('Xe này đã lấy pin lần đầu rồi');
+    }
+
+    // Lấy thông tin loại pin và số lượng pin cần lấy
+    const battery_type_id = vehicle.model.battery_type_id;
+    const battery_quantity = vehicle.model.battery_slot;
+
+    // Tìm pin sẵn sàng tại trạm (SOC >= 90%)
+    const availableSlots = await getAvailableBatteriesForSwap(
+      station_id,
+      battery_type_id,
+      battery_quantity
+    );
+
+    if (availableSlots.length < battery_quantity) {
+      throw new Error(
+        `Trạm không đủ pin phù hợp. Cần ${battery_quantity} pin, chỉ có ${availableSlots.length} pin sẵn sàng`
+      );
+    }
+
+    return {
+      vehicle,
+      battery_type_id,
+      battery_quantity,
+      available_slots: availableSlots
+    };
+  } catch (error) {
+    console.error('Error in getFirstTimeBatteries:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getEmptySlots,
   validateBatteryInsertion,
@@ -307,5 +372,6 @@ module.exports = {
   updateOldBatteryToSlot,
   updateNewBatteryToVehicle,
   getAvailableBatteriesForSwap,
-  createSwapRecord
+  createSwapRecord,
+  getFirstTimeBatteries
 };
