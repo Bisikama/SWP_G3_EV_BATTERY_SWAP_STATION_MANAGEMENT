@@ -44,7 +44,7 @@ module.exports = {
         allowNull: false,
         defaultValue: 'active'
       },
-      permission: {
+      role: {
         type: Sequelize.ENUM('driver', 'admin', 'staff'),
         allowNull: false
       }

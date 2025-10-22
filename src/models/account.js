@@ -70,7 +70,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 'active'
       },
-      permission: {
+      role: {
         type: DataTypes.ENUM('driver', 'admin', 'staff'),
         allowNull: false
       }
