@@ -94,7 +94,9 @@ async function createInvoiceFromSubscription(req, res) {
       invoice_number: invoice_number,
       create_date: new Date(),
       due_date: new Date(new Date().setDate(new Date().getDate() + 30)), // Hạn thanh toán = 1 tháng kể từ ngày tạo
-      total_fee: parseInt(plan.plan_fee),
+      subscription_fee: parseInt(plan.plan_fee),
+      penalty_fee: 0,
+      swap_fee: 0,
       payment_status: 'unpaid'
     });
 

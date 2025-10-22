@@ -473,7 +473,7 @@ async function checkVehicleSubscription(vehicle_id) {
  * @param {Date} datetime - Thời gian booking
  * @returns {Promise<Battery[]>} - Danh sách batteries available
  */
-async function findAvailableBatteries(station_id, battery_type_id, datetime) {
+async function findAvailableBatteries(station_id, battery_type_id) {
   // 1. Tìm tất cả cabinets tại station
   console.log('[findAvailableBatteries] Searching for cabinets at station:', station_id);
   
@@ -521,7 +521,7 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime) {
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
       current_soc: { [Op.gt]: 90 }, // Pin phải có hơn 90% SOC
-      current_soh: { [Op.gte]: 90 } // Pin phải có SOH >= 90%
+      current_soh: { [Op.gte]: 80 } // Pin phải có SOH >= 80%
     },
     include: [{
       model: CabinetSlot,
