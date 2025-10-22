@@ -91,7 +91,7 @@ module.exports = (sequelize, DataTypes) => {
   SwapRecord.beforeSave(async (swap, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(swap.swap_by);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Swap record must be associated with a driver');
     }
   });

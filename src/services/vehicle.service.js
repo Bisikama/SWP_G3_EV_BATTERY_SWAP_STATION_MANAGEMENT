@@ -73,9 +73,9 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     throw err;
   }
 
-  // Check driver permission
+  // Check driver role
   const driver = await Account.findByPk(driver_id);
-  if (!driver || driver.permission !== 'driver') {
+  if (!driver || driver.role !== 'driver') {
     const err = new Error('Only drivers can register vehicles');
     err.status = 403;
     throw err;

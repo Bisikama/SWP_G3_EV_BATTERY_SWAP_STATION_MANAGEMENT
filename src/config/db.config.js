@@ -13,7 +13,7 @@ module.exports = {
     "password": process.env.LOCAL_DB_PASS,
     "database": process.env.LOCAL_DB_NAME,
     "host": process.env.LOCAL_DB_HOST,
-    "dialect": "mssql"
+    "dialect": "postgres"
   },
   "production": {
     "username": process.env.REMOTE_DB_USER,

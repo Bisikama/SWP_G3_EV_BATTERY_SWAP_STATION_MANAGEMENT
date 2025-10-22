@@ -70,6 +70,8 @@ router.get('/:id',
  *                 type: string
  *               brand:
  *                 type: string
+ *               battery_slot:
+ *                 type: integer
  *               avg_energy_usage:
  *                 type: number
  *                 format: float
@@ -118,6 +120,8 @@ router.post('/',
  *                 type: string
  *               brand:
  *                 type: string
+ *               battery_slot:
+ *                 type: integer
  *               avg_energy_usage:
  *                 type: number
  *                 format: float
@@ -134,12 +138,6 @@ router.post('/',
  *         description: Internal server error
  */
 router.put('/:id', 
-    // [
-    //     vehicleModelRules.name.optional(),
-    //     vehicleModelRules.brand.optional(),
-    //     vehicleModelRules.avg_energy_usage.optional(),
-    //     handleValidation
-    // ],
     verifyToken, 
     authorizeRole('admin'), 
     validate(vehicleModelValidator.update),

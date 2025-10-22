@@ -57,13 +57,6 @@ module.exports = (sequelize, DataTypes) => {
           min: 0
         }
       },
-      battery_cap: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
       soh_cap: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -100,7 +93,7 @@ module.exports = (sequelize, DataTypes) => {
   SubscriptionPlan.beforeSave(async (plan, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(plan.admin_id);
-    if (!account || account.permission !== 'admin') {
+    if (!account || account.role !== 'admin') {
       throw new Error('Plan creator must be an admin');
     }
   });

@@ -5,7 +5,7 @@ const db = require('../../src/models');
 module.exports = {
   async up(queryInterface, Sequelize) {
     const admins = await queryInterface.sequelize.query(
-      `SELECT account_id FROM "Accounts" WHERE permission = 'admin' LIMIT 1`,
+      `SELECT account_id FROM "Accounts" WHERE role = 'admin' LIMIT 1`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -59,7 +59,7 @@ module.exports = {
           plan_name: 'Basic Plan',
           plan_fee: '200000.00',
           swap_fee: '8000.00', // fee_slot -> swap_fee
-          penalty_fee: '200.00',
+          penalty_fee: '50000.00',
           battery_cap: 1,
           soh_cap: '0.03',
           duration_days: 30,
@@ -71,7 +71,7 @@ module.exports = {
           plan_name: 'Standard Plan',
           plan_fee: '350000.00',
           swap_fee: '7500.00',
-          penalty_fee: '400.00',
+          penalty_fee: '80000.00',
           battery_cap: 2,
           soh_cap: '0.05',
           duration_days: 30,
@@ -83,7 +83,7 @@ module.exports = {
           plan_name: 'Premium Plan',
           plan_fee: '500000.00',
           swap_fee: '7000.00',
-          penalty_fee: '600.00',
+          penalty_fee: '100000.00',
           battery_cap: 3,
           soh_cap: '0.07',
           duration_days: 30,

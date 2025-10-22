@@ -50,6 +50,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(17),
         allowNull: false,
         unique: true
+      },
+      status: {
+        type: DataTypes.ENUM('active', 'inactive'),
+        allowNull: false,
+        defaultValue: 'active'
       }
     },
     {
@@ -64,7 +69,7 @@ module.exports = (sequelize, DataTypes) => {
   Vehicle.beforeSave(async (vehicle, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(vehicle.driver_id);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Vehicle must be associated with a driver');
     }
   });

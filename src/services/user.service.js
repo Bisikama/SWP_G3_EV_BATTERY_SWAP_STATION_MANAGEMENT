@@ -12,7 +12,7 @@ async function findAll() {
       'email',
       'fullname',
       'phone_number',
-      'permission',
+      'role',
       'status'
     ]
   });
@@ -26,7 +26,7 @@ async function findById(id) {
       'email',
       'fullname',
       'phone_number',
-      'permission',
+      'role',
       'driving_license',
       'citizen_id',
       'status'
@@ -43,7 +43,7 @@ async function findByEmail(email) {
       'email',
       'fullname',
       'phone_number',
-      'permission',
+      'role',
       'status'
     ]
   });
@@ -89,7 +89,7 @@ async function authenticate({ email, password }) {
   const payload = {
     account_id: account.account_id,
     email: account.email,
-    permission: account.permission
+    role: account.role
   };
   try {
     const token = jwt.sign(payload, secret, { expiresIn: '8h' });
@@ -102,7 +102,7 @@ async function authenticate({ email, password }) {
   }
 }
 
-async function createAccount({ email, password, fullname, phone_number, permission = 'driver' }) {
+async function createAccount({ email, password, fullname, phone_number, role = 'driver' }) {
   if (!email || !password) {
     const err = new Error('Email and password are required');
     err.status = 400;
@@ -126,7 +126,7 @@ async function createAccount({ email, password, fullname, phone_number, permissi
   let newAccount;
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, permission });
+    newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, role });
   } catch (err) {
     console.error('DB error in createAccount (create)', err);
     const e = new Error('Database error');

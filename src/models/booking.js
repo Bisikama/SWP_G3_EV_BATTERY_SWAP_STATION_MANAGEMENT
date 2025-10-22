@@ -78,7 +78,7 @@ module.exports = (sequelize, DataTypes) => {
   Booking.beforeSave(async (booking, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(booking.driver_id);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Booking must be associated with a driver');
     }
   });

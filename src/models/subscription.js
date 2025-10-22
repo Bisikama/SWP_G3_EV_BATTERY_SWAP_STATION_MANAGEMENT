@@ -75,7 +75,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true
       },
-      sub_status: {
+      status: {
         type: DataTypes.ENUM('active', 'inactive'),
         allowNull: false,
         defaultValue: 'inactive'
@@ -93,7 +93,7 @@ module.exports = (sequelize, DataTypes) => {
   Subscription.beforeSave(async (subscription, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(subscription.driver_id);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Subscription owner must be a driver');
     }
   });

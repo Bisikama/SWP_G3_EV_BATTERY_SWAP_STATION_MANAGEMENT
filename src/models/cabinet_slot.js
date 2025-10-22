@@ -48,7 +48,7 @@ module.exports = (sequelize, DataTypes) => {
         }
       },
       status: {
-        type: DataTypes.ENUM('empty', 'charging', 'charged', 'faulty'),
+        type: DataTypes.ENUM('empty', 'locked', 'charging', 'charged', 'faulty'),
         allowNull: false
       }
     },
