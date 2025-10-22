@@ -208,7 +208,7 @@ async function updateNewBatteryToVehicle(battery_id, vehicle_id) {
 
 /**
  * Service 5: Lấy danh sách các slot có pin sẵn sàng để lấy
- * (status = 'charged' hoặc 'charging' với SOC đủ cao)
+ * (status = 'charged' hoặc 'charging' với SOC >= 90%)
  * @param {number} station_id - ID của trạm
  * @param {number} battery_type_id - ID của loại pin cần lấy
  * @param {number} quantity - Số lượng pin cần lấy
@@ -236,7 +236,7 @@ async function getAvailableBatteriesForSwap(station_id, battery_type_id, quantit
           where: {
             battery_type_id: battery_type_id,
             current_soc: {
-              [Op.gte]: 80 // SOC >= 80% mới cho đổi
+              [Op.gte]: 90 // SOC >= 90% mới cho đổi (đã tăng từ 80% lên 90%)
             }
           },
           include: [
