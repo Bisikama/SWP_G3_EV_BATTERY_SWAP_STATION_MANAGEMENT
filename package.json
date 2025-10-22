@@ -8,10 +8,9 @@
     "dev": "nodemon server.js",
     "build": "echo \"No build step configured\"",
     "test": "jest",
-    "migrate:dev": "npx sequelize-cli db:migrate:undo:all --env development && npx sequelize-cli db:migrate --env development",
-    "migrate:demo": "npx sequelize-cli db:migrate:undo:all --env demo && npx sequelize-cli db:migrate --env demo",
-    "seed:dev": "npx sequelize-cli db:seed:undo:all --env development && npx sequelize-cli db:seed:all --env development",
-    "seed:demo": "npx sequelize-cli db:seed:undo:all --env demo && npx sequelize-cli db:seed:all --env demo"
+    "upgrate": "npx sequelize-cli db:migrate",
+    "downgrate": "npx sequelize-cli db:migrate:undo:all",
+    "seed": "npx sequelize-cli db:seed:all"
   },
   "keywords": [],
   "author": "",

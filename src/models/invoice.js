@@ -40,11 +40,21 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: DataTypes.NOW
       },
-      due_date: {
-        type: DataTypes.DATEONLY,
-        allowNull: false
+      plan_fee: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
       },
-      total_fee: {
+      total_swap_fee: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      total_penalty_fee: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         validate: {

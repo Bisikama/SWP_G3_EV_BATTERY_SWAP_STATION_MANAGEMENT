@@ -37,6 +37,11 @@ module.exports = {
         type: Sequelize.STRING(17),
         allowNull: false,
         unique: true
+      },
+      status: {
+        type: Sequelize.ENUM('active', 'inactive'),
+        allowNull: false,
+        defaultValue: 'active'
       }
     });
   },

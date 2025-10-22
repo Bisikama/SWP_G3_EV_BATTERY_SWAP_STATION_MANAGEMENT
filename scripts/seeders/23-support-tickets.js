@@ -5,12 +5,12 @@ const db = require('../../src/models');
 module.exports = {
   async up(queryInterface, Sequelize) {
     const drivers = await queryInterface.sequelize.query(
-      `SELECT account_id FROM "Accounts" WHERE permission = 'driver'`,
+      `SELECT account_id FROM "Accounts" WHERE role = 'driver'`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
     const admins = await queryInterface.sequelize.query(
-      `SELECT account_id FROM "Accounts" WHERE permission = 'admin'`,
+      `SELECT account_id FROM "Accounts" WHERE role = 'admin'`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 

@@ -35,10 +35,6 @@ module.exports = {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false
       },
-      battery_cap: {
-        type: Sequelize.INTEGER,
-        allowNull: false
-      },
       soh_cap: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false

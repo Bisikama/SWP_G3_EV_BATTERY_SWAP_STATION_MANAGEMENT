@@ -2,11 +2,21 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('TransferRequests', {
-      transfer_request_id: {
+    await queryInterface.createTable('TransferDetails', {
+      transfer_detail_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true
+      },
+      transfer_request_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'TransferRequests',
+          key: 'transfer_request_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
       },
       station_id: {
         type: Sequelize.INTEGER,
@@ -18,7 +28,7 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      admin_id: {
+      staff_id: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
@@ -28,42 +38,23 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL'
       },
-      staff_id: {
-        type: Sequelize.UUID,
-        allowNull: false,
-        references: {
-          model: 'Accounts',
-          key: 'account_id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
-      },
-      request_time: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW
-      },
-      approve_time: {
+      confirm_time: {
         type: Sequelize.DATE,
         allowNull: true
       },
-      request_quantity: {
+      transfer_quantity: {
         type: Sequelize.INTEGER,
         allowNull: false
       },
       status: {
-        type: Sequelize.ENUM('pending','approved','rejected'),
+        type: Sequelize.ENUM('transfering','confirmed'),
         allowNull: false,
-        defaultValue: 'pending'
-      },
-      notes: {
-        type: Sequelize.TEXT,
-        allowNull: true
+        defaultValue: 'transfering'
       }
     });
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('TransferRequests');
+    await queryInterface.dropTable('TransferDetails');
   }
 };
