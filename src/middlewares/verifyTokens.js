@@ -22,7 +22,7 @@ function verifyToken(req, res, next) {
     req.user = {
       account_id: decoded.account_id,
       email: decoded.email,
-      permission: decoded.permission,
+      role: decoded.role,
     };
 
     next();
@@ -31,14 +31,14 @@ function verifyToken(req, res, next) {
 
 function authorizeRole(...allowedRoles) {
   return (req, res, next) => {
-    if (!req.user || !req.user.permission) {
+    if (!req.user || !req.user.role) {
       throw new ApiError(403, 'Access denied: user role not found');
     }
 
-    if (!allowedRoles.includes(req.user.permission)) {
+    if (!allowedRoles.includes(req.user.role)) {
       throw new ApiError(
         403,
-        `Access denied: your role '${req.user.permission}' is not allowed. Allowed role(s): ${allowedRoles.join(', ')}`
+        `Access denied: your role '${req.user.role}' is not allowed. Allowed role(s): ${allowedRoles.join(', ')}`
       );
     }
 

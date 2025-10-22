@@ -81,10 +81,10 @@ const getMyBookings = asyncHandler(async (req, res) => {
 const getBookingById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const driver_id = req.user.account_id;
-  const permission = req.user.permission;
+  const role = req.user.role;
 
   // Admin có thể xem tất cả bookings, driver chỉ xem của mình
-  const checkOwnership = permission !== 'admin' ? driver_id : null;
+  const checkOwnership = role !== 'admin' ? driver_id : null;
 
   const booking = await bookingService.getBookingById(id, checkOwnership);
 

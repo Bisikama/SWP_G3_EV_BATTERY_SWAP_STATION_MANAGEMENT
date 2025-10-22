@@ -46,6 +46,13 @@ module.exports = router;
 
 /**
  * @swagger
+ * tags:
+ *   - name: Subscription Plans
+ *     description: Manage subscription plans
+ */
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     SubscriptionPlan:
@@ -65,13 +72,21 @@ module.exports = router;
  *           type: number
  *           format: float
  *           example: 49.99
- *         battery_cap:
- *           type: integer
- *           example: 100
- *         usage_cap:
+ *         swap_fee:
  *           type: number
  *           format: float
- *           example: 200.5
+ *           example: 9.99
+ *         penalty_fee:
+ *           type: number
+ *           format: float
+ *           example: 49.99
+ *         soh_cap:
+ *           type: number
+ *           format: float
+ *           example: 0.1
+ *         duration_days:
+ *           type: integer
+ *           example: 30
  *         description:
  *           type: string
  *           example: "This is a basic subscription plan"
@@ -82,8 +97,10 @@ module.exports = router;
  *       type: object
  *       required:
  *         - plan_fee
- *         - battery_cap
- *         - usage_cap
+ *         - swap_fee
+ *         - penalty_fee
+ *         - soh_cap
+ *         - duration_days
  *       properties:
  *         plan_name:
  *           type: string
@@ -92,16 +109,22 @@ module.exports = router;
  *         plan_fee:
  *           type: number
  *           format: float
- *           minimum: 0
  *           example: 49.99
- *         battery_cap:
- *           type: integer
- *           minimum: 0
- *           example: 100
- *         usage_cap:
+ *         swap_fee:
  *           type: number
- *           minimum: 0
- *           example: 200.5
+ *           format: float
+ *           example: 9.99
+ *         penalty_fee:
+ *           type: number
+ *           format: float
+ *           example: 49.99
+ *         soh_cap:
+ *           type: number
+ *           format: float
+ *           example: 0.1
+ *         duration_days:
+ *           type: integer
+ *           example: 30
  *         description:
  *           type: string
  *           example: "This is a basic subscription plan"
@@ -114,20 +137,26 @@ module.exports = router;
  *         plan_name:
  *           type: string
  *           maxLength: 100
- *           example: "Updated Plan Name"
+ *           example: "Updated Plan"
  *         plan_fee:
  *           type: number
  *           format: float
- *           minimum: 0
  *           example: 59.99
- *         battery_cap:
- *           type: integer
- *           minimum: 0
- *           example: 120
- *         usage_cap:
+ *         swap_fee:
  *           type: number
- *           minimum: 0
- *           example: 250.0
+ *           format: float
+ *           example: 9.99
+ *         penalty_fee:
+ *           type: number
+ *           format: float
+ *           example: 49.99
+ *         soh_cap:
+ *           type: number
+ *           format: float
+ *           example: 0.1
+ *         duration_days:
+ *           type: integer
+ *           example: 30
  *         description:
  *           type: string
  *           example: "Updated description"
@@ -149,52 +178,10 @@ module.exports = router;
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 payload:
- *                   type: object
- *                   properties:
- *                     subscriptionPlans:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/SubscriptionPlan'
- */
-
-/**
- * @swagger
- * /api/subscription-plan/{id}:
- *   get:
- *     tags: [Subscription Plans]
- *     summary: Get subscription plan by ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Subscription plan ID
- *     responses:
- *       200:
- *         description: Subscription plan found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 payload:
- *                   type: object
- *                   properties:
- *                     subscriptionPlan:
- *                       $ref: '#/components/schemas/SubscriptionPlan'
- *       404:
- *         description: Subscription plan not found
- */
-
-/**
- * @swagger
- * /api/subscription-plan:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/SubscriptionPlan'
  *   post:
  *     tags: [Subscription Plans]
  *     summary: Create a new subscription plan
@@ -216,23 +203,36 @@ module.exports = router;
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 payload:
- *                   type: object
- *                   properties:
- *                     subscriptionPlan:
- *                       $ref: '#/components/schemas/SubscriptionPlan'
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
+ *                   $ref: '#/components/schemas/SubscriptionPlan'
  */
 
 /**
  * @swagger
  * /api/subscription-plan/{id}:
+ *   get:
+ *     tags: [Subscription Plans]
+ *     summary: Get a subscription plan by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Subscription plan found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   $ref: '#/components/schemas/SubscriptionPlan'
+ *       404:
+ *         description: Subscription plan not found
  *   put:
  *     tags: [Subscription Plans]
  *     summary: Update a subscription plan
@@ -244,7 +244,6 @@ module.exports = router;
  *         required: true
  *         schema:
  *           type: integer
- *         description: Subscription plan ID
  *     requestBody:
  *       required: true
  *       content:
@@ -262,62 +261,7 @@ module.exports = router;
  *                 success:
  *                   type: boolean
  *                 payload:
- *                   type: object
- *                   properties:
- *                     subscriptionPlan:
- *                       $ref: '#/components/schemas/SubscriptionPlan'
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: Subscription plan not found
- */
-
-/**
- * @swagger
- * /api/subscription-plan/{id}/status:
- *   put:
- *     tags: [Subscription Plans]
- *     summary: Toggle subscription plan status
- *     description: Activate or deactivate a subscription plan by toggling its is_active field.
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Subscription plan ID
- *     responses:
- *       200:
- *         description: Status updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 payload:
- *                   type: object
- *                   properties:
- *                     subscriptionPlan:
- *                       $ref: '#/components/schemas/SubscriptionPlan'
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: Subscription plan not found
- */
-
-/**
- * @swagger
- * /api/subscription-plan/{id}:
+ *                   $ref: '#/components/schemas/SubscriptionPlan'
  *   delete:
  *     tags: [Subscription Plans]
  *     summary: Delete a subscription plan
@@ -329,10 +273,9 @@ module.exports = router;
  *         required: true
  *         schema:
  *           type: integer
- *         description: Subscription plan ID
  *     responses:
  *       200:
- *         description: Subscription plan deleted successfully
+ *         description: Subscription plan deleted
  *         content:
  *           application/json:
  *             schema:
@@ -341,15 +284,29 @@ module.exports = router;
  *                 success:
  *                   type: boolean
  *                 payload:
- *                   type: object
- *                   properties:
- *                     subscriptionPlan:
- *                       $ref: '#/components/schemas/SubscriptionPlan'
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: Subscription plan not found
+ *                   $ref: '#/components/schemas/SubscriptionPlan'
+ * /api/subscription-plan/{id}/status:
+ *   put:
+ *     tags: [Subscription Plans]
+ *     summary: Toggle subscription plan status
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Status toggled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   $ref: '#/components/schemas/SubscriptionPlan'
  */
-
