@@ -5,6 +5,7 @@ const cors = require('./src/config/cors.config');
 require('dotenv').config();
 
 const errorHandler = require('./src/middlewares/errorHandler');
+const { startCronJobs, stopCronJobs } = require('./src/config/cron.config');
 
 const userRoutes = require('./src/routes/user.route');
 const vehicleRoutes = require('./src/routes/vehicles.route');
@@ -46,6 +47,27 @@ app.use(errorHandler);
 
 // start server
 const port = process.env.PORT;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
+  
+  // ✅ Khởi động cron jobs sau khi server start
+  const cronJobs = startCronJobs();
+  
+  // ✅ Graceful shutdown: Dừng cron jobs khi server tắt
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    stopCronJobs(cronJobs);
+    server.close(() => {
+      console.log('HTTP server closed');
+    });
+  });
+  
+  process.on('SIGINT', () => {
+    console.log('SIGINT signal received: closing HTTP server');
+    stopCronJobs(cronJobs);
+    server.close(() => {
+      console.log('HTTP server closed');
+      process.exit(0);
+    });
+  });
 });
