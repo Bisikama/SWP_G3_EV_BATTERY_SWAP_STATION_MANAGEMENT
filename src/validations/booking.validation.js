@@ -13,51 +13,35 @@ const { body, param, query } = require('express-validator');
  * POST /api/booking
  */
 const createBooking = [
-  body('vehicle_id')
-    .notEmpty().withMessage('Vehicle ID is required')
-    .isUUID().withMessage('Vehicle ID must be a valid UUID'),
-
-  body('station_id')
-    .notEmpty().withMessage('Station ID is required')
-    .isInt({ gt: 0 }).withMessage('Station ID must be a positive integer'),
-
   body('scheduled_start_time')
-    .notEmpty().withMessage('Scheduled start time is required')
-    .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
-    .custom((value) => {
-      const inputDate = new Date(value);
-      const now = new Date();
+  .notEmpty().withMessage('Scheduled start time is required')
+  .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
+  .custom((value) => {
+    const inputDate = new Date(value);
+    const now = new Date();
 
-      // Kiểm tra không được là thời gian quá khứ
-      if (inputDate <= now) {
-        throw new Error('Scheduled start time must be in the future');
-      }
+    // Không được đặt quá khứ
+    if (inputDate <= now) {
+      throw new Error('Scheduled start time must be in the future');
+    }
 
-      // Chỉ cho đặt trong ngày hôm nay (so sánh ngày/tháng/năm theo local time)
-      const inputDay = inputDate.getDate();
-      const inputMonth = inputDate.getMonth();
-      const inputYear = inputDate.getFullYear();
-      
-      const todayDay = now.getDate();
-      const todayMonth = now.getMonth();
-      const todayYear = now.getFullYear();
+    // Lấy phần UTC của input
+    const inputYear = inputDate.getUTCFullYear();
+    const inputMonth = inputDate.getUTCMonth();
+    const inputDay = inputDate.getUTCDate();
 
-      // Debug log
-      console.log('\n=== 🔍 BOOKING TIME VALIDATION ===');
-      console.log('Input ISO:', value);
-      console.log('Input Local:', inputDate.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
-      console.log('Now Local:', now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
-      console.log('Input Date:', `${inputDay}/${inputMonth + 1}/${inputYear}`);
-      console.log('Today Date:', `${todayDay}/${todayMonth + 1}/${todayYear}`);
-      console.log('Is Same Day?:', inputDay === todayDay && inputMonth === todayMonth && inputYear === todayYear);
-      console.log('=== END DEBUG ===\n');
+    // Lấy phần UTC của bây giờ
+    const nowYear = now.getUTCFullYear();
+    const nowMonth = now.getUTCMonth();
+    const nowDay = now.getUTCDate();
 
-      if (inputDay !== todayDay || inputMonth !== todayMonth || inputYear !== todayYear) {
-        throw new Error(`Scheduled start time must be within today (${todayDay}/${todayMonth + 1}/${todayYear})`);
-      }
+    // So sánh ngày theo UTC
+    if (inputYear !== nowYear || inputMonth !== nowMonth || inputDay !== nowDay) {
+      throw new Error(`Scheduled start time must be within today (UTC: ${nowYear}-${nowMonth + 1}-${nowDay})`);
+    }
 
-      return true;
-    }),
+    return true;
+  }),
 
   body('battery_count')
     .optional()
