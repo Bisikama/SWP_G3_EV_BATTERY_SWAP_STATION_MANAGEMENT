@@ -27,21 +27,35 @@ const createBooking = [
     .custom((value) => {
       const inputDate = new Date(value);
       const now = new Date();
-      
+
       // Kiểm tra không được là thời gian quá khứ
       if (inputDate <= now) {
         throw new Error('Scheduled start time must be in the future');
       }
+
+      // Chỉ cho đặt trong ngày hôm nay (so sánh ngày/tháng/năm theo local time)
+      const inputDay = inputDate.getDate();
+      const inputMonth = inputDate.getMonth();
+      const inputYear = inputDate.getFullYear();
       
-      // Chỉ cho đặt trong ngày hôm nay (theo local time của server)
-      // So sánh theo ngày, tháng, năm (local) thay vì timestamp
-      const inputLocalDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
-      const todayLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      if (inputLocalDate.getTime() !== todayLocalDate.getTime()) {
-        throw new Error('Scheduled start time must be within today');
+      const todayDay = now.getDate();
+      const todayMonth = now.getMonth();
+      const todayYear = now.getFullYear();
+
+      // Debug log
+      console.log('\n=== 🔍 BOOKING TIME VALIDATION ===');
+      console.log('Input ISO:', value);
+      console.log('Input Local:', inputDate.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
+      console.log('Now Local:', now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }));
+      console.log('Input Date:', `${inputDay}/${inputMonth + 1}/${inputYear}`);
+      console.log('Today Date:', `${todayDay}/${todayMonth + 1}/${todayYear}`);
+      console.log('Is Same Day?:', inputDay === todayDay && inputMonth === todayMonth && inputYear === todayYear);
+      console.log('=== END DEBUG ===\n');
+
+      if (inputDay !== todayDay || inputMonth !== todayMonth || inputYear !== todayYear) {
+        throw new Error(`Scheduled start time must be within today (${todayDay}/${todayMonth + 1}/${todayYear})`);
       }
-      
+
       return true;
     }),
 
@@ -66,21 +80,25 @@ const updateBooking = [
     .custom((value) => {
       const inputDate = new Date(value);
       const now = new Date();
-      
+
       // Kiểm tra không được là thời gian quá khứ
       if (inputDate <= now) {
         throw new Error('Scheduled start time must be in the future');
       }
+
+      // Chỉ cho đặt trong ngày hôm nay (so sánh ngày/tháng/năm theo local time)
+      const inputDay = inputDate.getDate();
+      const inputMonth = inputDate.getMonth();
+      const inputYear = inputDate.getFullYear();
       
-      // Chỉ cho đặt trong ngày hôm nay (theo local time của server)
-      // So sánh theo ngày, tháng, năm (local) thay vì timestamp
-      const inputLocalDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
-      const todayLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      if (inputLocalDate.getTime() !== todayLocalDate.getTime()) {
-        throw new Error('Scheduled start time must be within today');
+      const todayDay = now.getDate();
+      const todayMonth = now.getMonth();
+      const todayYear = now.getFullYear();
+
+      if (inputDay !== todayDay || inputMonth !== todayMonth || inputYear !== todayYear) {
+        throw new Error(`Scheduled start time must be within today (${todayDay}/${todayMonth + 1}/${todayYear})`);
       }
-      
+
       return true;
     })
 ];
