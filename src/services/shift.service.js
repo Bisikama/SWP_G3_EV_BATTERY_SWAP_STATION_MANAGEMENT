@@ -38,6 +38,7 @@ async function createShift(user, data) {
       ]
     }
   });
+  console.log('overlappingShift:', overlappingShift);
 	if (overlappingShift) {
     throw new ApiError(400, 'Shift has already been taken in this time range at this station');
   }
