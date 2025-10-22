@@ -79,7 +79,7 @@ module.exports = (sequelize, DataTypes) => {
   Invoice.beforeSave(async (invoice, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(invoice.driver_id);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Invoice must be associated with a driver');
     }
   });

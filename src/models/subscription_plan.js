@@ -93,7 +93,7 @@ module.exports = (sequelize, DataTypes) => {
   SubscriptionPlan.beforeSave(async (plan, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(plan.admin_id);
-    if (!account || account.permission !== 'admin') {
+    if (!account || account.role !== 'admin') {
       throw new Error('Plan creator must be an admin');
     }
   });

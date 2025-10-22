@@ -72,14 +72,14 @@ module.exports = (sequelize, DataTypes) => {
   Shift.beforeSave(async (shift, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(shift.admin_id);
-    if (!account || account.permission !== 'admin') {
+    if (!account || account.role !== 'admin') {
       throw new Error('Shift must be assigned by an admin');
     }
   });
   Shift.beforeSave(async (shift, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(shift.staff_id);
-    if (!account || account.permission !== 'staff') {
+    if (!account || account.role !== 'staff') {
       throw new Error('Shift must be assigned to a staff');
     }
   });

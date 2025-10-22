@@ -29,7 +29,6 @@ async function findByDriver(req, res) {
 async function findActiveByVehicle(req, res) {
   const { vehicle_id } = req.params;
   const sub = await subscriptionService.findActiveSubscriptionByVehicle(req.user, vehicle_id);
-  if (!sub) throw new Error('No active subscription found for this vehicle');
   return res.status(200).json({ success: true, payload: { subscription: sub } });
 }
 

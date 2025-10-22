@@ -22,6 +22,10 @@ const create = [
     .isString().withMessage('brand must be a string')
     .isLength({ max: 50 }).withMessage('brand max length is 50'),
 
+  body('battery_slot')
+    .exists({ values: 'null' }).withMessage('battery_slot is required')
+    .isInt({ min: 1 }).withMessage('battery_slot must be an integer greater than 0'),
+
   body('avg_energy_usage')
     .exists({ values: 'null' }).withMessage('avg_energy_usage is required')
     .isFloat({ gt: 0 }).withMessage('avg_energy_usage must be a positive decimal number')
@@ -45,6 +49,10 @@ const update = [
     .optional()
     .isString().withMessage('brand must be a string')
     .isLength({ max: 50 }).withMessage('brand max length is 50'),
+
+  body('battery_slot')
+    .optional()
+    .isInt({ min: 1 }).withMessage('battery_slot must be an integer greater than 0'),
 
   body('avg_energy_usage')
     .optional()
