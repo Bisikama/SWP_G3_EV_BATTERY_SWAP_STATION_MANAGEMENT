@@ -17,55 +17,64 @@ module.exports = {
         battery_type_id: byCode['LFP-40'],
         name: 'Ludo',
         brand: 'VinFast',
-        avg_energy_usage: 2.10
+        avg_energy_usage: 2.10,
+        battery_slot: 2
       },
       {
         battery_type_id: byCode['LFP-40'],
         name: 'Impes',
         brand: 'VinFast',
-        avg_energy_usage: 2.20
+        avg_energy_usage: 2.20,
+        battery_slot: 2
+      },
+      {
+        battery_type_id: byCode['NMC-50'],
+        name: 'Klara S',
+        brand: 'VinFast',
+        avg_energy_usage: 2.50,
+        battery_slot: 2
       },
       {
         battery_type_id: byCode['LFP-60'],
-        name: 'Klara S',
+        name: 'Theon S',
         brand: 'VinFast',
-        avg_energy_usage: 2.50
-      },
-      {
-        battery_type_id: byCode['NMC-75'],
-        name: 'Theon',
-        brand: 'VinFast',
-        avg_energy_usage: 2.80
+        avg_energy_usage: 2.90,
+        battery_slot: 1
       },
       {
         battery_type_id: byCode['LFP-60'],
         name: 'Vento',
         brand: 'VinFast',
-        avg_energy_usage: 2.60
+        avg_energy_usage: 2.60,
+        battery_slot: 1
       },
       {
-        battery_type_id: byCode['NMC-75'],
-        name: 'Theon S',
+        battery_type_id: byCode['LFP-60'],
+        name: 'Theon',
         brand: 'VinFast',
-        avg_energy_usage: 2.90
+        avg_energy_usage: 2.80,
+        battery_slot: 2
       },
       {
         battery_type_id: byCode['LFP-60'],
         name: 'Vento S',
         brand: 'VinFast',
-        avg_energy_usage: 2.70
+        avg_energy_usage: 2.70,
+        battery_slot: 1
       },
       {
         battery_type_id: byCode['LFP-60'],
         name: 'Feliz S',
         brand: 'VinFast',
-        avg_energy_usage: 2.40
+        avg_energy_usage: 2.40,
+        battery_slot: 1
       },
       {
         battery_type_id: byCode['LFP-40'],
         name: 'Evo200',
         brand: 'VinFast',
-        avg_energy_usage: 2.30
+        avg_energy_usage: 2.30,
+        battery_slot: 1
       }
     ], { validate: true });
   },

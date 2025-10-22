@@ -28,11 +28,21 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.NOW
       },
-      due_date: {
-        type: Sequelize.DATEONLY,
-        allowNull: false
+      plan_fee: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        validate: {
+          min: 0
+        }
       },
-      total_fee: {
+      total_swap_fee: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
+      total_penalty_fee: {
         type: Sequelize.INTEGER,
         allowNull: false,
         validate: {

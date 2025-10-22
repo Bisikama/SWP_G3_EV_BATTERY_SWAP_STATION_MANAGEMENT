@@ -18,7 +18,7 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      source_station_id: {
+      station_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
@@ -38,7 +38,7 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL'
       },
-      complete_time: {
+      confirm_time: {
         type: Sequelize.DATE,
         allowNull: true
       },
@@ -47,7 +47,7 @@ module.exports = {
         allowNull: false
       },
       status: {
-        type: Sequelize.ENUM('transfering','completed'),
+        type: Sequelize.ENUM('transfering','confirmed'),
         allowNull: false,
         defaultValue: 'transfering'
       }

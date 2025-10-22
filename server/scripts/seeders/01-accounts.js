@@ -15,7 +15,7 @@ module.exports = {
         phone_number: '+84901234567',
         email: 'john.admin@evswap.com',
         status: 'active',
-        permission: 'admin'
+        role: 'admin'
       },
       {
         password_hash: hashedPassword,
@@ -23,7 +23,7 @@ module.exports = {
         phone_number: '+84901234568',
         email: 'sarah.admin@evswap.com',
         status: 'active',
-        permission: 'admin'
+        role: 'admin'
       },
       
       // Staff
@@ -33,7 +33,7 @@ module.exports = {
         phone_number: '+84901234571',
         email: 'tom.staff@evswap.com',
         status: 'active',
-        permission: 'staff'
+        role: 'staff'
       },
       {
         password_hash: hashedPassword,
@@ -41,7 +41,7 @@ module.exports = {
         phone_number: '+84901234572',
         email: 'anna.staff@evswap.com',
         status: 'active',
-        permission: 'staff'
+        role: 'staff'
       },
       {
         password_hash: hashedPassword,
@@ -49,7 +49,7 @@ module.exports = {
         phone_number: '+84901234573',
         email: 'kevin.staff@evswap.com',
         status: 'active',
-        permission: 'staff'
+        role: 'staff'
       },
       
       // Drivers
@@ -59,7 +59,7 @@ module.exports = {
         phone_number: '+84912345678',
         email: 'nguyen.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       },
       {
         password_hash: hashedPassword,
@@ -67,7 +67,7 @@ module.exports = {
         phone_number: '+84912345679',
         email: 'tran.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       },
       {
         password_hash: hashedPassword,
@@ -75,7 +75,7 @@ module.exports = {
         phone_number: '+84912345680',
         email: 'le.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       },
       {
         password_hash: hashedPassword,
@@ -83,7 +83,7 @@ module.exports = {
         phone_number: '+84912345681',
         email: 'pham.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       },
       {
         password_hash: hashedPassword,
@@ -91,7 +91,7 @@ module.exports = {
         phone_number: '+84912345682',
         email: 'hoang.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       },
       {
         password_hash: hashedPassword,
@@ -99,7 +99,7 @@ module.exports = {
         phone_number: '+84912345683',
         email: 'vu.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       },
       {
         password_hash: hashedPassword,
@@ -107,7 +107,7 @@ module.exports = {
         phone_number: '+84912345684',
         email: 'do.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       },
       {
         password_hash: hashedPassword,
@@ -115,11 +115,11 @@ module.exports = {
         phone_number: '+84912345685',
         email: 'ngo.driver@gmail.com',
         status: 'active',
-        permission: 'driver'
+        role: 'driver'
       }
     ];
 
-  await db.Account.bulkCreate(accounts, { validate: true, ignoreDuplicates: true });
+  await db.Account.bulkCreate(accounts, { validate: true });
   },
 
   async down(queryInterface, Sequelize) {

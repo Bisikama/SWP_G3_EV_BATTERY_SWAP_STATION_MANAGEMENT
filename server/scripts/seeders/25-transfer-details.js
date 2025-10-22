@@ -5,7 +5,7 @@ const db = require('../../src/models');
 module.exports = {
   async up(queryInterface, Sequelize) {
     const requests = await queryInterface.sequelize.query(
-      `SELECT transfer_request_id, destination_station_id FROM "TransferRequests" ORDER BY request_time LIMIT 3`,
+      `SELECT transfer_request_id, station_id FROM "TransferRequests" ORDER BY request_time LIMIT 3`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -25,9 +25,9 @@ module.exports = {
 
       details.push({
         transfer_request_id: requests[i].transfer_request_id,
-        source_station_id: source.station_id,
+        station_id: source.station_id,
         staff_id: null,
-        complete_time: null,
+        confirm_time: null,
         transfer_quantity: 3,
         status: 'transfering'
       });

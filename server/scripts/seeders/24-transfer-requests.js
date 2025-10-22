@@ -6,7 +6,7 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     // pick a staff account and a destination station
     const staffRows = await queryInterface.sequelize.query(
-      `SELECT account_id FROM "Accounts" WHERE permission = 'staff' LIMIT 3`,
+      `SELECT account_id FROM "Accounts" WHERE role = 'staff' LIMIT 3`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -20,7 +20,7 @@ module.exports = {
     const requests = [];
     for (let i = 0; i < Math.min(3, staffRows.length); i++) {
       requests.push({
-        destination_station_id: stations[i % stations.length].station_id,
+        station_id: stations[i % stations.length].station_id,
         admin_id: null,
         staff_id: staffRows[i].account_id,
         request_time: new Date(),

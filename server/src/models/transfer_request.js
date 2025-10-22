@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         this.hasMany(models.TransferDetail, { as: 'transferDetails', foreignKey: 'transfer_request_id' })
         this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
         this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
-        this.belongsTo(models.Station, { as: 'destinationStation', foreignKey: 'destination_station_id' });
+        this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
     }
   }
   TransferRequest.init(
@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true
       },
-      destination_station_id: {
+      station_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {

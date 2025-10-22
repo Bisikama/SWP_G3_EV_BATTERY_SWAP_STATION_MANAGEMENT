@@ -8,7 +8,7 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true
       },
-      destination_station_id: {
+      station_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {

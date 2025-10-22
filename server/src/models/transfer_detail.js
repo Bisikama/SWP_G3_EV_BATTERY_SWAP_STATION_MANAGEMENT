@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         this.belongsToMany(models.Battery, { through: 'TransferBatteryDetail', as: 'batteries', foreignKey: 'transfer_detail_id', otherKey: 'battery_id' })
         this.belongsTo(models.TransferRequest, { as: 'transferRequest', foreignKey: 'transfer_request_id' });
         this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
-        this.belongsTo(models.Station, { as: 'station', foreignKey: 'source_station_id' });
+        this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
     }
   }
   TransferDetail.init(
@@ -31,12 +31,12 @@ module.exports = (sequelize, DataTypes) => {
           key: 'transfer_request_id'
         }
       },
-      source_station_id: {
+      station_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
           model: 'Stations',
-          key: 'source_station_id'
+          key: 'station_id'
         }
       },
       staff_id: {
@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
           key: 'account_id'
         }
       },
-      complete_time: {
+      confirm_time: {
         type: DataTypes.DATE,
         allowNull: true
       },
@@ -58,7 +58,7 @@ module.exports = (sequelize, DataTypes) => {
       status: {
         type: DataTypes.ENUM(
           'transfering',
-          'completed'
+          'confirmed'
         ),
         allowNull: false,
         defaultValue: 'transfering'

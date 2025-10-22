@@ -57,13 +57,6 @@ module.exports = (sequelize, DataTypes) => {
           min: 0
         }
       },
-      battery_cap: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
       soh_cap: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,

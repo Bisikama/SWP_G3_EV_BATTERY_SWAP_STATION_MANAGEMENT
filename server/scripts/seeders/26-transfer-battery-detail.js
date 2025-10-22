@@ -5,7 +5,7 @@ const db = require('../../src/models');
 module.exports = {
   async up(queryInterface, Sequelize) {
     const details = await queryInterface.sequelize.query(
-      `SELECT transfer_detail_id, source_station_id FROM "TransferDetails" ORDER BY transfer_detail_id LIMIT 3`,
+      `SELECT transfer_detail_id, station_id FROM "TransferDetails" ORDER BY transfer_detail_id LIMIT 3`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -13,7 +13,7 @@ module.exports = {
 
     // For each detail, pick some batteries that currently belong to the source station (slot not null)
     for (let i = 0; i < details.length; i++) {
-      const source = details[i].source_station_id;
+      const source = details[i].station_id;
       const batteries = await queryInterface.sequelize.query(
         `SELECT battery_id FROM "Batteries" WHERE slot_id IS NOT NULL LIMIT 3`,
         { type: queryInterface.sequelize.QueryTypes.SELECT }
