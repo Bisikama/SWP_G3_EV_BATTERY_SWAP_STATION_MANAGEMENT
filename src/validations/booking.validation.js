@@ -14,34 +14,43 @@ const { body, param, query } = require('express-validator');
  */
 const createBooking = [
   body('scheduled_start_time')
-  .notEmpty().withMessage('Scheduled start time is required')
-  .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
-  .custom((value) => {
-    const inputDate = new Date(value);
-    const now = new Date();
+    .notEmpty().withMessage('Scheduled start time is required')
+    .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
+    .custom((value) => {
+      const inputDate = new Date(value);
+      const now = new Date();
 
-    // Không được đặt quá khứ
-    if (inputDate <= now) {
-      throw new Error('Scheduled start time must be in the future');
-    }
+      // Không được đặt quá khứ
+      if (inputDate <= now) {
+        throw new Error('Scheduled start time must be in the future');
+      }
 
-    // Lấy phần UTC của input
-    const inputYear = inputDate.getUTCFullYear();
-    const inputMonth = inputDate.getUTCMonth();
-    const inputDay = inputDate.getUTCDate();
+      // Lấy phần UTC của input
+      const inputYear = inputDate.getFullYear();
+      const inputMonth = inputDate.getMonth();
+      const inputDay = inputDate.getDate();
 
-    // Lấy phần UTC của bây giờ
-    const nowYear = now.getUTCFullYear();
-    const nowMonth = now.getUTCMonth();
-    const nowDay = now.getUTCDate();
+      // Lấy phần UTC của bây giờ
+      const nowYear = now.getFullYear();
+      const nowMonth = now.getMonth();
+      const nowDay = now.getDate();
 
-    // So sánh ngày theo UTC
-    if (inputYear !== nowYear || inputMonth !== nowMonth || inputDay !== nowDay) {
-      throw new Error(`Scheduled start time must be within today (UTC: ${nowYear}-${nowMonth + 1}-${nowDay})`);
-    }
+      // Debug log
+      console.log('\n🔍 Booking Time Validation (Vietnam GMT+7):');
+      console.log('   Input:', value.toString());
+      console.log('   Parsed Date:', inputDate.toString());
+      console.log('   Input Date (VN):', `${inputDay}/${inputMonth + 1}/${inputYear}`);
+      console.log('   Today Date (VN):', `${nowDay}/${nowMonth + 1}/${nowYear}`);
+      console.log('   Is Same Day?:', inputDay === nowDay && inputMonth === nowMonth && inputYear === nowYear);
+      console.log('=========================\n');
 
-    return true;
-  }),
+      // So sánh ngày theo UTC
+      if (inputYear !== nowYear || inputMonth !== nowMonth || inputDay !== nowDay) {
+        throw new Error(`Scheduled start time must be within today (${nowYear}-${nowMonth + 1}-${nowDay})`);
+      }
+
+      return true;
+    }),
 
   body('battery_count')
     .optional()
@@ -74,7 +83,7 @@ const updateBooking = [
       const inputDay = inputDate.getDate();
       const inputMonth = inputDate.getMonth();
       const inputYear = inputDate.getFullYear();
-      
+
       const todayDay = now.getDate();
       const todayMonth = now.getMonth();
       const todayYear = now.getFullYear();

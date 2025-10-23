@@ -52,7 +52,7 @@ const { validate } = require('../middlewares/validateHandler');
  *               scheduled_start_time:
  *                 type: string
  *                 format: date-time
- *                 example: 2025-10-20T14:00:00Z
+ *                 example: 2025-10-20T14:00:00
  *                 description: Scheduled start time (must be in the future, within today)
  *               battery_count:
  *                 type: integer
