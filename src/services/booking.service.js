@@ -232,7 +232,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       where: {
         battery_id: { [Op.in]: batteryIds },
         current_soc: { [Op.gt]: 90 },
-        current_soh: { [Op.gte]: 90 }
+        current_soh: { [Op.gte]: 70 } // Pin phải có SOH >= 70% (đồng nhất với findAvailableBatteries)
       },
       lock: t.LOCK.UPDATE,
       transaction: t
@@ -662,7 +662,7 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
       current_soc: { [Op.gt]: 90 }, // Pin phải có hơn 90% SOC
-      current_soh: { [Op.gte]: 80 } // Pin phải có SOH >= 80%
+      current_soh: { [Op.gte]: 70 } // Pin phải có SOH >= 70%
     }
   };
 
