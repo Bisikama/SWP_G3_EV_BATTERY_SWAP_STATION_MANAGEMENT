@@ -42,6 +42,11 @@ module.exports = {
         type: Sequelize.ENUM('active', 'inactive'),
         allowNull: false,
         defaultValue: 'active'
+      },
+      take_first: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
       }
     });
   },
