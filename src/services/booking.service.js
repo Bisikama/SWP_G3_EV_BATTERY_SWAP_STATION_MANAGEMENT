@@ -102,11 +102,11 @@ function formatBookingResponse(booking) {
  * Tạo booking mới với tất cả validations
  * 
  * @param {string} driver_id - ID của driver (từ JWT token)
- * @param {object} bookingData - { vehicle_id, station_id, scheduled_start_time }
+ * @param {object} bookingData - { vehicle_id, station_id, scheduled_start_time, battery_quantity }
  * @returns {Promise<Booking>} - Booking vừa tạo (kèm relations)
  * @throws {Error} - Lỗi với status code
  */
-async function createBooking(driver_id, { vehicle_id, station_id, scheduled_start_time }) {
+async function createBooking(driver_id, { vehicle_id, station_id, scheduled_start_time, battery_quantity = 1 }) {
   // ============================================
   // TRANSACTION WRAPPER - Fix Race Condition
   // ============================================
@@ -121,8 +121,12 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       throw err;
     }
 
-    // Note: battery_count đã bị loại bỏ - mỗi booking chỉ đổi 1 viên pin
-    const battery_count = 1;
+    // Validate battery_quantity
+    if (!Number.isInteger(battery_quantity) || battery_quantity < 1) {
+      const err = new Error('Battery quantity must be a positive integer');
+      err.status = 400;
+      throw err;
+    }
 
     // 2. Check vehicle exists (WITH LOCK - no include to avoid JOIN lock issue)
     const vehicle = await Vehicle.findByPk(vehicle_id, {
@@ -154,6 +158,17 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
 
     // Attach model to vehicle for consistent object structure
     vehicle.model = vehicleModel;
+
+    // 2b. Validate battery_quantity against vehicle's battery_slot capacity
+    if (battery_quantity > vehicleModel.battery_slot) {
+      const err = new Error(
+        `This vehicle (${vehicleModel.brand} ${vehicleModel.name}) can only swap up to ${vehicleModel.battery_slot} ${vehicleModel.battery_slot === 1 ? 'battery' : 'batteries'} at once. You requested ${battery_quantity}.`
+      );
+      err.status = 422;
+      throw err;
+    }
+
+    console.log(`[DEBUG] Battery swap request: ${battery_quantity}/${vehicleModel.battery_slot} batteries for ${vehicleModel.brand} ${vehicleModel.name}`);
 
     // 3. Check vehicle ownership
     if (vehicle.driver_id !== driver_id) {
@@ -198,7 +213,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
     
     let availableBatteries;
     try {
-      console.log('[DEBUG] Searching for available batteries...', { station_id, battery_type_id });
+      console.log('[DEBUG] Searching for available batteries...', { station_id, battery_type_id, requested: battery_quantity });
       availableBatteries = await findAvailableBatteries(station_id, battery_type_id, startTime, t);
       console.log('[DEBUG] Found batteries:', availableBatteries.length);
     } catch (error) {
@@ -207,8 +222,8 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       throw error;
     }
 
-    if (availableBatteries.length < battery_count) {
-      const err = new Error(`Not enough available batteries at this station. Available: ${availableBatteries.length}, Requested: ${battery_count}`);
+    if (availableBatteries.length < battery_quantity) {
+      const err = new Error(`Not enough available batteries at this station. Available: ${availableBatteries.length}, Requested: ${battery_quantity}`);
       err.status = 422;
       throw err;
     }
@@ -224,7 +239,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
     }, { transaction: t });
 
     // 10. Select batteries and double-check availability (CONFLICT DETECTION)
-    const selectedBatteries = availableBatteries.slice(0, battery_count);
+    const selectedBatteries = availableBatteries.slice(0, battery_quantity);
     
     // Re-verify batteries are still available with lock
     const batteryIds = selectedBatteries.map(b => b.battery_id);
@@ -238,11 +253,13 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       transaction: t
     });
 
-    if (lockedBatteries.length < battery_count) {
-      const err = new Error('Battery availability changed during booking. Please try again.');
+    if (lockedBatteries.length < battery_quantity) {
+      const err = new Error(`Battery availability changed during booking. Please try again. (Expected: ${battery_quantity}, Got: ${lockedBatteries.length})`);
       err.status = 409; // Conflict
       throw err;
     }
+
+    console.log(`[DEBUG] Successfully locked ${lockedBatteries.length} batteries for booking`);
 
     // 11. Associate batteries with booking (IN TRANSACTION)
     const bookingBatteryPromises = lockedBatteries.map(battery => 

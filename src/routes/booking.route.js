@@ -26,7 +26,7 @@ const { validate } = require('../middlewares/validateHandler');
  *   post:
  *     tags: [Booking]
  *     summary: Create a new booking
- *     description: Create a battery swap booking at a station for a specific vehicle. The system will automatically find and reserve suitable batteries based on battery_count.
+ *     description: Create a battery swap booking at a station for a specific vehicle. Driver can request multiple batteries (up to vehicle's battery_slot capacity). The system will automatically find and reserve suitable batteries.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -54,6 +54,13 @@ const { validate } = require('../middlewares/validateHandler');
  *                 format: date-time
  *                 example: 2025-10-20T14:00:00
  *                 description: Scheduled start time (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
+ *               battery_quantity:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 1
+ *                 example: 2
+ *                 description: Number of batteries to swap (must be <= vehicle's battery_slot capacity). Default is 1 if not specified.
  *     responses:
  *       201:
  *         description: Booking created successfully
