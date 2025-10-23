@@ -21,7 +21,7 @@ router.post('/request',
     transferController.request
 );
 
-router.put('/:transfer_request_id/approve', 
+router.post('/:transfer_request_id/approve', 
     verifyToken, 
     authorizeRole('admin'), 
     validate(transferValidator.approve), 
@@ -207,7 +207,7 @@ module.exports = router;
  *                       $ref: '#/components/schemas/TransferRequest'
  *
  * /api/transfers/{transfer_request_id}/approve:
- *   put:
+ *   post:
  *     summary: Admin approves a transfer request and assigns details
  *     security:
  *       - bearerAuth: []
