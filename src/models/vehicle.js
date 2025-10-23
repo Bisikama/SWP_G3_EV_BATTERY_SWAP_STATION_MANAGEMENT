@@ -51,6 +51,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         unique: true
       },
+      take_first: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
       status: {
         type: DataTypes.ENUM('active', 'inactive'),
         allowNull: false,
