@@ -20,6 +20,7 @@ const paymentRoutes = require('./src/routes/payment.route');
 const shiftRoutes = require('./src/routes/shifts.route');
 const invoiceRoutes = require('./src/routes/invoice.route');
 const bookingRoutes = require('./src/routes/booking.route');
+const transferRoutes = require('./src/routes/transfer.route');
 const swapBatteryRoutes = require('./src/routes/swap_battery.route');
 
 const app = express();
@@ -39,9 +40,9 @@ app.use('/api/station', stationRoutes);
 app.use('/api/support-ticket', supportTicketsRoutes);
 app.use('/api/shift', shiftRoutes);
 app.use('/api/booking', bookingRoutes);
-
 app.use('/api/payment', paymentRoutes);
 app.use('/api/invoice', invoiceRoutes);
+app.use('/api/transfers', transferRoutes);
 app.use('/api/swap', swapBatteryRoutes);
 
 // catch errors

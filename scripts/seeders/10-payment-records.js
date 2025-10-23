@@ -1,4 +1,5 @@
 'use strict';
+const { v4: uuidv4 } = require('uuid');
 const db = require('../../src/models');
 
 module.exports = {
@@ -12,6 +13,7 @@ module.exports = {
     const paymentMethods = ['credit_card', 'bank_transfer', 'e-wallet', 'momo', 'zalopay'];
     
     const payments = invoices.map((invoice, index) => ({
+      payment_id: uuidv4(), // <-- generate UUID for primary key
       invoice_id: invoice.invoice_id,
       transaction_num: `TXN-${Date.now()}-${index}`,
       payment_date: new Date('2024-10-05'),
@@ -22,7 +24,7 @@ module.exports = {
       signature: null
     }));
 
-    await db.PaymentRecord.bulkCreate(payments, { validate: true });
+    await queryInterface.bulkInsert('PaymentRecords', payments, {});
   },
 
   async down(queryInterface, Sequelize) {
