@@ -16,10 +16,11 @@ module.exports = {
       for (let i = 1; i <= cabinet.battery_capacity; i++) {
         const statusIndex = Math.floor(Math.random() * 100);
         let status;
-        if (statusIndex < 20) status = 'empty';
-        else if (statusIndex < 40) status = 'charging';
-        else if (statusIndex < 95) status = 'charged';
-        else status = 'faulty';
+        // Tăng tỷ lệ 'charged' để có nhiều pin available hơn
+        if (statusIndex < 10) status = 'empty';        // 10% empty
+        else if (statusIndex < 25) status = 'charging'; // 15% charging
+        else if (statusIndex < 98) status = 'charged';  // 73% charged (tăng từ 55%)
+        else status = 'faulty';                         // 2% faulty
 
         slots.push({
           slot_id: slots.length + 1,
