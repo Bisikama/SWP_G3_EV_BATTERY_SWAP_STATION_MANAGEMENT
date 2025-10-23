@@ -51,8 +51,14 @@ const createBooking = [
       }
 
       return true;
-    })
-  // battery_count đã bị loại bỏ - mỗi booking chỉ đổi 1 viên pin
+    }),
+
+  body('battery_quantity')
+    .optional()
+    .isInt({ min: 1, max: 10 }).withMessage('Battery quantity must be an integer between 1 and 10')
+    .toInt()
+  // Note: Max validation (battery_quantity <= battery_slot) sẽ được check trong service layer
+  // vì cần query vehicle model từ database
 ];
 
 /**
