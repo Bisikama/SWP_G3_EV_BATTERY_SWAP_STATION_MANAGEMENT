@@ -45,7 +45,7 @@ const { Op } = Sequelize;
  * @returns {Promise<Booking>} - Booking vừa tạo (kèm relations)
  * @throws {Error} - Lỗi với status code
  */
-async function createBooking(driver_id, { vehicle_id, station_id, scheduled_start_time, battery_count = 1 }) {
+async function createBooking(driver_id, { vehicle_id, station_id, scheduled_start_time }) {
   // ============================================
   // TRANSACTION WRAPPER - Fix Race Condition
   // ============================================
@@ -60,23 +60,12 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       throw err;
     }
 
-    // 1b. Validate battery_count
-    if (typeof battery_count !== 'number' || battery_count < 1 || !Number.isInteger(battery_count)) {
-      const err = new Error('Battery count must be a positive integer');
-      err.status = 400;
-      throw err;
-    }
+    // Note: battery_count đã bị loại bỏ - mỗi booking chỉ đổi 1 viên pin
+    const battery_count = 1;
 
-    // 2. Check vehicle exists (WITH LOCK)
+    // 2. Check vehicle exists (WITH LOCK - no include to avoid JOIN lock issue)
     const vehicle = await Vehicle.findByPk(vehicle_id, {
-      include: [{
-        model: VehicleModel,
-        as: 'model',
-        include: [{
-          model: BatteryType,
-          as: 'batteryType'
-        }]
-      }],
+      attributes: ['vehicle_id', 'driver_id', 'model_id', 'license_plate'],
       lock: t.LOCK.UPDATE,
       transaction: t
     });
@@ -86,6 +75,24 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       err.status = 404;
       throw err;
     }
+
+    // Get vehicle model and battery type separately (no lock needed for reference data)
+    const vehicleModel = await VehicleModel.findByPk(vehicle.model_id, {
+      include: [{
+        model: BatteryType,
+        as: 'batteryType'
+      }],
+      transaction: t
+    });
+
+    if (!vehicleModel || !vehicleModel.batteryType) {
+      const err = new Error('Vehicle model or battery type not found');
+      err.status = 404;
+      throw err;
+    }
+
+    // Attach model to vehicle for consistent object structure
+    vehicle.model = vehicleModel;
 
     // 3. Check vehicle ownership
     if (vehicle.driver_id !== driver_id) {
@@ -113,13 +120,9 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
     // 5. Check vehicle has active subscription (WITH TRANSACTION)
     const activeSubscription = await checkVehicleSubscription(vehicle_id, t);
 
-    // 5b. Check battery_count <= battery_cap
-    const battery_cap = activeSubscription.plan.battery_cap;
-    if (battery_count > battery_cap) {
-      const err = new Error(`Your subscription plan allows maximum ${battery_cap} ${battery_cap === 1 ? 'battery' : 'batteries'} per swap. Requested: ${battery_count}`);
-      err.status = 422;
-      throw err;
-    }
+    // Note: battery_cap đã bị loại bỏ trong database mới
+    // Không còn giới hạn số lượng battery per swap theo plan
+    // Giới hạn chỉ phụ thuộc vào available batteries tại station
 
     // 6. Check duplicate booking (WITH LOCK)
     const startTime = new Date(scheduled_start_time);
@@ -155,7 +158,8 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       vehicle_id,
       station_id,
       scheduled_start_time: startTime,
-      scheduled_end_time: endTime
+      scheduled_end_time: endTime,
+      status: 'pending' // Explicit set status (mặc dù model có defaultValue)
     }, { transaction: t });
 
     // 10. Select batteries and double-check availability (CONFLICT DETECTION)
@@ -189,9 +193,9 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
     
     await Promise.all(bookingBatteryPromises);
 
-    // 12. Return booking with full details (outside transaction for read)
+    // 12. Return booking with full details (WITH TRANSACTION to read uncommitted data)
     // Transaction will commit here automatically if no errors
-    return getBookingById(newBooking.booking_id, driver_id);
+    return getBookingById(newBooking.booking_id, driver_id, t);
   });
 }
 
@@ -271,16 +275,17 @@ async function getBookingsByDriver(driver_id, { page = 1, limit = 10, status } =
  * 
  * @param {string} booking_id - UUID của booking
  * @param {string} driver_id - ID của driver (để check ownership)
+ * @param {Transaction} t - Sequelize transaction (optional)
  * @returns {Promise<Booking>} - Booking details
  */
-async function getBookingById(booking_id, driver_id = null) {
+async function getBookingById(booking_id, driver_id = null, t = null) {
   if (!booking_id) {
     const err = new Error('Booking ID is required');
     err.status = 400;
     throw err;
   }
 
-  const booking = await Booking.findByPk(booking_id, {
+  const queryOptions = {
     include: [
       {
         model: Account,
@@ -314,7 +319,14 @@ async function getBookingById(booking_id, driver_id = null) {
         through: { attributes: [] }
       }
     ]
-  });
+  };
+
+  // Add transaction if provided
+  if (t) {
+    queryOptions.transaction = t;
+  }
+
+  const booking = await Booking.findByPk(booking_id, queryOptions);
 
   if (!booking) {
     const err = new Error('Booking not found');
@@ -472,34 +484,44 @@ async function cancelBooking(booking_id, driver_id) {
 async function checkVehicleSubscription(vehicle_id, t = null) {
   const today = new Date().toISOString().split('T')[0];
 
-  const queryOptions = {
+  // Step 1: Find active subscription (WITH LOCK if transaction exists)
+  const subscriptionQueryOptions = {
     where: {
       vehicle_id,
       cancel_time: null,
       end_date: { [Op.gte]: today }
     },
-    include: [
-      {
-        model: SubscriptionPlan,
-        as: 'plan',
-        attributes: ['battery_cap', 'plan_name']
-      }
-    ]
+    attributes: ['subscription_id', 'plan_id', 'vehicle_id', 'start_date', 'end_date']
   };
 
-  // Add transaction if provided
+  // Add transaction and lock ONLY for Subscription table (no JOIN)
   if (t) {
-    queryOptions.lock = t.LOCK.UPDATE;
-    queryOptions.transaction = t;
+    subscriptionQueryOptions.lock = t.LOCK.UPDATE;
+    subscriptionQueryOptions.transaction = t;
   }
 
-  const activeSubscription = await Subscription.findOne(queryOptions);
+  const activeSubscription = await Subscription.findOne(subscriptionQueryOptions);
 
   if (!activeSubscription) {
     const err = new Error('Vehicle does not have an active subscription. Please subscribe first.');
     err.status = 422;
     throw err;
   }
+
+  // Step 2: Get plan details separately (NO LOCK needed for read-only reference data)
+  const plan = await SubscriptionPlan.findByPk(activeSubscription.plan_id, {
+    attributes: ['plan_id', 'plan_name', 'plan_fee', 'swap_fee', 'soh_cap'],
+    transaction: t // Include in transaction but don't lock
+  });
+
+  if (!plan) {
+    const err = new Error('Subscription plan not found');
+    err.status = 500;
+    throw err;
+  }
+
+  // Step 3: Attach plan to subscription object for consistent return format
+  activeSubscription.plan = plan;
 
   return activeSubscription;
 }
@@ -517,8 +539,8 @@ async function checkVehicleSubscription(vehicle_id, t = null) {
  * @returns {Promise<Battery[]>} - Danh sách batteries available
  */
 
-async function findAvailableBatteries(station_id, battery_type_id) {
-  // 1. Tìm tất cả cabinets tại station
+async function findAvailableBatteries(station_id, battery_type_id, datetime = null, t = null) {
+  // 1. Tìm tất cả cabinets tại station (WITH LOCK if transaction)
   console.log('[findAvailableBatteries] Searching for cabinets at station:', station_id);
   
   let cabinets;
@@ -528,17 +550,10 @@ async function findAvailableBatteries(station_id, battery_type_id) {
         station_id,
         status: 'operational'
       },
-      include: [{
-        model: CabinetSlot,
-        as: 'slots',
-        where: {
-          status: { [Op.in]: ['charging', 'charged'] }
-        },
-        required: false
-      }]
+      attributes: ['cabinet_id', 'station_id', 'cabinet_code']
     };
 
-    // Add transaction and lock if provided
+    // Add transaction and lock if provided (no include to avoid join lock)
     if (t) {
       cabinetQueryOptions.lock = t.LOCK.UPDATE;
       cabinetQueryOptions.transaction = t;
@@ -555,34 +570,35 @@ async function findAvailableBatteries(station_id, battery_type_id) {
     return [];
   }
 
-  // 2. Lấy tất cả slot_ids
-  const slotIds = [];
-  cabinets.forEach(cabinet => {
-    if (cabinet.slots) {
-      cabinet.slots.forEach(slot => slotIds.push(slot.slot_id));
-    }
+  // 2. Lấy tất cả slots của các cabinets này (separate query, no lock)
+  const cabinetIds = cabinets.map(c => c.cabinet_id);
+  const slots = await CabinetSlot.findAll({
+    where: {
+      cabinet_id: { [Op.in]: cabinetIds },
+      status: { [Op.in]: ['charging', 'charged'] }
+    },
+    attributes: ['slot_id', 'cabinet_id', 'status'],
+    transaction: t
   });
 
-  if (slotIds.length === 0) {
+  console.log('[findAvailableBatteries] Found slots:', slots.length);
+
+  if (slots.length === 0) {
     return [];
   }
 
-  // 3. Tìm batteries trong các slots này (WITH LOCK if in transaction)
+  // 3. Lấy tất cả slot_ids
+  const slotIds = slots.map(s => s.slot_id);
+
+  // 4. Tìm batteries trong các slots này (WITH LOCK if in transaction)
+  // Note: Không dùng include với lock để tránh "FOR UPDATE on outer join" error
   const batteryQueryOptions = {
     where: {
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
       current_soc: { [Op.gt]: 90 }, // Pin phải có hơn 90% SOC
       current_soh: { [Op.gte]: 80 } // Pin phải có SOH >= 80%
-    },
-    include: [{
-      model: CabinetSlot,
-      as: 'cabinetSlot',
-      where: {
-        status: 'charged' // Ưu tiên pin đã sạc đầy
-      },
-      required: false
-    }]
+    }
   };
 
   // Add transaction and lock if provided
@@ -593,9 +609,22 @@ async function findAvailableBatteries(station_id, battery_type_id) {
 
   const batteries = await Battery.findAll(batteryQueryOptions);
 
-  // 4. Trả về tất cả batteries available
+  // 4. Filter batteries by slot status 'charged' separately (avoid lock on join)
+  const chargedBatteryIds = await CabinetSlot.findAll({
+    where: {
+      slot_id: { [Op.in]: batteries.map(b => b.slot_id) },
+      status: 'charged'
+    },
+    attributes: ['slot_id'],
+    transaction: t
+  });
+
+  const chargedSlotIds = new Set(chargedBatteryIds.map(s => s.slot_id));
+  const availableBatteries = batteries.filter(b => chargedSlotIds.has(b.slot_id));
+
+  // 5. Trả về tất cả batteries available
   // Miễn còn pin đủ điều kiện là được, hệ thống sẽ tự phân bổ
-  return batteries;
+  return availableBatteries;
 }
 
 /**

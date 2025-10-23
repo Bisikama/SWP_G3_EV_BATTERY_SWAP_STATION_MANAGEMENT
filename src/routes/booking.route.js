@@ -54,13 +54,6 @@ const { validate } = require('../middlewares/validateHandler');
  *                 format: date-time
  *                 example: 2025-10-20T14:00:00
  *                 description: Scheduled start time (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
- *               battery_count:
- *                 type: integer
- *                 minimum: 1
- *                 maximum: 20
- *                 default: 1
- *                 example: 2
- *                 description: Number of batteries to swap (must not exceed subscription plan's battery_cap)
  *     responses:
  *       201:
  *         description: Booking created successfully
@@ -83,7 +76,7 @@ const { validate } = require('../middlewares/validateHandler');
  *       409:
  *         description: Duplicate booking in time slot
  *       422:
- *         description: No available batteries, battery_count exceeds battery_cap, or station not operational
+ *         description: No available batteries, no active subscription, or station not operational
  */
 router.post(
   '/',

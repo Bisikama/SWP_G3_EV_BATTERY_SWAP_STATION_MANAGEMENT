@@ -27,14 +27,14 @@ const asyncHandler = require('../middlewares/asyncHandler');
  * @access Private (driver only)
  */
 const createBooking = asyncHandler(async (req, res) => {
-  const { vehicle_id, station_id, scheduled_start_time, battery_count } = req.body;
+  const { vehicle_id, station_id, scheduled_start_time } = req.body;
   const driver_id = req.user.account_id;
 
   const booking = await bookingService.createBooking(driver_id, {
     vehicle_id,
     station_id,
-    scheduled_start_time,
-    battery_count
+    scheduled_start_time
+    // battery_count đã bị loại bỏ - mỗi booking chỉ đổi 1 viên pin
   });
 
   return res.status(201).json({

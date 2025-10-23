@@ -51,12 +51,8 @@ const createBooking = [
       }
 
       return true;
-    }),
-
-  body('battery_count')
-    .optional()
-    .isInt({ min: 1, max: 20 }).withMessage('Battery count must be an integer between 1 and 20')
-    .toInt()
+    })
+  // battery_count đã bị loại bỏ - mỗi booking chỉ đổi 1 viên pin
 ];
 
 /**
