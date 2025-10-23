@@ -36,6 +36,67 @@ const { Op } = Sequelize;
 
 /**
  * ========================================
+ * HELPER: FORMAT DATETIME TO VIETNAM TIMEZONE
+ * ========================================
+ * Convert UTC datetime to Vietnam timezone (GMT+7) format
+ * 
+ * @param {Date|string} date - UTC date to convert
+ * @returns {string} - Formatted datetime string (YYYY-MM-DD HH:mm:ss)
+ */
+function formatToVietnamTime(date) {
+  if (!date) return null;
+  
+  const d = new Date(date);
+  // Convert to Vietnam timezone (UTC+7)
+  const vietnamTime = new Date(d.getTime() + (7 * 60 * 60 * 1000));
+  
+  // Format as YYYY-MM-DD HH:mm:ss
+  const year = vietnamTime.getUTCFullYear();
+  const month = String(vietnamTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(vietnamTime.getUTCDate()).padStart(2, '0');
+  const hours = String(vietnamTime.getUTCHours()).padStart(2, '0');
+  const minutes = String(vietnamTime.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(vietnamTime.getUTCSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * ========================================
+ * HELPER: FORMAT BOOKING RESPONSE
+ * ========================================
+ * Format booking object with Vietnam timezone for all datetime fields
+ * 
+ * @param {Booking} booking - Booking object from database
+ * @returns {object} - Formatted booking object
+ */
+function formatBookingResponse(booking) {
+  if (!booking) return null;
+  
+  const bookingData = booking.toJSON ? booking.toJSON() : booking;
+  
+  // Format all datetime fields to Vietnam timezone
+  if (bookingData.scheduled_start_time) {
+    bookingData.scheduled_start_time = formatToVietnamTime(bookingData.scheduled_start_time);
+  }
+  if (bookingData.scheduled_end_time) {
+    bookingData.scheduled_end_time = formatToVietnamTime(bookingData.scheduled_end_time);
+  }
+  if (bookingData.create_time) {
+    bookingData.create_time = formatToVietnamTime(bookingData.create_time);
+  }
+  if (bookingData.actual_start_time) {
+    bookingData.actual_start_time = formatToVietnamTime(bookingData.actual_start_time);
+  }
+  if (bookingData.actual_end_time) {
+    bookingData.actual_end_time = formatToVietnamTime(bookingData.actual_end_time);
+  }
+  
+  return bookingData;
+}
+
+/**
+ * ========================================
  * CREATE BOOKING
  * ========================================
  * Tạo booking mới với tất cả validations
@@ -256,8 +317,11 @@ async function getBookingsByDriver(driver_id, { page = 1, limit = 10, status } =
     offset: parseInt(offset)
   });
 
+  // Format all bookings to Vietnam timezone
+  const formattedBookings = rows.map(booking => formatBookingResponse(booking));
+
   return {
-    bookings: rows,
+    bookings: formattedBookings,
     pagination: {
       total: count,
       page: parseInt(page),
@@ -341,7 +405,8 @@ async function getBookingById(booking_id, driver_id = null, t = null) {
     throw err;
   }
 
-  return booking;
+  // Format datetime fields to Vietnam timezone
+  return formatBookingResponse(booking);
 }
 
 /**
