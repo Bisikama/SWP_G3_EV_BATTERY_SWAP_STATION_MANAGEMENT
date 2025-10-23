@@ -17,20 +17,21 @@ const createBooking = [
     .notEmpty().withMessage('Scheduled start time is required')
     .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
     .custom((value) => {
+      // Parse input theo Vietnam timezone (TZ=Asia/Ho_Chi_Minh trong .env)
       const inputDate = new Date(value);
       const now = new Date();
 
-      // Không được đặt quá khứ
+      // Rule 1: Không được đặt quá khứ
       if (inputDate <= now) {
         throw new Error('Scheduled start time must be in the future');
       }
 
-      // Lấy phần UTC của input
+      // Lấy phần date của input theo Vietnam local time (GMT+7)
       const inputYear = inputDate.getFullYear();
       const inputMonth = inputDate.getMonth();
       const inputDay = inputDate.getDate();
 
-      // Lấy phần UTC của bây giờ
+      // Lấy phần date của bây giờ theo Vietnam local time (GMT+7)
       const nowYear = now.getFullYear();
       const nowMonth = now.getMonth();
       const nowDay = now.getDate();
@@ -44,7 +45,7 @@ const createBooking = [
       console.log('   Is Same Day?:', inputDay === nowDay && inputMonth === nowMonth && inputYear === nowYear);
       console.log('=========================\n');
 
-      // So sánh ngày theo UTC
+      // Rule 2: Chỉ cho đặt trong ngày hôm nay (so sánh theo Vietnam local time)
       if (inputYear !== nowYear || inputMonth !== nowMonth || inputDay !== nowDay) {
         throw new Error(`Scheduled start time must be within today (${nowYear}-${nowMonth + 1}-${nowDay})`);
       }
@@ -71,25 +72,28 @@ const updateBooking = [
     .notEmpty().withMessage('Scheduled start time is required')
     .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
     .custom((value) => {
+      // Parse input theo Vietnam timezone (TZ=Asia/Ho_Chi_Minh trong .env)
       const inputDate = new Date(value);
       const now = new Date();
 
-      // Kiểm tra không được là thời gian quá khứ
+      // Rule 1: Không được đặt quá khứ
       if (inputDate <= now) {
         throw new Error('Scheduled start time must be in the future');
       }
 
-      // Chỉ cho đặt trong ngày hôm nay (so sánh ngày/tháng/năm theo local time)
-      const inputDay = inputDate.getDate();
-      const inputMonth = inputDate.getMonth();
+      // Lấy phần date của input theo Vietnam local time (GMT+7)
       const inputYear = inputDate.getFullYear();
+      const inputMonth = inputDate.getMonth();
+      const inputDay = inputDate.getDate();
 
-      const todayDay = now.getDate();
-      const todayMonth = now.getMonth();
-      const todayYear = now.getFullYear();
+      // Lấy phần date của bây giờ theo Vietnam local time (GMT+7)
+      const nowYear = now.getFullYear();
+      const nowMonth = now.getMonth();
+      const nowDay = now.getDate();
 
-      if (inputDay !== todayDay || inputMonth !== todayMonth || inputYear !== todayYear) {
-        throw new Error(`Scheduled start time must be within today (${todayDay}/${todayMonth + 1}/${todayYear})`);
+      // Rule 2: Chỉ cho đặt trong ngày hôm nay (so sánh theo Vietnam local time)
+      if (inputYear !== nowYear || inputMonth !== nowMonth || inputDay !== nowDay) {
+        throw new Error(`Scheduled start time must be within today (${nowYear}-${nowMonth + 1}-${nowDay})`);
       }
 
       return true;
