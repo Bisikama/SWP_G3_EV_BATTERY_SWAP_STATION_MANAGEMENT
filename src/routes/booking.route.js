@@ -53,7 +53,7 @@ const { validate } = require('../middlewares/validateHandler');
  *                 type: string
  *                 format: date-time
  *                 example: 2025-10-20T14:00:00
- *                 description: Scheduled start time (must be in the future, within today)
+ *                 description: Scheduled start time (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *               battery_count:
  *                 type: integer
  *                 minimum: 1
@@ -323,8 +323,8 @@ router.get(
  *               scheduled_start_time:
  *                 type: string
  *                 format: date-time
- *                 example: 2025-10-20T15:00:00Z
- *                 description: New scheduled start time
+ *                 example: 2025-10-20T15:00:00
+ *                 description: New scheduled start time - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *     responses:
  *       200:
  *         description: Booking updated successfully
