@@ -58,7 +58,7 @@ module.exports = router;
  *     Shift:
  *       type: object
  *       properties:
- *         shift_id:
+ *         id:
  *           type: string
  *           format: uuid
  *           example: "f5b7b480-4d0a-4af9-82b9-cb7a69cbf4c0"
@@ -106,13 +106,13 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift/{shift_id}:
+ * /api/shift/{id}:
  *   get:
  *     summary: Get a shift by ID
  *     tags: [Shifts]
  *     parameters:
  *       - in: path
- *         name: shift_id
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
@@ -175,7 +175,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift/{shift_id}:
+ * /api/shift/{id}:
  *   put:
  *     summary: Update a shift (admin only)
  *     tags: [Shifts]
@@ -183,7 +183,7 @@ module.exports = router;
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: shift_id
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
@@ -224,7 +224,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift/{shift_id}/cancel:
+ * /api/shift/{id}/cancel:
  *   put:
  *     summary: Cancel a shift (admin only)
  *     tags: [Shifts]
@@ -232,7 +232,7 @@ module.exports = router;
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: shift_id
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
@@ -253,7 +253,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift/{shift_id}/confirm:
+ * /api/shift/{id}/confirm:
  *   put:
  *     summary: Confirm a shift (staff only)
  *     tags: [Shifts]
@@ -261,7 +261,7 @@ module.exports = router;
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: shift_id
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
