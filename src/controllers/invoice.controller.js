@@ -1,3 +1,4 @@
+const { where } = require('sequelize');
 const db = require('../models');
 const { Invoice, Subscription, SubscriptionPlan, Account, Vehicle } = db;
 
@@ -54,7 +55,7 @@ async function createInvoiceFromSubscription(req, res) {
       where: {
         vehicle_id: vehicle_id,
         end_date: { [db.Sequelize.Op.gte]: new Date() }, // Còn hiệu lực
-        sub_status: 'active'
+        status: 'active'
       },
       include: [
         {
@@ -76,7 +77,7 @@ async function createInvoiceFromSubscription(req, res) {
           plan_name: existingActiveSubscription.plan?.plan_name,
           start_date: existingActiveSubscription.start_date,
           end_date: existingActiveSubscription.end_date,
-          sub_status: existingActiveSubscription.sub_status
+          status: existingActiveSubscription.status
         }
       });
     }
@@ -94,7 +95,9 @@ async function createInvoiceFromSubscription(req, res) {
       invoice_number: invoice_number,
       create_date: new Date(),
       due_date: new Date(new Date().setDate(new Date().getDate() + 30)), // Hạn thanh toán = 1 tháng kể từ ngày tạo
-      total_fee: parseInt(plan.plan_fee),
+      plan_fee: parseInt(plan.plan_fee),
+      total_penalty_fee: 0,
+      total_swap_fee: 0,
       payment_status: 'unpaid'
     });
 
@@ -133,8 +136,9 @@ async function createInvoiceFromSubscription(req, res) {
           plan_id: plan.plan_id,
           plan_name: plan.plan_name,
           plan_fee: plan.plan_fee,
-          battery_cap: plan.battery_cap,
-          usage_cap: plan.usage_cap,
+          swap_fee: plan.swap_fee,
+          penalty_fee: plan.penalty_fee,
+          soh_cap: plan.soh_cap,
           description: plan.description
         },
         vehicle: {
@@ -201,7 +205,10 @@ async function getAllInvoices(req, res) {
             {
               model: SubscriptionPlan,
               as: 'plan',
-              attributes: ['plan_id', 'plan_name', 'plan_fee', 'battery_cap']
+              attributes: ['plan_id', 'plan_name', 'plan_fee', 'swap_fee', 'penalty_fee', 'soh_cap', 'description'],
+              where: {
+                is_active: true
+              }
             }
           ]
         }

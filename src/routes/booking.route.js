@@ -26,7 +26,7 @@ const { validate } = require('../middlewares/validateHandler');
  *   post:
  *     tags: [Booking]
  *     summary: Create a new booking
- *     description: Create a battery swap booking at a station for a specific vehicle. The system will automatically find and reserve suitable batteries based on battery_count.
+ *     description: Create a battery swap booking at a station for a specific vehicle. Driver can request multiple batteries (up to vehicle's battery_slot capacity). The system will automatically find and reserve suitable batteries.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -52,15 +52,15 @@ const { validate } = require('../middlewares/validateHandler');
  *               scheduled_start_time:
  *                 type: string
  *                 format: date-time
- *                 example: 2025-10-20T14:00:00Z
- *                 description: Scheduled start time (must be in the future, within today)
- *               battery_count:
+ *                 example: 2025-10-20T14:00:00
+ *                 description: Scheduled start time (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
+ *               battery_quantity:
  *                 type: integer
  *                 minimum: 1
- *                 maximum: 20
+ *                 maximum: 10
  *                 default: 1
  *                 example: 2
- *                 description: Number of batteries to swap (must not exceed subscription plan's battery_cap)
+ *                 description: Number of batteries to swap (must be <= vehicle's battery_slot capacity). Default is 1 if not specified.
  *     responses:
  *       201:
  *         description: Booking created successfully
@@ -83,7 +83,7 @@ const { validate } = require('../middlewares/validateHandler');
  *       409:
  *         description: Duplicate booking in time slot
  *       422:
- *         description: No available batteries, battery_count exceeds battery_cap, or station not operational
+ *         description: No available batteries, no active subscription, or station not operational
  */
 router.post(
   '/',
@@ -167,8 +167,8 @@ router.get(
  * /api/booking/check-availability:
  *   get:
  *     tags: [Booking]
- *     summary: Check station availability
- *     description: Check if a station has available batteries for a specific vehicle at a given time. Returns availability status and suggested alternative times if not available.
+ *     summary: Check current station availability
+ *     description: Check if a station currently has available batteries for a specific vehicle type. This checks real-time availability at the moment of request.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -185,16 +185,8 @@ router.get(
  *         schema:
  *           type: string
  *           format: uuid
- *         description: UUID of the vehicle
+ *         description: UUID of the vehicle (to determine battery type compatibility)
  *         example: 550e8400-e29b-41d4-a716-446655440000
- *       - in: query
- *         name: datetime
- *         required: true
- *         schema:
- *           type: string
- *           format: date-time
- *         description: Date and time to check availability
- *         example: 2025-10-20T14:00:00Z
  *     responses:
  *       200:
  *         description: Availability check completed
@@ -205,7 +197,7 @@ router.get(
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Station is available for booking at this time
+ *                   example: Station has available batteries for VF-STD
  *                 available:
  *                   type: boolean
  *                   example: true
@@ -232,18 +224,18 @@ router.get(
  *                   properties:
  *                     available_batteries_count:
  *                       type: integer
+ *                       description: Total count of charged batteries available
  *                     total_slots:
  *                       type: integer
- *                     bookings_in_time_slot:
+ *                       description: Total cabinet slots at station
+ *                     current_pending_bookings:
  *                       type: integer
+ *                       description: Number of pending bookings in next 30 minutes
+ *                     effective_available:
+ *                       type: integer
+ *                       description: Actual available batteries after pending bookings
  *                     station_status:
  *                       type: string
- *                 suggested_times:
- *                   type: array
- *                   items:
- *                     type: string
- *                     format: date-time
- *                   nullable: true
  *       400:
  *         description: Bad request - validation error
  *       404:
@@ -331,8 +323,8 @@ router.get(
  *               scheduled_start_time:
  *                 type: string
  *                 format: date-time
- *                 example: 2025-10-20T15:00:00Z
- *                 description: New scheduled start time
+ *                 example: 2025-10-20T15:00:00
+ *                 description: New scheduled start time - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *     responses:
  *       200:
  *         description: Booking updated successfully

@@ -43,8 +43,11 @@ module.exports = {
       });
     });
 
-    // Batteries in cabinet slots
-    chargedSlots.slice(0, 50).forEach((slot, index) => {
+    // Batteries in cabinet slots - MỖI SLOT CHỈ 1 PIN
+    // Lấy đúng số lượng slots để tránh duplicate
+    const availableSlots = chargedSlots.slice(0, Math.min(chargedSlots.length, 100));
+    
+    availableSlots.forEach((slot, index) => {
       batteries.push({
         battery_id: uuidv4(),
         battery_type_id: randomBatteryType(),

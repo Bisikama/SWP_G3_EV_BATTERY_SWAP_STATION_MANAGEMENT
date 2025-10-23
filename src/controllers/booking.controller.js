@@ -27,14 +27,14 @@ const asyncHandler = require('../middlewares/asyncHandler');
  * @access Private (driver only)
  */
 const createBooking = asyncHandler(async (req, res) => {
-  const { vehicle_id, station_id, scheduled_start_time, battery_count } = req.body;
+  const { vehicle_id, station_id, scheduled_start_time, battery_quantity } = req.body;
   const driver_id = req.user.account_id;
 
   const booking = await bookingService.createBooking(driver_id, {
     vehicle_id,
     station_id,
     scheduled_start_time,
-    battery_count
+    battery_quantity: battery_quantity || 1 // Default to 1 if not provided
   });
 
   return res.status(201).json({
