@@ -1,4 +1,5 @@
 'use strict';
+const { v4: uuidv4 } = require('uuid');
 const db = require('../../src/models');
 
 module.exports = {
@@ -34,11 +35,11 @@ module.exports = {
       const plan = byName[planName] || plans[0];
       const planFee = parseFloat(plan.plan_fee) || 0;
 
-      // You can randomize swap and penalty fees slightly if you like
       const totalSwapFee = Math.round(planFee * 0.05);   // 5% of plan fee
       const totalPenaltyFee = Math.round(planFee * 0.02); // 2% of plan fee
 
       return {
+        invoice_id: uuidv4(), // <-- generate UUID for each row
         driver_id: vehicle.driver_id,
         invoice_number: `INV-2024-10-${String(index + 1).padStart(4, '0')}`,
         create_date: '2024-10-01',
@@ -49,7 +50,7 @@ module.exports = {
       };
     });
 
-    await db.Invoice.bulkCreate(invoices, { validate: true });
+    await queryInterface.bulkInsert('Invoices', invoices, {});
   },
 
   async down(queryInterface, Sequelize) {

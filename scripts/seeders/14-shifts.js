@@ -1,6 +1,7 @@
 // seeders/14-shifts.js
 'use strict';
 const db = require('../../src/models');
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -25,11 +26,11 @@ module.exports = {
     // Create shifts for next 7 days
     for (let day = 0; day < 7; day++) {
       const shiftDate = new Date(today);
-      shiftDate.setDate(today.getDate() + day);
 
       stations.forEach((station, stationIndex) => {
         // Morning shift: 6 AM - 2 PM
         shifts.push({
+          shift_id: uuidv4(),
           admin_id: admins[0].account_id,
           staff_id: staff[stationIndex % staff.length].account_id,
           station_id: station.station_id,
@@ -40,6 +41,7 @@ module.exports = {
 
         // Afternoon shift: 2 PM - 10 PM
         shifts.push({
+          shift_id: uuidv4(),
           admin_id: admins[0].account_id,
           staff_id: staff[(stationIndex + 1) % staff.length].account_id,
           station_id: station.station_id,
@@ -50,7 +52,7 @@ module.exports = {
       });
     }
 
-  await db.Shift.bulkCreate(shifts, { validate: true });
+    await queryInterface.bulkInsert('Shifts', shifts, {});
   },
 
   async down(queryInterface, Sequelize) {

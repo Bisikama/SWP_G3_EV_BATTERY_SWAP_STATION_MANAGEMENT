@@ -1,6 +1,6 @@
 // seeders/23-support-tickets.js
- 'use strict';
-const db = require('../../src/models');
+'use strict';
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -47,6 +47,7 @@ module.exports = {
       }
 
       tickets.push({
+        ticket_id: uuidv4(), // UUID primary key
         driver_id: drivers[i % drivers.length].account_id,
         admin_id: admins[i % admins.length].account_id,
         create_date: createDate,
@@ -57,7 +58,7 @@ module.exports = {
       });
     }
 
-    await db.SupportTicket.bulkCreate(tickets, { validate: true });
+    await queryInterface.bulkInsert('SupportTickets', tickets, {});
   },
 
   async down(queryInterface, Sequelize) {

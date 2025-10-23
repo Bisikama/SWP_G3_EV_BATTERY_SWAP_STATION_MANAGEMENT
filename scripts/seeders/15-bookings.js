@@ -1,6 +1,6 @@
 // seeders/15-bookings.js
 'use strict';
-const db = require('../../src/models');
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -19,25 +19,25 @@ module.exports = {
     const bookings = [];
     const today = new Date();
 
-    // Create bookings for next 3 days
     drivers.forEach((driver, index) => {
       for (let day = 0; day < 3; day++) {
         const bookingDate = new Date(today);
         bookingDate.setDate(today.getDate() + day);
-        bookingDate.setHours(9 + (index * 2), 0, 0, 0); // Stagger times
+        bookingDate.setHours(9 + index * 2, 0, 0, 0); // stagger times
 
         bookings.push({
+          booking_id: uuidv4(), // generate UUID manually
           driver_id: driver.driver_id,
           vehicle_id: driver.vehicle_id,
           station_id: stations[day % stations.length].station_id,
           create_time: new Date(),
           scheduled_start_time: bookingDate,
-          scheduled_end_time: new Date(bookingDate.getTime() + 15 * 60000) // 15 minutes later
+          scheduled_end_time: new Date(bookingDate.getTime() + 15 * 60000) // +15 minutes
         });
       }
     });
 
-  await db.Booking.bulkCreate(bookings, { validate: true });
+    await queryInterface.bulkInsert('Bookings', bookings, {});
   },
 
   async down(queryInterface, Sequelize) {
