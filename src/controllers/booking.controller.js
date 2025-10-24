@@ -49,23 +49,21 @@ const createBooking = asyncHandler(async (req, res) => {
  * ========================================
  * GET /api/booking/my-bookings
  * 
- * @description Lấy danh sách bookings của driver đang đăng nhập với filter status
+ * @description Lấy tất cả bookings của driver đang đăng nhập với filter status (KHÔNG PAGINATION)
  * @access Private (driver)
  */
 const getMyBookings = asyncHandler(async (req, res) => {
   const driver_id = req.user.account_id;
-  const { page = 1, limit = 10, status } = req.query;
+  const { status } = req.query;
 
   const result = await bookingService.getBookingsByDriver(driver_id, {
-    page: parseInt(page),
-    limit: parseInt(limit),
     status
   });
 
   return res.status(200).json({
     message: 'Bookings retrieved successfully',
-    bookings: result.bookings,
-    pagination: result.pagination
+    total: result.total,
+    bookings: result.bookings
   });
 });
 
