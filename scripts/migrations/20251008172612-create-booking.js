@@ -43,15 +43,11 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.NOW
       },
-      scheduled_start_time: {
+      scheduled_time: {
         type: Sequelize.DATE,
         allowNull: false
       },
-      scheduled_end_time: {
-        type: Sequelize.DATE,
-        allowNull: false
-      },
-      status: {  // ← THÊM 5 DÒNG NÀY
+      status: {
         type: Sequelize.ENUM('pending', 'completed', 'cancelled'),
         allowNull: false,
         defaultValue: 'pending'
