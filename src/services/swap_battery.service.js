@@ -104,7 +104,7 @@ async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
       }
 
       // Kiểm tra SOH để xác định status của slot
-      const newSlotStatus = battery.current_soh < 15 ? 'faulty' : 'charging';
+      const newSlotStatus = battery.current_soh < 70 ? 'faulty' : 'charging';
 
       results.push({
         slot_id,
