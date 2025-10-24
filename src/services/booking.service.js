@@ -125,6 +125,15 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
       throw err;
     }
 
+    // Validate scheduled_time is in the future
+    const scheduledTime = new Date(scheduled_time);
+    const now = new Date();
+    if (scheduledTime <= now) {
+      const err = new Error('Scheduled time must be in the future');
+      err.status = 400;
+      throw err;
+    }
+
     // 2. Check vehicle exists (WITH LOCK - no include to avoid JOIN lock issue)
     const vehicle = await Vehicle.findByPk(vehicle_id, {
       attributes: ['vehicle_id', 'driver_id', 'model_id', 'license_plate'],
@@ -198,20 +207,15 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     // Giới hạn chỉ phụ thuộc vào available batteries tại station
 
     // 6. Check duplicate booking (WITH LOCK)
-    const scheduledTime = new Date(scheduled_time);
     await checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, null, t);
 
-    // 7. Calculate end time (15 minutes after start)
-    const endTime = new Date(scheduledTime);
-    endTime.setMinutes(endTime.getMinutes() + 15);
-
-    // 8. Find available batteries at station (WITH LOCK)
+    // 7. Find available batteries at station (WITH LOCK)
     const battery_type_id = vehicle.model.battery_type_id;
     
     let availableBatteries;
     try {
       console.log('[DEBUG] Searching for available batteries...', { station_id, battery_type_id, requested: battery_quantity });
-      availableBatteries = await findAvailableBatteries(station_id, battery_type_id, startTime, t);
+      availableBatteries = await findAvailableBatteries(station_id, battery_type_id, scheduledTime, t);
       console.log('[DEBUG] Found batteries:', availableBatteries.length);
     } catch (error) {
       console.error('[ERROR] findAvailableBatteries failed:', error.message);
@@ -699,35 +703,31 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
  * ========================================
  * HELPER: CHECK DUPLICATE BOOKING
  * ========================================
- * Kiểm tra driver/vehicle có booking trùng time slot không
+ * Kiểm tra vehicle có booking pending khác không
  * 
- * @param {string} driver_id - UUID của driver
- * @param {string} vehicle_id - UUID của vehicle
- * @param {Date} startTime - Thời gian booking
+ * BUSINESS RULE:
+ * - Một VEHICLE chỉ được có TỐI ĐA 1 booking với status='pending' mỗi lúc
+ * - Chỉ khi booking cũ đã completed hoặc cancelled thì vehicle đó mới được đặt booking mới
+ * - Driver có thể có nhiều booking pending, NHƯNG mỗi xe chỉ 1 booking pending
+ * 
+ * VÍ DỤ:
+ * - Driver A có 3 xe (Xe1, Xe2, Xe3)
+ * - Xe1 có booking pending → Xe1 KHÔNG đặt được booking khác
+ * - Xe1 có booking pending → Xe2, Xe3 VẪN đặt được (vì khác xe)
+ * 
+ * @param {string} driver_id - UUID của driver (không dùng để check)
+ * @param {string} vehicle_id - UUID của vehicle (dùng để check)
+ * @param {Date} scheduledTime - Thời gian booking (không dùng để check trùng nữa)
  * @param {string} excludeBookingId - Booking ID cần exclude (khi update)
  * @param {Transaction} t - Sequelize transaction (optional)
- * @throws {Error} - Nếu có duplicate booking
+ * @throws {Error} - Nếu vehicle có pending booking khác
  */
-async function checkDuplicateBooking(driver_id, vehicle_id, startTime, excludeBookingId = null, t = null) {
-  // Check trong khoảng ±30 phút
-  const timeSlotStart = new Date(startTime);
-  timeSlotStart.setMinutes(timeSlotStart.getMinutes() - 30);
-  
-  const timeSlotEnd = new Date(startTime);
-  timeSlotEnd.setMinutes(timeSlotEnd.getMinutes() + 30);
-
+async function checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, excludeBookingId = null, t = null) {
+  // CHỈ check vehicle có booking pending nào không
+  // KHÔNG check driver vì driver có thể có nhiều xe, mỗi xe 1 booking pending
   const whereClause = {
-    [Op.or]: [
-      { driver_id },
-      { vehicle_id }
-    ],
-    scheduled_start_time: {
-      [Op.between]: [timeSlotStart, timeSlotEnd]
-    },
-    // Only check pending bookings, ignore cancelled/completed (completed shouldn't block new swaps)
-    status: {
-      [Op.in]: ['pending']
-    }
+    vehicle_id,  // ← CHỈ check vehicle_id, không check driver_id
+    status: 'pending'
   };
 
   // Exclude booking hiện tại khi update
@@ -736,7 +736,8 @@ async function checkDuplicateBooking(driver_id, vehicle_id, startTime, excludeBo
   }
 
   const queryOptions = {
-    where: whereClause
+    where: whereClause,
+    attributes: ['booking_id', 'driver_id', 'vehicle_id', 'scheduled_time', 'status']
   };
 
   // Add transaction and lock if provided
@@ -745,10 +746,12 @@ async function checkDuplicateBooking(driver_id, vehicle_id, startTime, excludeBo
     queryOptions.transaction = t;
   }
 
-  const duplicateBooking = await Booking.findOne(queryOptions);
+  const existingPendingBooking = await Booking.findOne(queryOptions);
 
-  if (duplicateBooking) {
-    const err = new Error('You already have a booking in this time slot (±30 minutes). Please choose another time.');
+  if (existingPendingBooking) {
+    const err = new Error(
+      `Cannot create new booking. This vehicle already has a pending booking (ID: ${existingPendingBooking.booking_id}) scheduled at ${existingPendingBooking.scheduled_time}. Please complete or cancel the existing booking first.`
+    );
     err.status = 409;
     throw err;
   }
