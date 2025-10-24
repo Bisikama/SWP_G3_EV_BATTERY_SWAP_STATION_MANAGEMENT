@@ -76,11 +76,8 @@ function formatBookingResponse(booking) {
   const bookingData = booking.toJSON ? booking.toJSON() : booking;
   
   // Format all datetime fields to Vietnam timezone
-  if (bookingData.scheduled_start_time) {
-    bookingData.scheduled_start_time = formatToVietnamTime(bookingData.scheduled_start_time);
-  }
-  if (bookingData.scheduled_end_time) {
-    bookingData.scheduled_end_time = formatToVietnamTime(bookingData.scheduled_end_time);
+  if (bookingData.scheduled_time) {
+    bookingData.scheduled_time = formatToVietnamTime(bookingData.scheduled_time);
   }
   if (bookingData.create_time) {
     bookingData.create_time = formatToVietnamTime(bookingData.create_time);
@@ -102,11 +99,11 @@ function formatBookingResponse(booking) {
  * Tạo booking mới với tất cả validations
  * 
  * @param {string} driver_id - ID của driver (từ JWT token)
- * @param {object} bookingData - { vehicle_id, station_id, scheduled_start_time, battery_quantity }
+ * @param {object} bookingData - { vehicle_id, station_id, scheduled_time, battery_quantity }
  * @returns {Promise<Booking>} - Booking vừa tạo (kèm relations)
  * @throws {Error} - Lỗi với status code
  */
-async function createBooking(driver_id, { vehicle_id, station_id, scheduled_start_time, battery_quantity = 1 }) {
+async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time, battery_quantity = 1 }) {
   // ============================================
   // TRANSACTION WRAPPER - Fix Race Condition
   // ============================================
@@ -115,8 +112,8 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
   }, async (t) => {
     
     // 1. Validate required fields
-    if (!vehicle_id || !station_id || !scheduled_start_time) {
-      const err = new Error('Vehicle ID, Station ID, and Scheduled start time are required');
+    if (!vehicle_id || !station_id || !scheduled_time) {
+      const err = new Error('Vehicle ID, Station ID, and Scheduled time are required');
       err.status = 400;
       throw err;
     }
@@ -201,11 +198,11 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
     // Giới hạn chỉ phụ thuộc vào available batteries tại station
 
     // 6. Check duplicate booking (WITH LOCK)
-    const startTime = new Date(scheduled_start_time);
-    await checkDuplicateBooking(driver_id, vehicle_id, startTime, null, t);
+    const scheduledTime = new Date(scheduled_time);
+    await checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, null, t);
 
     // 7. Calculate end time (15 minutes after start)
-    const endTime = new Date(startTime);
+    const endTime = new Date(scheduledTime);
     endTime.setMinutes(endTime.getMinutes() + 15);
 
     // 8. Find available batteries at station (WITH LOCK)
@@ -233,8 +230,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
       driver_id,
       vehicle_id,
       station_id,
-      scheduled_start_time: startTime,
-      scheduled_end_time: endTime,
+      scheduled_time: scheduledTime,
       status: 'pending' // Explicit set status (mặc dù model có defaultValue)
     }, { transaction: t });
 
@@ -327,7 +323,7 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
         through: { attributes: [] } // Không lấy attributes từ bảng trung gian
       }
     ],
-    order: [['scheduled_start_time', 'DESC']]
+    order: [['scheduled_time', 'DESC']]
   });
 
   // Format all bookings to Vietnam timezone
@@ -425,12 +421,12 @@ async function getBookingById(booking_id, driver_id = null, t = null) {
  * 
  * @param {string} booking_id - UUID của booking
  * @param {string} driver_id - ID của driver (để check ownership)
- * @param {object} updateData - { scheduled_start_time }
+ * @param {object} updateData - { scheduled_time }
  * @returns {Promise<Booking>} - Updated booking
  */
-async function updateBooking(booking_id, driver_id, { scheduled_start_time }) {
-  if (!booking_id || !scheduled_start_time) {
-    const err = new Error('Booking ID and scheduled start time are required');
+async function updateBooking(booking_id, driver_id, { scheduled_time }) {
+  if (!booking_id || !scheduled_time) {
+    const err = new Error('Booking ID and scheduled time are required');
     err.status = 400;
     throw err;
   }
@@ -459,26 +455,25 @@ async function updateBooking(booking_id, driver_id, { scheduled_start_time }) {
 
   // 4. Check booking hasn't passed
   const now = new Date();
-  if (new Date(booking.scheduled_start_time) < now) {
+  if (new Date(booking.scheduled_time) < now) {
     const err = new Error('Cannot update a booking that has already started or passed');
     err.status = 422;
     throw err;
   }
 
   // 5. Check new time is valid
-  const newStartTime = new Date(scheduled_start_time);
+  const newScheduledTime = new Date(scheduled_time);
   
   // 6. Check duplicate with new time
-  await checkDuplicateBooking(driver_id, booking.vehicle_id, newStartTime, booking_id);
+  await checkDuplicateBooking(driver_id, booking.vehicle_id, newScheduledTime, booking_id);
 
   // 7. Calculate new end time
-  const newEndTime = new Date(newStartTime);
+  const newEndTime = new Date(newScheduledTime);
   newEndTime.setMinutes(newEndTime.getMinutes() + 15);
 
   // 8. Update booking
   await booking.update({
-    scheduled_start_time: newStartTime,
-    scheduled_end_time: newEndTime
+    scheduled_time: newScheduledTime
   });
 
   // 9. Return updated booking
@@ -526,7 +521,7 @@ async function cancelBooking(booking_id, driver_id) {
 
   // 4. Check not too close to start time (5 minutes buffer)
   const now = new Date();
-  const bufferTime = new Date(booking.scheduled_start_time);
+  const bufferTime = new Date(booking.scheduled_time);
   bufferTime.setMinutes(bufferTime.getMinutes() - 5);
 
   if (now > bufferTime) {
@@ -822,7 +817,7 @@ async function checkAvailability(station_id, vehicle_id) {
     where: {
       station_id,
       status: 'pending',
-      scheduled_start_time: {
+      scheduled_time: {
         [Op.between]: [now, next30Min]
       }
     }
