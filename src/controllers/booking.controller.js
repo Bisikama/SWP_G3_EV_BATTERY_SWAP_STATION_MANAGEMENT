@@ -74,15 +74,19 @@ const getMyBookings = asyncHandler(async (req, res) => {
  * GET /api/booking/:id
  * 
  * @description Lấy chi tiết booking theo ID
- * @access Private (driver/admin)
+ * @access Public (no token required) - for kiosk/station hardware
  */
 const getBookingById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const driver_id = req.user.account_id;
-  const role = req.user.role;
-
-  // Admin có thể xem tất cả bookings, driver chỉ xem của mình
-  const checkOwnership = role !== 'admin' ? driver_id : null;
+  
+  // Nếu có token, check ownership (driver chỉ xem của mình, admin xem tất cả)
+  // Nếu không có token (kiosk), cho phép xem booking bất kỳ
+  let checkOwnership = null;
+  if (req.user) {
+    const driver_id = req.user.account_id;
+    const role = req.user.role;
+    checkOwnership = role !== 'admin' ? driver_id : null;
+  }
 
   const booking = await bookingService.getBookingById(id, checkOwnership);
 
