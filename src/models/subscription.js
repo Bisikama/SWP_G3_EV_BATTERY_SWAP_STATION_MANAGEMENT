@@ -79,6 +79,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM('active', 'inactive'),
         allowNull: false,
         defaultValue: 'inactive'
+      },
+      swap_count: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
       }
     },
     {

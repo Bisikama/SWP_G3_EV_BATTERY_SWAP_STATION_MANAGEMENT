@@ -67,8 +67,12 @@ module.exports = {
         type: Sequelize.ENUM('active', 'inactive'),
         allowNull: false,
         defaultValue: 'inactive'
-      }
-
+      },
+      swap_count: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
     });
   },
 

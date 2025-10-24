@@ -301,15 +301,24 @@ async function executeSwapInternal(params, res) {
       });
     }
 
-    // Bước 4: Lấy thông tin vehicle để check take_first
-    console.log('\n📝 Step 4: Checking vehicle take_first status...');
-    const vehicle = await db.Vehicle.findByPk(vehicle_id, { transaction });
-    const isTakeFirst = vehicle.take_first;
-    console.log(`  Vehicle take_first: ${isTakeFirst}`);
+    // Bước 4: Kiểm tra xe có swap record trước đó không (để xác định lần đầu đổi pin)
+    console.log('\n📝 Step 4: Checking if this is first-time swap...');
+    const existingSwapCount = await db.SwapRecord.count({
+      where: {
+        vehicle_id: vehicle_id,
+        battery_id_in: { [db.Sequelize.Op.ne]: null } // Chỉ đếm swap có pin trả vào (loại trừ first-time pickup)
+      },
+      transaction
+    });
+    
+    const isFirstTimeSwap = existingSwapCount === 0;
+    console.log(`  Existing swap records (with battery_in): ${existingSwapCount}`);
+    console.log(`  Is first-time swap: ${isFirstTimeSwap}`);
 
-    // Bước 5: Tạo swap records
-    console.log('\n📝 Step 5: Creating swap records...');
+    // Bước 5: Tạo swap records và tính soh_usage đồng thời
+    console.log('\n📝 Step 5: Creating swap records and calculating soh_usage...');
     const swapRecords = [];
+    let totalSohUsage = 0;
 
     for (let i = 0; i < batteriesIn.length; i++) {
       const batteryIn = batteriesIn[i];
@@ -318,6 +327,20 @@ async function executeSwapInternal(params, res) {
       const batteryInData = await db.Battery.findByPk(batteryIn.battery_id, { transaction });
       const batteryOutData = await db.Battery.findByPk(batteryOut.battery_id, { transaction });
 
+      // Query previous swap TRƯỚC KHI tạo swap mới (chỉ khi KHÔNG phải lần đầu)
+      let previousSwapRecord = null;
+      if (!isFirstTimeSwap) {
+        previousSwapRecord = await db.SwapRecord.findOne({
+          where: {
+            vehicle_id: vehicle_id,
+            battery_id_out: batteryIn.battery_id // Pin đưa vào lần này = Pin lấy ra lần trước
+          },
+          order: [['swap_time', 'DESC']],
+          transaction
+        });
+      }
+
+      // Tạo swap record
       const swapRecord = await swapBatteryService.createSwapRecord({
         driver_id,
         vehicle_id,
@@ -330,13 +353,25 @@ async function executeSwapInternal(params, res) {
 
       swapRecords.push(swapRecord);
       console.log(`  ✅ Swap record created: ${swapRecord.swap_id}`);
+
+      // Tính soh_usage ngay sau khi tạo (chỉ khi KHÔNG phải lần đầu)
+      if (!isFirstTimeSwap && previousSwapRecord) {
+        const sohDiff = swapRecord.soh_in - previousSwapRecord.soh_out;
+        totalSohUsage += sohDiff;
+        
+        console.log(`  📉 Battery ${swapRecord.battery_id_in}:`);
+        console.log(`     - SOH lần trước (out): ${previousSwapRecord.soh_out}%`);
+        console.log(`     - SOH lần này (in): ${swapRecord.soh_in}%`);
+        console.log(`     - SOH usage: ${sohDiff}%`);
+      } else if (!isFirstTimeSwap) {
+        console.log(`  ⚠️ No previous swap found for battery ${swapRecord.battery_id_in}`);
+      }
     }
 
-    // Bước 6: Update soh_usage nếu không phải lần đầu đổi pin
-    if (isTakeFirst) {
-      console.log('\n📊 Step 6: Updating soh_usage for subscription...');
-
-      // Lấy subscription hiện tại của vehicle
+    // Bước 6: Update subscription.soh_usage (chỉ khi KHÔNG phải lần đầu và có thay đổi)
+    if (!isFirstTimeSwap && totalSohUsage !== 0) {
+      console.log('\n📊 Step 6: Updating subscription soh_usage...');
+      
       const subscription = await db.Subscription.findOne({
         where: {
           vehicle_id: vehicle_id,
@@ -346,36 +381,7 @@ async function executeSwapInternal(params, res) {
       });
 
       if (subscription) {
-        // Tính tổng soh_usage từ tất cả swap records vừa tạo
-        let totalSohUsage = 0;
-
-        for (const swapRecord of swapRecords) {
-          // Query swap_record trước đó của vehicle này (battery_id_out của lần trước)
-          const previousSwapRecord = await db.SwapRecord.findOne({
-            where: {
-              vehicle_id: vehicle_id,
-              battery_id_out: swapRecord.battery_id_in // Pin đưa vào lần này = Pin lấy ra lần trước
-            },
-            order: [['swap_time', 'DESC']],
-            transaction
-          });
-
-          if (previousSwapRecord) {
-            // soh_usage = soh_in (lần này) - soh_out (lần trước)
-            const sohDiff = swapRecord.soh_in - previousSwapRecord.soh_out;
-            totalSohUsage += sohDiff;
-            
-            console.log(`  📉 Battery ${swapRecord.battery_id_in}:`);
-            console.log(`     - SOH lần trước (out): ${previousSwapRecord.soh_out}%`);
-            console.log(`     - SOH lần này (in): ${swapRecord.soh_in}%`);
-            console.log(`     - SOH usage: ${sohDiff}%`);
-          } else {
-            console.log(`  ⚠️ No previous swap record found for battery ${swapRecord.battery_id_in}`);
-          }
-        }
-
-        // Cập nhật soh_usage vào subscription
-        const currentSohUsage = subscription.soh_usage || 0;
+        const currentSohUsage = parseFloat(subscription.soh_usage) || 0;
         const newSohUsage = currentSohUsage + totalSohUsage;
 
         await db.Subscription.update(
@@ -386,12 +392,12 @@ async function executeSwapInternal(params, res) {
           }
         );
 
-        console.log(`  ✅ Subscription soh_usage updated: ${currentSohUsage}% → ${newSohUsage}% (added ${totalSohUsage}%)`);
+        console.log(`  ✅ Subscription soh_usage updated: ${currentSohUsage.toFixed(2)}% → ${newSohUsage.toFixed(2)}% (Δ ${totalSohUsage > 0 ? '+' : ''}${totalSohUsage.toFixed(2)}%)`);
       } else {
         console.log(`  ⚠️ No active subscription found for vehicle ${vehicle_id}`);
       }
-    } else {
-      console.log('\n📊 Step 6: Skip soh_usage update (first-time swap, no previous record)');
+    } else if (isFirstTimeSwap) {
+      console.log('\n📊 Step 6: Skip soh_usage update (first-time swap, no previous swap records)');
       
       // Cập nhật take_first = true vì đây là lần đổi đầu tiên
       console.log('\n🔄 Step 6.1: Updating vehicle.take_first to TRUE (first-time swap completed)...');
@@ -402,7 +408,9 @@ async function executeSwapInternal(params, res) {
           transaction
         }
       );
-      console.log(`  ✅ Vehicle ${vehicle_id} take_first updated: false → true`);
+      console.log(`  ✅ Vehicle ${vehicle_id} take_first updated to TRUE`);
+    } else {
+      console.log('\n📊 Step 6: No soh_usage change (totalSohUsage = 0)');
     }
 
     await transaction.commit();
