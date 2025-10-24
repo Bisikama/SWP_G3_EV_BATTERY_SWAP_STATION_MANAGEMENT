@@ -98,26 +98,11 @@ router.post(
  * /api/booking/my-bookings:
  *   get:
  *     tags: [Booking]
- *     summary: Get my bookings
- *     description: Retrieve all bookings of the authenticated driver with pagination and optional status filter
+ *     summary: Get all my bookings
+ *     description: Retrieve ALL bookings of the authenticated driver (no pagination) with optional status filter
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 10
- *         description: Number of items per page
  *       - in: query
  *         name: status
  *         schema:
@@ -127,7 +112,7 @@ router.post(
  *         example: pending
  *     responses:
  *       200:
- *         description: Bookings retrieved successfully
+ *         description: All bookings retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -136,21 +121,14 @@ router.post(
  *                 message:
  *                   type: string
  *                   example: Bookings retrieved successfully
+ *                 total:
+ *                   type: integer
+ *                   example: 15
+ *                   description: Total number of bookings
  *                 bookings:
  *                   type: array
  *                   items:
  *                     type: object
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: integer
- *                     page:
- *                       type: integer
- *                     limit:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
  *       401:
  *         description: Unauthorized - no token provided
  */

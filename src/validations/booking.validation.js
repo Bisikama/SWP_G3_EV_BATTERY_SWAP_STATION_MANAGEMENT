@@ -117,14 +117,6 @@ const getBookingById = [
  * GET /api/booking/my-bookings
  */
 const getMyBookings = [
-  query('page')
-    .optional()
-    .isInt({ gt: 0 }).withMessage('Page must be a positive integer'),
-
-  query('limit')
-    .optional()
-    .isInt({ gt: 0, lt: 101 }).withMessage('Limit must be between 1 and 100'),
-
   query('status')
     .optional()
     .isIn(['pending', 'completed', 'cancelled'])
