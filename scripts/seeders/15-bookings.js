@@ -17,24 +17,45 @@ module.exports = {
     );
 
     const bookings = [];
-    const today = new Date();
+    const now = new Date();
 
+    // Tạo bookings với các trạng thái khác nhau để test
     drivers.forEach((driver, index) => {
-      for (let day = 0; day < 3; day++) {
-        const bookingDate = new Date(today);
-        bookingDate.setDate(today.getDate() + day);
-        bookingDate.setHours(9 + index * 2, 0, 0, 0); // stagger times
+      // Booking 1: Pending - scheduled trong tương lai (2 giờ sau)
+      const futureTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      bookings.push({
+        booking_id: uuidv4(),
+        driver_id: driver.driver_id,
+        vehicle_id: driver.vehicle_id,
+        station_id: stations[0].station_id,
+        create_time: now,
+        scheduled_time: futureTime,
+        status: 'pending'
+      });
 
-        bookings.push({
-          booking_id: uuidv4(), // generate UUID manually
-          driver_id: driver.driver_id,
-          vehicle_id: driver.vehicle_id,
-          station_id: stations[day % stations.length].station_id,
-          create_time: new Date(),
-          scheduled_time: bookingDate,
-          status: 'pending' // Explicitly set status
-        });
-      }
+      // Booking 2: Completed - đã hoàn thành trong quá khứ
+      const pastTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 1 ngày trước
+      bookings.push({
+        booking_id: uuidv4(),
+        driver_id: driver.driver_id,
+        vehicle_id: driver.vehicle_id,
+        station_id: stations[1].station_id,
+        create_time: new Date(pastTime.getTime() - 1 * 60 * 60 * 1000),
+        scheduled_time: pastTime,
+        status: 'completed'
+      });
+
+      // Booking 3: Cancelled - đã hủy
+      const cancelledTime = new Date(now.getTime() - 12 * 60 * 60 * 1000); // 12 giờ trước
+      bookings.push({
+        booking_id: uuidv4(),
+        driver_id: driver.driver_id,
+        vehicle_id: driver.vehicle_id,
+        station_id: stations[2].station_id,
+        create_time: new Date(cancelledTime.getTime() - 30 * 60 * 1000),
+        scheduled_time: cancelledTime,
+        status: 'cancelled'
+      });
     });
 
     await queryInterface.bulkInsert('Bookings', bookings, {});
