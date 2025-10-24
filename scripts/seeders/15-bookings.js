@@ -31,8 +31,8 @@ module.exports = {
           vehicle_id: driver.vehicle_id,
           station_id: stations[day % stations.length].station_id,
           create_time: new Date(),
-          scheduled_start_time: bookingDate,
-          scheduled_end_time: new Date(bookingDate.getTime() + 15 * 60000) // +15 minutes
+          scheduled_time: bookingDate,
+          status: 'pending' // Explicitly set status
         });
       }
     });

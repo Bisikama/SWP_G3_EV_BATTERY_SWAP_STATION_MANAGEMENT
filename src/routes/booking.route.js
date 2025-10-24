@@ -38,7 +38,7 @@ const { validate } = require('../middlewares/validateHandler');
  *             required:
  *               - vehicle_id
  *               - station_id
- *               - scheduled_start_time
+ *               - scheduled_time
  *             properties:
  *               vehicle_id:
  *                 type: string
@@ -49,11 +49,11 @@ const { validate } = require('../middlewares/validateHandler');
  *                 type: integer
  *                 example: 1
  *                 description: ID of the station
- *               scheduled_start_time:
+ *               scheduled_time:
  *                 type: string
  *                 format: date-time
  *                 example: 2025-10-20T14:00:00
- *                 description: Scheduled start time (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
+ *                 description: Scheduled time for battery swap (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *               battery_quantity:
  *                 type: integer
  *                 minimum: 1
@@ -291,13 +291,13 @@ router.get(
  *           schema:
  *             type: object
  *             required:
- *               - scheduled_start_time
+ *               - scheduled_time
  *             properties:
- *               scheduled_start_time:
+ *               scheduled_time:
  *                 type: string
  *                 format: date-time
  *                 example: 2025-10-20T15:00:00
- *                 description: New scheduled start time - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
+ *                 description: New scheduled time - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *     responses:
  *       200:
  *         description: Booking updated successfully

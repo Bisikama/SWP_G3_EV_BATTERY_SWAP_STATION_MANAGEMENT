@@ -13,9 +13,9 @@ const { body, param, query } = require('express-validator');
  * POST /api/booking
  */
 const createBooking = [
-  body('scheduled_start_time')
-    .notEmpty().withMessage('Scheduled start time is required')
-    .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
+  body('scheduled_time')
+    .notEmpty().withMessage('Scheduled time is required')
+    .isISO8601().withMessage('Scheduled time must be a valid ISO 8601 date')
     .custom((value) => {
       // Parse input theo Vietnam timezone (TZ=Asia/Ho_Chi_Minh trong .env)
       const inputDate = new Date(value);
@@ -23,7 +23,7 @@ const createBooking = [
 
       // Rule 1: Không được đặt quá khứ
       if (inputDate <= now) {
-        throw new Error('Scheduled start time must be in the future');
+        throw new Error('Scheduled time must be in the future');
       }
 
       // Lấy phần date của input theo Vietnam local time (GMT+7)
@@ -47,7 +47,7 @@ const createBooking = [
 
       // Rule 2: Chỉ cho đặt trong ngày hôm nay (so sánh theo Vietnam local time)
       if (inputYear !== nowYear || inputMonth !== nowMonth || inputDay !== nowDay) {
-        throw new Error(`Scheduled start time must be within today (${nowYear}-${nowMonth + 1}-${nowDay})`);
+        throw new Error(`Scheduled time must be within today (${nowYear}-${nowMonth + 1}-${nowDay})`);
       }
 
       return true;
@@ -70,9 +70,9 @@ const updateBooking = [
     .notEmpty().withMessage('Booking ID is required')
     .isUUID().withMessage('Booking ID must be a valid UUID'),
 
-  body('scheduled_start_time')
-    .notEmpty().withMessage('Scheduled start time is required')
-    .isISO8601().withMessage('Scheduled start time must be a valid ISO 8601 date')
+  body('scheduled_time')
+    .notEmpty().withMessage('Scheduled time is required')
+    .isISO8601().withMessage('Scheduled time must be a valid ISO 8601 date')
     .custom((value) => {
       // Parse input theo Vietnam timezone (TZ=Asia/Ho_Chi_Minh trong .env)
       const inputDate = new Date(value);
@@ -80,7 +80,7 @@ const updateBooking = [
 
       // Rule 1: Không được đặt quá khứ
       if (inputDate <= now) {
-        throw new Error('Scheduled start time must be in the future');
+        throw new Error('Scheduled time must be in the future');
       }
 
       // Lấy phần date của input theo Vietnam local time (GMT+7)
@@ -95,7 +95,7 @@ const updateBooking = [
 
       // Rule 2: Chỉ cho đặt trong ngày hôm nay (so sánh theo Vietnam local time)
       if (inputYear !== nowYear || inputMonth !== nowMonth || inputDay !== nowDay) {
-        throw new Error(`Scheduled start time must be within today (${nowYear}-${nowMonth + 1}-${nowDay})`);
+        throw new Error(`Scheduled time must be within today (${nowYear}-${nowMonth + 1}-${nowDay})`);
       }
 
       return true;
