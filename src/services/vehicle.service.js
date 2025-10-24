@@ -16,7 +16,7 @@
 // ========================================
 
 'use strict';
-const { Vehicle, VehicleModel, Account } = require('../models');
+const { Vehicle, VehicleModel, BatteryType, Account } = require('../models');
 
 /**
  * ========================================
@@ -115,7 +115,12 @@ async function getVehiclesByDriver(driver_id) {
       {
         model: VehicleModel,
         as: 'model',
-        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage']
+        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot'],
+        include: [{
+          model: BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id', 'battery_type_code', 'nominal_capacity']
+        }]
       }
     ]
   });
@@ -148,7 +153,12 @@ async function getVehicleByVin(vin) {
       {
         model: VehicleModel,
         as: 'model',
-        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage']
+        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot'],
+        include: [{
+          model: BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id', 'battery_type_code', 'nominal_capacity']
+        }]
       },
       {
         model: Account,
@@ -362,7 +372,12 @@ async function findVehicleWithModel(vehicle_id) {
       {
         model: VehicleModel,
         as: 'model',
-        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage']
+        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot'],
+        include: [{
+          model: BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id', 'battery_type_code', 'nominal_capacity']
+        }]
       }
     ]
   });
