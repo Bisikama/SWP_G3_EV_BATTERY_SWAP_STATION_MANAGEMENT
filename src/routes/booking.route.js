@@ -232,10 +232,8 @@ router.get(
  * /api/booking/{id}:
  *   get:
  *     tags: [Booking]
- *     summary: Get booking by ID
- *     description: Retrieve detailed information about a specific booking. Drivers can only view their own bookings, admins can view all.
- *     security:
- *       - bearerAuth: []
+ *     summary: Get booking by ID (Public - No token required)
+ *     description: Retrieve detailed information about a specific booking. This endpoint is public to support kiosk/station hardware checking booking status without user authentication. If authenticated, drivers can only view their own bookings, admins can view all. If not authenticated, any booking can be retrieved.
  *     parameters:
  *       - in: path
  *         name: id
@@ -244,6 +242,7 @@ router.get(
  *           type: string
  *           format: uuid
  *         description: Booking ID
+ *         example: 550e8400-e29b-41d4-a716-446655440000
  *     responses:
  *       200:
  *         description: Booking retrieved successfully
@@ -259,15 +258,11 @@ router.get(
  *                   type: object
  *       400:
  *         description: Bad request - invalid booking ID
- *       403:
- *         description: Forbidden - not authorized to view this booking
  *       404:
  *         description: Booking not found
  */
 router.get(
   '/:id',
-  verifyToken,
-  authorizeRole('driver', 'admin'),
   validate(bookingValidation.getBookingById),
   bookingController.getBookingById
 );
