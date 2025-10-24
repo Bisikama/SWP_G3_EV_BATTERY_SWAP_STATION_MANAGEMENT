@@ -4,7 +4,7 @@ const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-  await db.Station.bulkCreate([
+  await queryInterface.bulkInsert('Stations', [
       {
         station_name: 'District 1 Central Station',
         address: '123 Nguyen Hue, District 1, HCMC',
@@ -40,7 +40,7 @@ module.exports = {
         longitude: 106.6657,
         status: 'maintenance'
       }
-  ], { validate: true });
+  ], {});
   },
 
   async down(queryInterface, Sequelize) {

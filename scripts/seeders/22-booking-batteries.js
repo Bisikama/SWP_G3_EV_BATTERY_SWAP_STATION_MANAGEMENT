@@ -19,7 +19,7 @@ module.exports = {
       battery_id: chargedBatteries[index % chargedBatteries.length].battery_id
     }));
 
-  await db.BookingBattery.bulkCreate(bookingBatteries, { validate: true });
+    await queryInterface.bulkInsert('BookingBatteries', bookingBatteries, {});
   },
 
   async down(queryInterface, Sequelize) {

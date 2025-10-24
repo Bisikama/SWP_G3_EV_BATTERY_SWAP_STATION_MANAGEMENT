@@ -26,7 +26,7 @@ const { validate } = require('../middlewares/validateHandler');
  *   post:
  *     tags: [Booking]
  *     summary: Create a new booking
- *     description: Create a battery swap booking at a station for a specific vehicle. The system will automatically find and reserve suitable batteries based on battery_count.
+ *     description: Create a battery swap booking at a station for a specific vehicle. Driver can request multiple batteries (up to vehicle's battery_slot capacity). The system will automatically find and reserve suitable batteries.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -38,7 +38,7 @@ const { validate } = require('../middlewares/validateHandler');
  *             required:
  *               - vehicle_id
  *               - station_id
- *               - scheduled_start_time
+ *               - scheduled_time
  *             properties:
  *               vehicle_id:
  *                 type: string
@@ -49,11 +49,18 @@ const { validate } = require('../middlewares/validateHandler');
  *                 type: integer
  *                 example: 1
  *                 description: ID of the station
- *               scheduled_start_time:
+ *               scheduled_time:
  *                 type: string
  *                 format: date-time
  *                 example: 2025-10-20T14:00:00
- *                 description: Scheduled start time (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
+ *                 description: Scheduled time for battery swap (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
+ *               battery_quantity:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 1
+ *                 example: 2
+ *                 description: Number of batteries to swap (must be <= vehicle's battery_slot capacity). Default is 1 if not specified.
  *     responses:
  *       201:
  *         description: Booking created successfully
@@ -91,26 +98,11 @@ router.post(
  * /api/booking/my-bookings:
  *   get:
  *     tags: [Booking]
- *     summary: Get my bookings
- *     description: Retrieve all bookings of the authenticated driver with pagination and optional status filter
+ *     summary: Get all my bookings
+ *     description: Retrieve ALL bookings of the authenticated driver (no pagination) with optional status filter
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 10
- *         description: Number of items per page
  *       - in: query
  *         name: status
  *         schema:
@@ -120,7 +112,7 @@ router.post(
  *         example: pending
  *     responses:
  *       200:
- *         description: Bookings retrieved successfully
+ *         description: All bookings retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -129,21 +121,14 @@ router.post(
  *                 message:
  *                   type: string
  *                   example: Bookings retrieved successfully
+ *                 total:
+ *                   type: integer
+ *                   example: 15
+ *                   description: Total number of bookings
  *                 bookings:
  *                   type: array
  *                   items:
  *                     type: object
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: integer
- *                     page:
- *                       type: integer
- *                     limit:
- *                       type: integer
- *                     totalPages:
- *                       type: integer
  *       401:
  *         description: Unauthorized - no token provided
  */
@@ -247,10 +232,8 @@ router.get(
  * /api/booking/{id}:
  *   get:
  *     tags: [Booking]
- *     summary: Get booking by ID
- *     description: Retrieve detailed information about a specific booking. Drivers can only view their own bookings, admins can view all.
- *     security:
- *       - bearerAuth: []
+ *     summary: Get booking by ID (Public - No token required)
+ *     description: Retrieve detailed information about a specific booking. This endpoint is public to support kiosk/station hardware checking booking status without user authentication. If authenticated, drivers can only view their own bookings, admins can view all. If not authenticated, any booking can be retrieved.
  *     parameters:
  *       - in: path
  *         name: id
@@ -259,6 +242,7 @@ router.get(
  *           type: string
  *           format: uuid
  *         description: Booking ID
+ *         example: 550e8400-e29b-41d4-a716-446655440000
  *     responses:
  *       200:
  *         description: Booking retrieved successfully
@@ -274,15 +258,11 @@ router.get(
  *                   type: object
  *       400:
  *         description: Bad request - invalid booking ID
- *       403:
- *         description: Forbidden - not authorized to view this booking
  *       404:
  *         description: Booking not found
  */
 router.get(
   '/:id',
-  verifyToken,
-  authorizeRole('driver', 'admin'),
   validate(bookingValidation.getBookingById),
   bookingController.getBookingById
 );
@@ -311,13 +291,13 @@ router.get(
  *           schema:
  *             type: object
  *             required:
- *               - scheduled_start_time
+ *               - scheduled_time
  *             properties:
- *               scheduled_start_time:
+ *               scheduled_time:
  *                 type: string
  *                 format: date-time
  *                 example: 2025-10-20T15:00:00
- *                 description: New scheduled start time - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
+ *                 description: New scheduled time - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *     responses:
  *       200:
  *         description: Booking updated successfully
