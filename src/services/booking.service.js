@@ -281,20 +281,18 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_star
  * ========================================
  * GET BOOKINGS BY DRIVER
  * ========================================
- * Lấy danh sách bookings của driver với pagination và filter
+ * Lấy tất cả bookings của driver với filter (KHÔNG PAGINATION)
  * 
  * @param {string} driver_id - ID của driver
- * @param {object} options - { page, limit, status }
- * @returns {Promise<object>} - { bookings, pagination }
+ * @param {object} options - { status }
+ * @returns {Promise<object>} - { bookings }
  */
-async function getBookingsByDriver(driver_id, { page = 1, limit = 10, status } = {}) {
+async function getBookingsByDriver(driver_id, { status } = {}) {
   if (!driver_id) {
     const err = new Error('Driver ID is required');
     err.status = 400;
     throw err;
   }
-
-  const offset = (page - 1) * limit;
 
   // Build where clause
   const where = { driver_id };
@@ -304,7 +302,7 @@ async function getBookingsByDriver(driver_id, { page = 1, limit = 10, status } =
     where.status = status;
   }
 
-  const { count, rows } = await Booking.findAndCountAll({
+  const bookings = await Booking.findAll({
     where,
     include: [
       {
@@ -329,22 +327,15 @@ async function getBookingsByDriver(driver_id, { page = 1, limit = 10, status } =
         through: { attributes: [] } // Không lấy attributes từ bảng trung gian
       }
     ],
-    order: [['scheduled_start_time', 'DESC']],
-    limit: parseInt(limit),
-    offset: parseInt(offset)
+    order: [['scheduled_start_time', 'DESC']]
   });
 
   // Format all bookings to Vietnam timezone
-  const formattedBookings = rows.map(booking => formatBookingResponse(booking));
+  const formattedBookings = bookings.map(booking => formatBookingResponse(booking));
 
   return {
     bookings: formattedBookings,
-    pagination: {
-      total: count,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(count / limit)
-    }
+    total: formattedBookings.length
   };
 }
 
