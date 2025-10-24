@@ -5,3 +5,6 @@ build/
 
 #Bỏ qua file cấu hình môi trường
 .env
+
+#Bỏ qua file md
+*.md
