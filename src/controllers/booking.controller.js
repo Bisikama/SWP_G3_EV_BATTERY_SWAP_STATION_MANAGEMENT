@@ -122,9 +122,9 @@ const updateBooking = asyncHandler(async (req, res) => {
 
 /**
  * ========================================
- * CANCEL BOOKING (SOFT DELETE)
+ * CANCEL BOOKING
  * ========================================
- * DELETE /api/booking/:id
+ * PATCH /api/booking/:id/cancel
  * 
  * @description Hủy booking bằng cách update status = 'cancelled'
  * @access Private (driver)
