@@ -50,6 +50,7 @@ module.exports = {
         vehicle_id: vehicle.vehicle_id,
         plan_id: byName[planNames[index % planNames.length]] || fallbackPlanId,
         soh_usage: 0,
+        swap_count: 0,
         start_date: '2024-10-01',
         end_date: '2024-12-31',
         cancel_time: null,

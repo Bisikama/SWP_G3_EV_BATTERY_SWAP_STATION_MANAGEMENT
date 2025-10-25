@@ -21,7 +21,7 @@ async function getEmptySlots(station_id, cabinet_id = null) {
           model: Cabinet,
           as: 'cabinet',
           where: cabinet_id ? { cabinet_id: cabinet_id } : { station_id: station_id },
-          attributes: ['cabinet_id', 'cabinet_name', 'station_id']
+          attributes: ['cabinet_id', 'station_id']
         }
       ],
       attributes: ['slot_id', 'slot_number', 'cabinet_id', 'voltage', 'current', 'status'],
@@ -40,11 +40,13 @@ async function getEmptySlots(station_id, cabinet_id = null) {
  * Kiểm tra:
  * - Slot có đang empty không
  * - Battery có tồn tại không
+ * - Battery có thuộc về vehicle đang đổi không
  * - SOH của battery để quyết định status của slot
  * @param {Array} slotUpdates - Mảng các object { slot_id, battery_id }
+ * @param {string} vehicle_id - ID của vehicle đang đổi pin (để validate ownership)
  * @returns {Object} - Kết quả validation
  */
-async function validateBatteryInsertion(slotUpdates) {
+async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
   try {
     const results = [];
     let allValid = true;
@@ -89,8 +91,20 @@ async function validateBatteryInsertion(slotUpdates) {
         continue;
       }
 
+      // Kiểm tra battery có thuộc về vehicle đang đổi không
+      if (vehicle_id && battery.vehicle_id !== vehicle_id) {
+        results.push({
+          slot_id,
+          battery_id,
+          valid: false,
+          error: `Battery ${battery_id} không thuộc về xe này (vehicle_id hiện tại: ${battery.vehicle_id || 'null'})`
+        });
+        allValid = false;
+        continue;
+      }
+
       // Kiểm tra SOH để xác định status của slot
-      const newSlotStatus = battery.current_soh < 15 ? 'faulty' : 'charging';
+      const newSlotStatus = battery.current_soh < 70 ? 'faulty' : 'charging';
 
       results.push({
         slot_id,
@@ -228,7 +242,7 @@ async function getAvailableBatteriesForSwap(station_id, battery_type_id, quantit
           model: Cabinet,
           as: 'cabinet',
           where: { station_id: station_id },
-          attributes: ['cabinet_id', 'cabinet_name', 'station_id']
+          attributes: ['cabinet_id', 'station_id']
         },
         {
           model: Battery,
@@ -310,7 +324,7 @@ async function createSwapRecord(swapData) {
  * @param {number} station_id - ID của trạm
  * @returns {Object} - Thông tin pin và xe
  */
-async function getFirstTimeBatteries(driver_id, vehicle_id, station_id) {
+async function getFirstTimeBatteries( vehicle_id, station_id) {
   try {
     const { Vehicle, VehicleModel } = require('../models');
 
