@@ -356,7 +356,7 @@ async function executeSwapInternal(params, res) {
       const subscription = await db.Subscription.findOne({
         where: {
           vehicle_id: vehicle_id,
-          sub_status: 'active'
+          status: 'active'
         },
         transaction
       });
@@ -478,13 +478,13 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     const subscription = await db.Subscription.findOne({
       where: {
         vehicle_id: vehicle_id,
-        sub_status: 'active'
+        status: 'active'
       },
       include: [
         {
           model: db.SubscriptionPlan,
           as: 'plan',
-          attributes: ['plan_id', 'plan_name', 'price']
+          attributes: ['plan_id', 'plan_name', 'plan_fee']
         }
       ]
     });
@@ -905,7 +905,7 @@ async function executeSwapWithBookingInternal(params, res) {
       const subscription = await db.Subscription.findOne({
         where: {
           vehicle_id: vehicle_id,
-          sub_status: 'active'
+          status: 'active'
         },
         transaction
       });
@@ -1377,13 +1377,13 @@ async function firstTimeBatteryPickup(req, res) {
     const subscription = await db.Subscription.findOne({
       where: {
         vehicle_id: vehicle_id,
-        sub_status: 'active'
+        status: 'active'
       },
       include: [
         {
           model: db.SubscriptionPlan,
           as: 'plan',
-          attributes: ['plan_id', 'plan_name', 'price']
+          attributes: ['plan_id', 'plan_name', 'plan_fee']
         }
       ],
       transaction
@@ -1482,7 +1482,6 @@ async function firstTimeBatteryPickup(req, res) {
           vehicle_id: vehicle.vehicle_id,
           license_plate: vehicle.license_plate,
           model: vehicle.model.name,
-          take_first: true
         },
         batteries_picked: swapRecords.length,
         swap_records: swapRecords.map(record => ({
