@@ -253,7 +253,7 @@ async function executeSwapInternal(params, res) {
     const driverId = vehicle.driver_id;
     const vehicleBatteryTypeId = vehicle.model.battery_type_id;
     console.log(`✅ Vehicle battery type: ${vehicleBatteryTypeId} (${vehicle.model.batteryType?.type_name})`);
-
+    console.log(`driverId: ${driverId}`);
     // Bước 2: Tự động lấy pin mới từ DB
     console.log('\n📤 Step 2: Finding available batteries to swap OUT...');
     
@@ -636,21 +636,54 @@ async function validateAndPrepareSwapWithBooking(req, res) {
 
     console.log(`✅ Booking hợp lệ (trong khoảng thời gian cho phép)`);
 
-    // Bước 4: Lấy danh sách pin đã đặt từ BookingBatteries
+    // Bước 4: Lấy danh sách pin đã đặt từ BookingBatteries và thông tin slot
     console.log('\n🔍 Step 4: Getting booked batteries from BookingBatteries...');
-    const bookedBatteries = booking.bookingBatteries || [];
+    const bookedBatteriesRaw = booking.bookingBatteries || [];
     
-    if (bookedBatteries.length === 0) {
+    if (bookedBatteriesRaw.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'Booking không có pin nào được đặt trước'
       });
     }
     
-    console.log(`   - Found ${bookedBatteries.length} booked batteries`);
-    bookedBatteries.forEach(bb => {
-      console.log(`   - Battery ${bb.battery_id}: SOC=${bb.battery.current_soc}%, SOH=${bb.battery.current_soh}%`);
-    });
+    console.log(`   - Found ${bookedBatteriesRaw.length} booked batteries`);
+    
+    // Lấy thông tin slot cho từng battery
+    const bookedBatteries = [];
+    for (const bb of bookedBatteriesRaw) {
+      const battery = bb.battery;
+      
+      // Tìm slot chứa battery này
+      const slot = await db.CabinetSlot.findOne({
+        where: { 
+          battery_id: battery.battery_id,
+          slot_status: ['charging', 'charged', 'locked']
+        },
+        attributes: ['slot_id', 'slot_number', 'slot_status']
+      });
+
+      if (!slot) {
+        return res.status(400).json({
+          success: false,
+          message: `Pin  (${battery.battery_id}) không tìm thấy slot hoặc không ở trạng thái sẵn sàng`,
+          data: {
+            battery_id: battery.battery_id
+          }
+        });
+      }
+
+      bookedBatteries.push({
+        battery_id: battery.battery_id,
+        current_soc: battery.current_soc,
+        current_soh: battery.current_soh,
+        slot_id: slot.slot_id,
+        slot_number: slot.slot_number,
+        slot_status: slot.slot_status
+      });
+
+      console.log(`   - Battery ${battery.battery_id}: SOC=${battery.current_soc}%, SOH=${battery.current_soh}% at Slot ${slot.slot_id} (${slot.slot_status})`);
+    }
 
     // Bước 5: Validate dựa trên first-time hay không
     let validBatteries = [];
@@ -805,24 +838,48 @@ async function executeSwapWithBookingInternal(params, res) {
   try {
     const {
       booking_id,
-      driver_id,
       vehicle_id,
       station_id,
-      battery_type_id,
       batteriesIn,
       batteriesOut
     } = params;
 
     console.log(`\n🔄 ========== EXECUTING BATTERY SWAP WITH BOOKING ==========`);
     console.log(`Booking ID: ${booking_id}`);
-    console.log(`Driver: ${driver_id}`);
     console.log(`Vehicle: ${vehicle_id}`);
     console.log(`Station: ${station_id}`);
-    console.log(`Battery Type: ${battery_type_id}`);
     console.log(`Batteries IN: ${batteriesIn.length}`);
     console.log(`Batteries OUT (booked): ${batteriesOut.length}`);
 
     const swapResults = [];
+    // Bước 1.5: Lấy battery_type_id của vehicle
+    console.log('\n🔍 Step 1.5: Getting battery type of vehicle...');
+    const vehicle = await db.Vehicle.findByPk(vehicle_id, {
+      attributes: ['vehicle_id', 'model_id', 'driver_id'],
+      include: [{
+        model: db.VehicleModel,
+        as: 'model',
+        attributes: ['model_id', 'battery_type_id'],
+        include: [{
+          model: db.BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id']
+        }]
+      }],
+      transaction
+    });
+
+    if (!vehicle || !vehicle.model) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy thông tin xe hoặc loại pin của xe'
+      });
+    }
+    const driverId = vehicle.driver_id;
+    const vehicleBatteryTypeId = vehicle.model.battery_type_id;
+    console.log(`✅ Vehicle battery type: ${vehicleBatteryTypeId} (${vehicle.model.batteryType?.type_name})`);
+    console.log(`driverId: ${driverId}`);
 
     // Bước 1: Xử lý pin cũ đưa vào
     console.log('\n📥 Step 1: Processing batteries IN (old batteries)...');
@@ -944,7 +1001,7 @@ async function executeSwapWithBookingInternal(params, res) {
 
       // Tạo swap record (với booking_id)
       const swapRecord = await swapBatteryService.createSwapRecordWithBooking({
-        driver_id,
+        driver_id : driverId,
         vehicle_id,
         station_id,
         battery_id_in: batteryIn.battery_id,
@@ -1034,10 +1091,10 @@ async function executeSwapWithBookingInternal(params, res) {
       message: 'Đổi pin thành công với booking',
       data: {
         booking_id,
-        driver_id,
+        driver_id : driverId,
         vehicle_id,
         station_id,
-        battery_type_id,
+        battery_type_id : vehicleBatteryTypeId,
         swap_summary: {
           batteries_in: batteriesIn.length,
           batteries_out: processedBatteriesOut.length,
@@ -1123,13 +1180,13 @@ async function executeSwap(req, res) {
  * }
  */
 async function executeSwapWithBooking(req, res) {
-  const { booking_id, driver_id, vehicle_id, station_id, battery_type_id, batteriesIn, batteriesOut } = req.body;
+  const { booking_id, vehicle_id, station_id, batteriesIn, batteriesOut } = req.body;
 
   // Validation input
-  if (!booking_id || !driver_id || !vehicle_id || !station_id || !battery_type_id) {
+  if (!booking_id || !vehicle_id || !station_id) {
     return res.status(400).json({
       success: false,
-      message: 'booking_id, driver_id, vehicle_id, station_id, battery_type_id là bắt buộc'
+      message: 'booking_id, vehicle_id, station_id là bắt buộc'
     });
   }
 
@@ -1156,10 +1213,8 @@ async function executeSwapWithBooking(req, res) {
 
   return await executeSwapWithBookingInternal({
     booking_id,
-    driver_id,
     vehicle_id,
     station_id,
-    battery_type_id,
     batteriesIn,
     batteriesOut
   }, res);
@@ -1173,7 +1228,7 @@ async function executeSwapWithBooking(req, res) {
  * Chỉ xử lý batteriesOut từ booking
  */
 async function executeFirstTimePickupWithBookingInternal(params, res) {
-  const { booking_id, driver_id, vehicle_id, station_id, bookedBatteries } = params;
+  const { booking_id, vehicle_id, station_id, bookedBatteries } = params;
   const transaction = await db.sequelize.transaction();
 
   try {
@@ -1194,6 +1249,7 @@ async function executeFirstTimePickupWithBookingInternal(params, res) {
 
     // Step 2: Get vehicle
     const vehicle = await db.Vehicle.findByPk(vehicle_id, {
+      attributes: ['vehicle_id', 'driver_id'],
       include: [{ model: db.VehicleModel, as: 'VehicleModel' }],
       transaction
     });
@@ -1204,7 +1260,7 @@ async function executeFirstTimePickupWithBookingInternal(params, res) {
         message: 'Vehicle không tồn tại'
       });
     }
-
+    const driverId = vehicle.driver_id;
     // Step 3: Process batteriesOut (from booking)
     console.log(`\n📤 Processing ${bookedBatteries.length} booked batteries OUT...`);
     const processedBatteriesOut = [];
@@ -1245,7 +1301,7 @@ async function executeFirstTimePickupWithBookingInternal(params, res) {
     console.log('\n📝 Creating SwapRecord (First-Time)...');
     const swapRecord = await swapBatteryService.createSwapRecordWithBooking(
       {
-        driver_id,
+        driver_id: driverId,
         vehicle_id,
         battery_id_in: null, // First-time: no battery IN
         soh_in: null,
@@ -1327,13 +1383,13 @@ async function executeFirstTimePickupWithBookingInternal(params, res) {
  * }
  */
 async function executeFirstTimePickupWithBooking(req, res) {
-  const { booking_id, driver_id, vehicle_id, station_id, bookedBatteries } = req.body;
+  const { booking_id, vehicle_id, station_id, bookedBatteries } = req.body;
 
   // Validation input
-  if (!booking_id || !driver_id || !vehicle_id) {
+  if (!booking_id || !vehicle_id) {
     return res.status(400).json({
       success: false,
-      message: 'booking_id, driver_id, vehicle_id là bắt buộc'
+      message: 'booking_id, vehicle_id là bắt buộc'
     });
   }
 
@@ -1353,7 +1409,6 @@ async function executeFirstTimePickupWithBooking(req, res) {
 
   return await executeFirstTimePickupWithBookingInternal({
     booking_id,
-    driver_id,
     vehicle_id,
     station_id,
     bookedBatteries
