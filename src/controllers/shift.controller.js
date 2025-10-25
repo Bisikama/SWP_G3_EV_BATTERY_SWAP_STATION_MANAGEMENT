@@ -13,6 +13,12 @@ async function findById(req, res) {
   return res.status(200).json({ success: true, payload: { shift: shift } });
 }
 
+async function findByStaff(req, res) {
+  const { staff_id } = req.params;
+  const shifts = await shiftService.findByStaff(staff_id);
+  return res.status(200).json({ success: true, payload: { shift: shifts } });
+}
+
 async function create(req, res) {
   const data = req.body || {};
   const created = await shiftService.createShift(req.user, data);
@@ -26,16 +32,10 @@ async function update(req, res) {
   return res.status(200).json({ success: true, payload: { shift: updated } });
 }
 
-async function cancel(req, res) {
+async function remove(req, res) {
   const { id } = req.params;
-  const updated = await shiftService.cancelShift(req.user, id);
-  return res.status(200).json({ success: true, payload: { shift: updated } });
+  await shiftService.removeShift(req.user, id);
+  return res.status(200).json({ success: true });
 }
 
-async function confirm(req, res) {
-  const { id } = req.params;
-  const updated = await shiftService.confirmShift(req.user, id);
-  return res.status(200).json({ success: true, payload: { shift: updated } });
-}
-
-module.exports = { findAll, findById, create, update, cancel, confirm };
+module.exports = { findAll, findById, findByStaff, create, update, remove };

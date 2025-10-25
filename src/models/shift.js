@@ -53,11 +53,6 @@ module.exports = (sequelize, DataTypes) => {
       end_time: {
         type: DataTypes.DATE,
         allowNull: false
-      },
-      status: {
-        type: DataTypes.ENUM('assigned', 'confirmed', 'cancelled'),
-        allowNull: false,
-        defaultValue: 'assigned'
       }
     },
     {

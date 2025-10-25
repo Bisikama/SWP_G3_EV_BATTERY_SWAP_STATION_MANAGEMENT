@@ -6,10 +6,14 @@ const transferValidator = require('../validations/transfer.validation');
 const { validate } = require('../middlewares/validateHandler');
 
 router.get('/', 
+    verifyToken,
+    authorizeRole('admin', 'staff'),
     transferController.findAll
 );
 
 router.get('/:id', 
+    verifyToken,
+    authorizeRole('admin', 'staff'),
     validate(transferValidator.findById), 
     transferController.findById
 );
@@ -28,6 +32,13 @@ router.post('/:transfer_request_id/approve',
     transferController.approve
 );
 
+router.post('/:transfer_request_id/reject',
+    verifyToken,
+    authorizeRole('admin'),
+    validate(transferValidator.reject),
+    transferController.reject
+);
+
 router.post('/:transfer_detail_id/confirm', 
     verifyToken,
     authorizeRole('staff'), 
@@ -35,13 +46,20 @@ router.post('/:transfer_detail_id/confirm',
     transferController.confirm
 );
 
+router.post('/:transfer_request_id/cancel',
+    verifyToken,
+    authorizeRole('staff'),
+    validate(transferValidator.cancel),
+    transferController.cancel
+);
+
 module.exports = router;
 
 /**
  * @swagger
  * tags:
- *   name: Transfers
- *   description: Manage battery transfer requests between stations
+ *   - name: Transfers
+ *     description: Manage battery transfer requests between stations
  */
 
 /**
@@ -54,74 +72,74 @@ module.exports = router;
  *         transfer_request_id:
  *           type: string
  *           format: uuid
- *           example: "6b3b25c2-2b2b-4c6a-9b4e-9d621234abcd"
  *         station_id:
  *           type: integer
- *           example: 1
  *         staff_id:
  *           type: string
  *           format: uuid
- *           example: "a18b9e8c-4f3c-49c0-97e2-122ad0982cd1"
  *         admin_id:
  *           type: string
  *           format: uuid
  *           nullable: true
- *           example: "c6d2d08a-1344-423e-bc44-52a67c1b20a1"
  *         request_quantity:
  *           type: integer
- *           example: 12
  *         request_time:
  *           type: string
  *           format: date-time
- *         approve_time:
+ *         resolve_time:
  *           type: string
  *           format: date-time
  *           nullable: true
  *         status:
  *           type: string
- *           enum: [pending, approved]
- *           example: "approved"
+ *           enum: [pending, approved, rejected, cancelled, completed]
  *         notes:
  *           type: string
  *           nullable: true
- *           example: "Requesting additional batteries for upcoming demand"
- *
  *     TransferDetail:
  *       type: object
  *       properties:
  *         transfer_detail_id:
  *           type: string
  *           format: uuid
- *           example: "09c2b6e8-7e89-46f4-a2b7-bd74af1aab21"
  *         transfer_request_id:
  *           type: string
  *           format: uuid
  *         station_id:
  *           type: integer
- *           example: 2
  *         staff_id:
  *           type: string
  *           format: uuid
  *           nullable: true
  *         transfer_quantity:
  *           type: integer
- *           example: 4
  *         status:
  *           type: string
- *           enum: [transfering, confirmed]
- *           example: "transfering"
+ *           enum: [incompleted, completed]
  *         confirm_time:
  *           type: string
  *           format: date-time
  *           nullable: true
+ *         batteries:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               battery_id:
+ *                 type: string
+ *                 format: uuid
+ *               current_soc:
+ *                 type: number
  */
 
 /**
  * @swagger
  * /api/transfers:
  *   get:
- *     summary: Get all transfer requests
  *     tags: [Transfers]
+ *     summary: Get all transfer requests
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of all transfer requests
@@ -132,7 +150,6 @@ module.exports = router;
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 payload:
  *                   type: object
  *                   properties:
@@ -143,8 +160,10 @@ module.exports = router;
  *
  * /api/transfers/{id}:
  *   get:
- *     summary: Get a transfer request by ID
  *     tags: [Transfers]
+ *     summary: Get a transfer request by ID
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -152,7 +171,6 @@ module.exports = router;
  *         schema:
  *           type: string
  *           format: uuid
- *         description: Transfer request ID
  *     responses:
  *       200:
  *         description: Transfer request details
@@ -168,13 +186,15 @@ module.exports = router;
  *                   properties:
  *                     transfer:
  *                       $ref: '#/components/schemas/TransferRequest'
+ *       404:
+ *         description: Transfer request not found
  *
  * /api/transfers/request:
  *   post:
+ *     tags: [Transfers]
  *     summary: Staff creates a new transfer request
  *     security:
  *       - bearerAuth: []
- *     tags: [Transfers]
  *     requestBody:
  *       required: true
  *       content:
@@ -203,15 +223,15 @@ module.exports = router;
  *                 payload:
  *                   type: object
  *                   properties:
- *                     transferReq:
+ *                     transferRequest:
  *                       $ref: '#/components/schemas/TransferRequest'
  *
  * /api/transfers/{transfer_request_id}/approve:
  *   post:
- *     summary: Admin approves a transfer request and assigns details
+ *     tags: [Transfers]
+ *     summary: Admin approves a transfer request and assigns transfer details
  *     security:
  *       - bearerAuth: []
- *     tags: [Transfers]
  *     parameters:
  *       - in: path
  *         name: transfer_request_id
@@ -230,16 +250,13 @@ module.exports = router;
  *             properties:
  *               transfer_details:
  *                 type: array
- *                 description: List of station transfer assignments
  *                 items:
  *                   type: object
  *                   properties:
  *                     station_id:
  *                       type: integer
- *                       example: 1
  *                     transfer_quantity:
  *                       type: integer
- *                       example: 4
  *     responses:
  *       200:
  *         description: Transfer approved successfully
@@ -256,12 +273,41 @@ module.exports = router;
  *                     transfer:
  *                       $ref: '#/components/schemas/TransferRequest'
  *
+ * /api/transfers/{transfer_request_id}/reject:
+ *   post:
+ *     tags: [Transfers]
+ *     summary: Admin rejects a transfer request
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transfer_request_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Transfer request rejected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     transferRequest:
+ *                       $ref: '#/components/schemas/TransferRequest'
+ *
  * /api/transfers/{transfer_detail_id}/confirm:
  *   post:
+ *     tags: [Transfers]
  *     summary: Staff confirms receipt of a transfer
  *     security:
  *       - bearerAuth: []
- *     tags: [Transfers]
  *     parameters:
  *       - in: path
  *         name: transfer_detail_id
@@ -284,4 +330,33 @@ module.exports = router;
  *                   properties:
  *                     transferDetail:
  *                       $ref: '#/components/schemas/TransferDetail'
+ *
+ * /api/transfers/{transfer_request_id}/cancel:
+ *   post:
+ *     tags: [Transfers]
+ *     summary: Staff cancels a pending transfer request
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transfer_request_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Transfer request cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     transferRequest:
+ *                       $ref: '#/components/schemas/TransferRequest'
  */

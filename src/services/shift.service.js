@@ -9,9 +9,16 @@ async function findById(id) {
   return db.Shift.findByPk(id);
 }
 
+async function findByStaff(staff_id) {
+  return db.Shift.findAll({
+    where: {
+      staff_id
+    }
+  });
+}
+
 async function createShift(user, data) {
 	data.admin_id = user.account_id;
-	delete data.status;
   const staff = await db.Account.findByPk(data.staff_id);
 	if (!staff) throw new ApiError(400, 'Staff not found');
   const station = await db.Station.findByPk(data.station_id);
@@ -19,28 +26,15 @@ async function createShift(user, data) {
 
 	const scheduledStartTime = new Date(data.start_time);
   const scheduledEndTime = new Date(data.end_time);
-  // Check if staff already has a shift in the same time range
-  const overlappingShift = await db.Shift.findOne({
-    where: {
-      station_id: data.station_id,
-      status: { [db.Sequelize.Op.ne]: 'cancelled' }, // ignore cancelled shifts
-      [db.Sequelize.Op.or]: [
-        {
-          start_time: { [db.Sequelize.Op.between]: [scheduledStartTime, scheduledEndTime] }
-        },
-        {
-          end_time: { [db.Sequelize.Op.between]: [scheduledStartTime, scheduledEndTime] }
-        },
-        {
-          start_time: { [db.Sequelize.Op.lte]: scheduledStartTime },
-          end_time: { [db.Sequelize.Op.gte]: scheduledEndTime }
-        }
-      ]
-    }
-  });
-  console.log('overlappingShift:', overlappingShift);
-	if (overlappingShift) {
-    throw new ApiError(400, 'Shift has already been taken in this time range at this station');
+
+  // Check conflict
+  const stationConflict = await findConflictedShift({ station_id: data.station_id }, scheduledStartTime, scheduledEndTime);
+  if (stationConflict) {
+    throw new ApiError(400, 'This station already has a shift during this time range');
+  }
+  const staffConflict = await findConflictedShift({ staff_id: data.staff_id }, scheduledStartTime, scheduledEndTime);
+  if (staffConflict) {
+    throw new ApiError(400, 'This staff already has a shift during this time range');
   }
 
   return db.Shift.create(data);
@@ -61,78 +55,63 @@ async function updateShift(user, id, data) {
     if (!station) throw new ApiError(400, 'Station not found');
   }
 
-	const scheduledStartTime = new Date(data.start_time);
-  const scheduledEndTime = new Date(data.end_time);
+  const staff_id = data.staff_id || shift.staff_id;
+  const station_id = data.station_id || shift.station_id;
+	const scheduledStartTime = new Date(data.start_time || shift.start_time);
+  const scheduledEndTime = new Date(data.end_time || shift.end_time);
   // Check if staff already has a shift in the same time range
-  const overlappingShift = await db.Shift.findOne({
-    where: {
-      station_id: data.station_id,
-      status: { [db.Sequelize.Op.ne]: 'cancelled' }, // ignore cancelled shifts
-      [db.Sequelize.Op.or]: [
-        {
-          start_time: { [db.Sequelize.Op.between]: [scheduledStartTime, scheduledEndTime] }
-        },
-        {
-          end_time: { [db.Sequelize.Op.between]: [scheduledStartTime, scheduledEndTime] }
-        },
-        {
-          start_time: { [db.Sequelize.Op.lte]: scheduledStartTime },
-          end_time: { [db.Sequelize.Op.gte]: scheduledEndTime }
-        }
-      ]
-    }
-  });
-	if (overlappingShift) {
-    throw new ApiError(400, 'Shift has already been taken in this time range at this station');
+  const stationConflict = await findConflictedShift({ station_id }, scheduledStartTime, scheduledEndTime, shift.shift_id);
+	if (stationConflict) {
+    throw new ApiError(400, 'This station already has a shift during this time range');
+  }
+  const staffConflict = await findConflictedShift({ staff_id }, scheduledStartTime, scheduledEndTime, shift.shift_id);
+	if (staffConflict) {
+    throw new ApiError(400, 'This staff already has a shift during this time range');
   }
 
-	delete data.status;
   await shift.update(data);
   return shift;
 }
 
-async function cancelShift(user, id) {
-	const shift = await db.Shift.findByPk(id);
-	if (!shift) throw new ApiError(404, 'Shift not found');
-	if (shift.admin_id !== user.account_id) {
-    throw new ApiError(403, 'Access denied: You can only cancel shifts that you created');
+async function findConflictedShift(condition, scheduled_start_time, scheduled_end_time, exclude_id = null) {
+  const where = {
+    ...condition,
+    [db.Sequelize.Op.or]: [
+      {
+        start_time: { [db.Sequelize.Op.between]: [scheduled_start_time, scheduled_end_time] }
+      },
+      {
+        end_time: { [db.Sequelize.Op.between]: [scheduled_start_time, scheduled_end_time] }
+      },
+      {
+        start_time: { [db.Sequelize.Op.lte]: scheduled_start_time },
+        end_time: { [db.Sequelize.Op.gte]: scheduled_end_time }
+      }
+    ]
+  };
+
+  if (exclude_id) {
+    where.shift_id = { [db.Sequelize.Op.ne]: exclude_id };
   }
-	const now = new Date();
-  if (shift.start_time <= now) {
-    throw new ApiError(400, 'Cannot cancel a shift that has already started');
-  }
-	if (shift.status === 'cancelled') {
-    throw new ApiError(400, 'Shift is already cancelled');
-  }
-  if (shift.status === 'confirmed') {
-    throw new ApiError(400, 'Cannot cancel a shift that is already confirmed');
-  }
-	shift.status = 'cancelled';
-	await shift.save();
-	return shift;
+
+  return db.Shift.findOne({ where });
 }
 
-async function confirmShift(user, id) {
+async function removeShift(user, id) {
   const shift = await db.Shift.findByPk(id);
   if (!shift) throw new ApiError(404, 'Shift not found');
-	if (shift.staff_id !== user.account_id) {
-    throw new ApiError(403, 'Access denied: You can only confirm shifts that you are assigned to');
+
+  if (shift.admin_id !== user.account_id) {
+    throw new ApiError(403, 'Access denied: You can only remove shifts that you created');
   }
-	const now = new Date();
-  const start = new Date(shift.start_time);
-  const end = new Date(shift.end_time);
-  if (now < start || now > end) {
-    throw new ApiError(400, 'Shift can only be confirmed during its scheduled time');
+
+  const now = new Date();
+  if (now >= shift.start_time && now <= shift.end_time) {
+    throw new ApiError(400, 'Cannot delete a shift that is currently in progress');
   }
-  if (shift.status === 'confirmed') {
-    throw new ApiError(400, 'Shift is already confirmed');
-  }
-  if (shift.status === 'cancelled') {
-    throw new ApiError(400, 'Cannot confirm a shift that has been cancelled');
-  }
-	shift.status = 'confirmed';
-  await shift.save();
+
+  await shift.destroy();
   return shift;
 }
 
-module.exports = { findAll, findById, createShift, updateShift, cancelShift, confirmShift };
+module.exports = { findAll, findById, findByStaff, createShift, updateShift, removeShift };

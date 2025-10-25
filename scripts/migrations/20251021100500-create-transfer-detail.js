@@ -47,9 +47,9 @@ module.exports = {
         allowNull: false
       },
       status: {
-        type: Sequelize.ENUM('transfering','confirmed'),
+        type: Sequelize.ENUM('incompleted','completed'),
         allowNull: false,
-        defaultValue: 'transfering'
+        defaultValue: 'incompleted'
       }
     });
   },

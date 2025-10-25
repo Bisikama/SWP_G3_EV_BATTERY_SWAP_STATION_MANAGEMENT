@@ -3,7 +3,7 @@ const { body, param } = require('express-validator');
 const findById = [
   param('id')
     .notEmpty().withMessage('id is required')
-    .isUUID().withMessage('id must be a uuid')
+    .isUUID().withMessage('id must be a valid UUID'),
 ];
 
 const request = [
@@ -19,7 +19,7 @@ const request = [
 const approve = [
   param('transfer_request_id')
     .notEmpty().withMessage('transfer_request_id is required')
-    .isUUID().withMessage('transfer_request_id must be a uuid'),
+    .isUUID().withMessage('transfer_request_id must be a valid UUID'),
 
   body('transfer_details')
     .isArray({ min: 1 }).withMessage('transfer_details must be a non-empty array'),
@@ -36,12 +36,26 @@ const approve = [
 const confirm = [
   param('transfer_detail_id')
     .notEmpty().withMessage('transfer_detail_id is required')
-    .isUUID().withMessage('transfer_detail_id must be a uuid')
+    .isUUID().withMessage('transfer_detail_id must be a valid UUID'),
+];
+
+const reject = [
+  param('transfer_request_id')
+    .notEmpty().withMessage('transfer_request_id is required')
+    .isUUID().withMessage('transfer_request_id must be a valid UUID'),
+];
+
+const cancel = [
+  param('transfer_request_id')
+    .notEmpty().withMessage('transfer_request_id is required')
+    .isUUID().withMessage('transfer_request_id must be a valid UUID'),
 ];
 
 module.exports = {
   findById,
   request,
   approve,
-  confirm
+  confirm,
+  reject,
+  cancel,
 };
