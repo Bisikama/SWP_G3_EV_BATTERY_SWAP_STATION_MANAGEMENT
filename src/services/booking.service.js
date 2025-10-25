@@ -681,17 +681,18 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
   }
 
   // 2. Lấy tất cả slots của các cabinets này (separate query, no lock)
+  // ✅ CHO PHÉP CẢ 'charging' VÀ 'charged' (loại trừ 'locked', 'empty', 'faulty')
   const cabinetIds = cabinets.map(c => c.cabinet_id);
   const slots = await CabinetSlot.findAll({
     where: {
       cabinet_id: { [Op.in]: cabinetIds },
-      status: { [Op.in]: ['charging', 'charged'] }
+      status: { [Op.in]: ['charging', 'charged'] }  // ✅ Cả hai đều OK
     },
     attributes: ['slot_id', 'cabinet_id', 'status'],
     transaction: t
   });
 
-  console.log('[findAvailableBatteries] Found slots:', slots.length);
+  console.log('[findAvailableBatteries] Found slots with status charging/charged:', slots.length);
 
   if (slots.length === 0) {
     return [];
@@ -701,13 +702,13 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
   const slotIds = slots.map(s => s.slot_id);
 
   // 4. Tìm batteries trong các slots này (WITH LOCK if in transaction)
-  // Note: Không dùng include với lock để tránh "FOR UPDATE on outer join" error
+  // ✅ QUAN TRỌNG: Battery.current_soc là source of truth, không cần check slot status nữa
   const batteryQueryOptions = {
     where: {
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
-      current_soc: { [Op.gt]: 90 }, // Pin phải có hơn 90% SOC
-      current_soh: { [Op.gte]: 70 } // Pin phải có SOH >= 70%
+      current_soc: { [Op.gte]: 90 },  // ✅ SOURCE OF TRUTH: SOC >= 90%
+      current_soh: { [Op.gte]: 70 }   // Pin phải có SOH >= 70%
     }
   };
 
@@ -717,23 +718,12 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
     batteryQueryOptions.transaction = t;
   }
 
-  const batteries = await Battery.findAll(batteryQueryOptions);
+  const availableBatteries = await Battery.findAll(batteryQueryOptions);
 
-  // 4. Filter batteries by slot status 'charged' separately (avoid lock on join)
-  const chargedBatteryIds = await CabinetSlot.findAll({
-    where: {
-      slot_id: { [Op.in]: batteries.map(b => b.slot_id) },
-      status: 'charged'
-    },
-    attributes: ['slot_id'],
-    transaction: t
-  });
-
-  const chargedSlotIds = new Set(chargedBatteryIds.map(s => s.slot_id));
-  const availableBatteries = batteries.filter(b => chargedSlotIds.has(b.slot_id));
+  console.log('[findAvailableBatteries] Found batteries matching criteria:', availableBatteries.length);
 
   // 5. Trả về tất cả batteries available
-  // Miễn còn pin đủ điều kiện là được, hệ thống sẽ tự phân bổ
+  // Pin có SOC >= 90% + trong slot 'charging' hoặc 'charged' đều OK
   return availableBatteries;
 }
 
@@ -848,20 +838,27 @@ async function checkAvailability(station_id, vehicle_id) {
   const battery_type_code = vehicle.model.batteryType.battery_type_code;
 
   // 3. Find available batteries for this battery type RIGHT NOW
+  // ✅ Sử dụng logic mới: cho phép cả 'charging' và 'charged', SOC >= 90%
   const now = new Date();
   const availableBatteries = await findAvailableBatteries(station_id, battery_type_id, now);
 
-  // 4. Count current pending bookings at this station (within next 30 minutes)
+  // 4. ✅ ĐẾM ĐÚNG SỐ PIN đang bị giữ bởi pending bookings
+  // Count số lượng PIN thực tế (qua BookingBattery), không phải số booking
   const next30Min = new Date(now.getTime() + 30 * 60000);
   
-  const currentPendingBookings = await Booking.count({
-    where: {
-      station_id,
-      status: 'pending',
-      scheduled_time: {
-        [Op.between]: [now, next30Min]
-      }
-    }
+  const reservedBatteriesCount = await BookingBattery.count({
+    include: [{
+      model: Booking,
+      as: 'booking',
+      where: {
+        station_id,
+        status: 'pending',  // ✅ Chỉ pending, cancelled/completed KHÔNG tính
+        scheduled_time: {
+          [Op.between]: [now, next30Min]
+        }
+      },
+      attributes: []
+    }]
   });
 
   // 5. Get total capacity of station
@@ -874,13 +871,14 @@ async function checkAvailability(station_id, vehicle_id) {
   });
 
   // 6. Calculate effective availability
-  const effectiveAvailable = Math.max(0, availableBatteries.length - currentPendingBookings);
+  // ✅ Trừ đúng số PIN bị giữ, không phải số booking
+  const effectiveAvailable = Math.max(0, availableBatteries.length - reservedBatteriesCount);
   const isAvailable = effectiveAvailable > 0;
 
   return {
     available: isAvailable,
     message: isAvailable 
-      ? `Station has available batteries for ${battery_type_code}` 
+      ? `Station has ${effectiveAvailable} available ${battery_type_code} batteries` 
       : `No ${battery_type_code} batteries available at this station right now`,
     station: {
       station_id: station.station_id,
@@ -893,10 +891,10 @@ async function checkAvailability(station_id, vehicle_id) {
       battery_type_code
     },
     availability_details: {
-      available_batteries_count: availableBatteries.length,
+      total_batteries_ready: availableBatteries.length,  // ✅ Đổi tên rõ hơn
+      reserved_by_pending_bookings: reservedBatteriesCount,  // ✅ Số PIN bị giữ
+      available_now: effectiveAvailable,
       total_slots: totalSlots,
-      current_pending_bookings: currentPendingBookings,
-      effective_available: effectiveAvailable,
       station_status: station.status
     }
   };
