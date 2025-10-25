@@ -57,11 +57,11 @@ module.exports = (sequelize, DataTypes) => {
       },
       status: {
         type: DataTypes.ENUM(
-          'transfering',
-          'confirmed'
+          'incompleted',
+          'completed'
         ),
         allowNull: false,
-        defaultValue: 'transfering'
+        defaultValue: 'incompleted'
       }
     },
     {

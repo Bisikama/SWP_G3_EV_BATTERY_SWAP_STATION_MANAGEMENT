@@ -43,7 +43,7 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.NOW
       },
-      approve_time: {
+      resolve_time: {
         type: Sequelize.DATE,
         allowNull: true
       },
@@ -52,7 +52,7 @@ module.exports = {
         allowNull: false
       },
       status: {
-        type: Sequelize.ENUM('pending','approved','rejected'),
+        type: Sequelize.ENUM('pending','cancelled','approved','rejected','completed'),
         allowNull: false,
         defaultValue: 'pending'
       },

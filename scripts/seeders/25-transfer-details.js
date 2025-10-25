@@ -30,7 +30,7 @@ module.exports = {
         staff_id: null,
         confirm_time: null,
         transfer_quantity: 3,
-        status: 'transfering'
+        status: 'incompleted'
       });
     }
 

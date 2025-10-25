@@ -25,7 +25,7 @@ module.exports = {
         admin_id: null,
         staff_id: staffRows[i].account_id,
         request_time: new Date(),
-        approve_time: null,
+        resolve_time: null,
         request_quantity: 5,
         status: 'pending',
         notes: 'Auto-generated transfer request for seeding'

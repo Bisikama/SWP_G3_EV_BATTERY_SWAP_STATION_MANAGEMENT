@@ -52,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: DataTypes.NOW
       },
-      approve_time: {
+      resolve_time: {
         type: DataTypes.DATE,
         allowNull: true
       },
@@ -63,8 +63,10 @@ module.exports = (sequelize, DataTypes) => {
       status: {
         type: DataTypes.ENUM(
           'pending',
+          'cancelled',
           'approved',
-          'rejected'
+          'rejected',
+          'completed'
         ),
         allowNull: false,
         defaultValue: 'pending'
