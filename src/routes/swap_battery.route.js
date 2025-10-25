@@ -299,9 +299,242 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  *         description: Server error
  */
 
+/**
+ * @swagger
+ * /api/swap/validate-and-prepare:
+ *   post:
+ *     summary: Validate và chuẩn bị đổi pin (không có booking)
+ *     tags: [Battery Swap]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - driver_id
+ *               - vehicle_id
+ *               - station_id
+ *               - battery_type_id
+ *               - requested_quantity
+ *               - batteriesIn
+ *             properties:
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *               vehicle_id:
+ *                 type: string
+ *                 format: uuid
+ *               station_id:
+ *                 type: integer
+ *               battery_type_id:
+ *                 type: integer
+ *               requested_quantity:
+ *                 type: integer
+ *               batteriesIn:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/BatteryIn'
+ *     responses:
+ *       200:
+ *         description: Validation thành công
+ *       400:
+ *         description: Validation thất bại
+ */
+
+/**
+ * @swagger
+ * /api/swap/validate-with-booking:
+ *   post:
+ *     summary: Validate đổi pin với booking (hỗ trợ cả first-time)
+ *     tags: [Battery Swap]
+ *     description: Kiểm tra xe đã lấy pin lần đầu chưa, trả về is_first_time flag
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - booking_id
+ *               - driver_id
+ *               - vehicle_id
+ *               - station_id
+ *               - battery_type_id
+ *             properties:
+ *               booking_id:
+ *                 type: string
+ *                 format: uuid
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *               vehicle_id:
+ *                 type: string
+ *                 format: uuid
+ *               station_id:
+ *                 type: integer
+ *               battery_type_id:
+ *                 type: integer
+ *               batteriesIn:
+ *                 type: array
+ *                 description: Optional nếu first-time
+ *                 items:
+ *                   $ref: '#/components/schemas/BatteryIn'
+ *     responses:
+ *       200:
+ *         description: Validation thành công, is_first_time flag included
+ *       400:
+ *         description: Validation thất bại
+ */
+
+/**
+ * @swagger
+ * /api/swap/execute:
+ *   post:
+ *     summary: Thực hiện đổi pin (sau khi validate)
+ *     tags: [Battery Swap]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - driver_id
+ *               - vehicle_id
+ *               - station_id
+ *               - battery_type_id
+ *               - batteriesIn
+ *             properties:
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *               vehicle_id:
+ *                 type: string
+ *                 format: uuid
+ *               station_id:
+ *                 type: integer
+ *               battery_type_id:
+ *                 type: integer
+ *               batteriesIn:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/BatteryIn'
+ *     responses:
+ *       200:
+ *         description: Đổi pin thành công
+ *       400:
+ *         description: Lỗi validation
+ */
+
+/**
+ * @swagger
+ * /api/swap/execute-with-booking:
+ *   post:
+ *     summary: Thực hiện đổi pin với booking (regular swap)
+ *     tags: [Battery Swap]
+ *     description: Dùng khi is_first_time = false
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - booking_id
+ *               - driver_id
+ *               - vehicle_id
+ *               - station_id
+ *               - battery_type_id
+ *               - batteriesIn
+ *               - batteriesOut
+ *             properties:
+ *               booking_id:
+ *                 type: string
+ *                 format: uuid
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *               vehicle_id:
+ *                 type: string
+ *                 format: uuid
+ *               station_id:
+ *                 type: integer
+ *               battery_type_id:
+ *                 type: integer
+ *               batteriesIn:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/BatteryIn'
+ *               batteriesOut:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     battery_id:
+ *                       type: string
+ *                       format: uuid
+ *     responses:
+ *       200:
+ *         description: Đổi pin thành công
+ *       400:
+ *         description: Lỗi validation
+ */
+
+/**
+ * @swagger
+ * /api/swap/execute-first-time-with-booking:
+ *   post:
+ *     summary: Lấy pin lần đầu với booking
+ *     tags: [Battery Swap]
+ *     description: Dùng khi is_first_time = true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - booking_id
+ *               - driver_id
+ *               - vehicle_id
+ *               - station_id
+ *               - bookedBatteries
+ *             properties:
+ *               booking_id:
+ *                 type: string
+ *                 format: uuid
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *               vehicle_id:
+ *                 type: string
+ *                 format: uuid
+ *               station_id:
+ *                 type: integer
+ *               bookedBatteries:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     slot_id:
+ *                       type: integer
+ *                     battery_id:
+ *                       type: string
+ *                       format: uuid
+ *     responses:
+ *       200:
+ *         description: Lấy pin lần đầu thành công
+ *       400:
+ *         description: Lỗi validation
+ */
+
 // Routes
 router.post('/validate-and-prepare', swapBatteryController.validateAndPrepareSwap);
+router.post('/validate-with-booking', swapBatteryController.validateAndPrepareSwapWithBooking);
 router.post('/execute', swapBatteryController.executeSwap);
+router.post('/execute-with-booking', swapBatteryController.executeSwapWithBooking);
+router.post('/execute-first-time-with-booking', swapBatteryController.executeFirstTimePickupWithBooking); // ← THÊM MỚI
 router.get('/available-batteries', swapBatteryController.getAvailableBatteries);
 router.post('/first-time-pickup', swapBatteryController.firstTimeBatteryPickup);
 

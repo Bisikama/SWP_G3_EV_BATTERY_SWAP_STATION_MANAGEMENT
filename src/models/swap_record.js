@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
         this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
         this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
+        this.belongsTo(models.Booking, { as: 'booking', foreignKey: 'booking_id' });  // ← THÊM MỚI
     }
   }
   SwapRecord.init(
