@@ -523,18 +523,7 @@ async function cancelBooking(booking_id, driver_id) {
     throw err;
   }
 
-  // 4. Check not too close to start time (5 minutes buffer)
-  const now = new Date();
-  const bufferTime = new Date(booking.scheduled_time);
-  bufferTime.setMinutes(bufferTime.getMinutes() - 5);
-
-  if (now > bufferTime) {
-    const err = new Error('Cannot cancel booking within 5 minutes of scheduled start time');
-    err.status = 422;
-    throw err;
-  }
-
-  // 5. Update status to cancelled
+  // 4. Update status to cancelled
   await booking.update({ status: 'cancelled' });
 
   return { 
