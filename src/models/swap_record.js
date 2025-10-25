@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
         this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
         this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
-        this.belongsTo(models.Booking, { as: 'booking', foreignKey: 'booking_id' });  // ← THÊM MỚI
+      
     }
   }
   SwapRecord.init(
@@ -91,7 +91,7 @@ module.exports = (sequelize, DataTypes) => {
 
   SwapRecord.beforeSave(async (swap, options) => {
     const Account = sequelize.models.Account;
-    const account = await Account.findByPk(swap.swap_by);
+    const account = await Account.findByPk(swap.driver_id);
     if (!account || account.role !== 'driver') {
       throw new Error('Swap record must be associated with a driver');
     }

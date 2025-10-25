@@ -303,6 +303,30 @@ async function createSwapRecord(swapData, transaction = null) {
       soh_out
     } = swapData;
 
+     // ✅ Validation chi tiết hơn
+    console.log('🔍 Creating SwapRecord with data:', {
+      driver_id,
+      vehicle_id,
+      station_id,
+      battery_id_in,
+      battery_id_out,
+      soh_in,
+      soh_out
+    });
+
+    if (!driver_id) {
+      throw new Error('Swap record must be associated with a driver (driver_id is required)');
+    }
+
+    if (!vehicle_id) {
+      throw new Error('Swap record must be associated with a vehicle (vehicle_id is required)');
+    }
+
+    if (!station_id) {
+      throw new Error('Swap record must be associated with a station (station_id is required)');
+    }
+
+
     const options = transaction ? { transaction } : {};
 
     const swapRecord = await SwapRecord.create({
@@ -316,16 +340,9 @@ async function createSwapRecord(swapData, transaction = null) {
       swap_time: new Date()
     }, options);
 
-    // Lấy thông tin đầy đủ
-    const fullRecord = await SwapRecord.findByPk(swapRecord.swap_id, {
-      include: [
-        { model: Battery, as: 'returnedBattery', include: [{ model: BatteryType, as: 'batteryType' }] },
-        { model: Battery, as: 'retrievedBattery', include: [{ model: BatteryType, as: 'batteryType' }] }
-      ],
-      ...options
-    });
+    
 
-    return fullRecord;
+    return swapRecord;
   } catch (error) {
     console.error('Error in createSwapRecord:', error);
     throw error;
