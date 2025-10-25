@@ -271,7 +271,28 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     
     await Promise.all(bookingBatteryPromises);
 
-    // 12. Return booking with full details (WITH TRANSACTION to read uncommitted data)
+    // 12. Lock cabinet slots for reserved batteries (IN TRANSACTION)
+    const batteryIdsToLock = lockedBatteries.map(b => b.battery_id);
+    
+    // Find slot_ids from batteries
+    const slotIds = lockedBatteries
+      .map(b => b.slot_id)
+      .filter(id => id !== null && id !== undefined);
+    
+    if (slotIds.length > 0) {
+      await CabinetSlot.update(
+        { status: 'locked' },
+        {
+          where: {
+            slot_id: { [Op.in]: slotIds }
+          },
+          transaction: t
+        }
+      );
+      console.log(`[DEBUG] Successfully locked ${slotIds.length} cabinet slot(s) for booking`);
+    }
+
+    // 13. Return booking with full details (WITH TRANSACTION to read uncommitted data)
     // Transaction will commit here automatically if no errors
     return getBookingById(newBooking.booking_id, driver_id, t);
   });
@@ -525,6 +546,34 @@ async function cancelBooking(booking_id, driver_id) {
 
   // 4. Update status to cancelled
   await booking.update({ status: 'cancelled' });
+
+  // 5. Unlock cabinet slots based on battery SOC
+  // Find all batteries reserved for this booking
+  const bookingBatteries = await BookingBattery.findAll({
+    where: { booking_id },
+    include: [{
+      model: Battery,
+      as: 'battery',
+      attributes: ['battery_id', 'slot_id', 'current_soc'],
+      where: {
+        slot_id: { [Op.not]: null } // Only batteries in cabinet slots
+      }
+    }]
+  });
+
+  // Update cabinet slot status based on SOC
+  for (const bb of bookingBatteries) {
+    const battery = bb.battery;
+    if (battery && battery.slot_id) {
+      const newStatus = battery.current_soc >= 100 ? 'charged' : 'charging';
+      await CabinetSlot.update(
+        { status: newStatus },
+        { where: { slot_id: battery.slot_id } }
+      );
+    }
+  }
+
+  console.log(`[DEBUG] Unlocked ${bookingBatteries.length} cabinet slot(s) for cancelled booking ${booking_id}`);
 
   return { 
     message: 'Booking cancelled successfully',
