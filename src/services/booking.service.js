@@ -125,6 +125,15 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
       throw err;
     }
 
+    // Validate scheduled_time is in the future
+    const scheduledTime = new Date(scheduled_time);
+    const now = new Date();
+    if (scheduledTime <= now) {
+      const err = new Error('Scheduled time must be in the future');
+      err.status = 400;
+      throw err;
+    }
+
     // 2. Check vehicle exists (WITH LOCK - no include to avoid JOIN lock issue)
     const vehicle = await Vehicle.findByPk(vehicle_id, {
       attributes: ['vehicle_id', 'driver_id', 'model_id', 'license_plate'],
@@ -198,20 +207,15 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     // Giới hạn chỉ phụ thuộc vào available batteries tại station
 
     // 6. Check duplicate booking (WITH LOCK)
-    const scheduledTime = new Date(scheduled_time);
     await checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, null, t);
 
-    // 7. Calculate end time (15 minutes after start)
-    const endTime = new Date(scheduledTime);
-    endTime.setMinutes(endTime.getMinutes() + 15);
-
-    // 8. Find available batteries at station (WITH LOCK)
+    // 7. Find available batteries at station (WITH LOCK)
     const battery_type_id = vehicle.model.battery_type_id;
     
     let availableBatteries;
     try {
       console.log('[DEBUG] Searching for available batteries...', { station_id, battery_type_id, requested: battery_quantity });
-      availableBatteries = await findAvailableBatteries(station_id, battery_type_id, startTime, t);
+      availableBatteries = await findAvailableBatteries(station_id, battery_type_id, scheduledTime, t);
       console.log('[DEBUG] Found batteries:', availableBatteries.length);
     } catch (error) {
       console.error('[ERROR] findAvailableBatteries failed:', error.message);
@@ -267,7 +271,28 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     
     await Promise.all(bookingBatteryPromises);
 
-    // 12. Return booking with full details (WITH TRANSACTION to read uncommitted data)
+    // 12. Lock cabinet slots for reserved batteries (IN TRANSACTION)
+    const batteryIdsToLock = lockedBatteries.map(b => b.battery_id);
+    
+    // Find slot_ids from batteries
+    const slotIds = lockedBatteries
+      .map(b => b.slot_id)
+      .filter(id => id !== null && id !== undefined);
+    
+    if (slotIds.length > 0) {
+      await CabinetSlot.update(
+        { status: 'locked' },
+        {
+          where: {
+            slot_id: { [Op.in]: slotIds }
+          },
+          transaction: t
+        }
+      );
+      console.log(`[DEBUG] Successfully locked ${slotIds.length} cabinet slot(s) for booking`);
+    }
+
+    // 13. Return booking with full details (WITH TRANSACTION to read uncommitted data)
     // Transaction will commit here automatically if no errors
     return getBookingById(newBooking.booking_id, driver_id, t);
   });
@@ -519,19 +544,36 @@ async function cancelBooking(booking_id, driver_id) {
     throw err;
   }
 
-  // 4. Check not too close to start time (5 minutes buffer)
-  const now = new Date();
-  const bufferTime = new Date(booking.scheduled_time);
-  bufferTime.setMinutes(bufferTime.getMinutes() - 5);
+  // 4. Update status to cancelled
+  await booking.update({ status: 'cancelled' });
 
-  if (now > bufferTime) {
-    const err = new Error('Cannot cancel booking within 5 minutes of scheduled start time');
-    err.status = 422;
-    throw err;
+  // 5. Unlock cabinet slots based on battery SOC
+  // Find all batteries reserved for this booking
+  const bookingBatteries = await BookingBattery.findAll({
+    where: { booking_id },
+    include: [{
+      model: Battery,
+      as: 'battery',
+      attributes: ['battery_id', 'slot_id', 'current_soc'],
+      where: {
+        slot_id: { [Op.not]: null } // Only batteries in cabinet slots
+      }
+    }]
+  });
+
+  // Update cabinet slot status based on SOC
+  for (const bb of bookingBatteries) {
+    const battery = bb.battery;
+    if (battery && battery.slot_id) {
+      const newStatus = battery.current_soc >= 100 ? 'charged' : 'charging';
+      await CabinetSlot.update(
+        { status: newStatus },
+        { where: { slot_id: battery.slot_id } }
+      );
+    }
   }
 
-  // 5. Update status to cancelled
-  await booking.update({ status: 'cancelled' });
+  console.log(`[DEBUG] Unlocked ${bookingBatteries.length} cabinet slot(s) for cancelled booking ${booking_id}`);
 
   return { 
     message: 'Booking cancelled successfully',
@@ -639,17 +681,18 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
   }
 
   // 2. Lấy tất cả slots của các cabinets này (separate query, no lock)
+  // ✅ CHO PHÉP CẢ 'charging' VÀ 'charged' (loại trừ 'locked', 'empty', 'faulty')
   const cabinetIds = cabinets.map(c => c.cabinet_id);
   const slots = await CabinetSlot.findAll({
     where: {
       cabinet_id: { [Op.in]: cabinetIds },
-      status: { [Op.in]: ['charging', 'charged'] }
+      status: { [Op.in]: ['charging', 'charged'] }  // ✅ Cả hai đều OK
     },
     attributes: ['slot_id', 'cabinet_id', 'status'],
     transaction: t
   });
 
-  console.log('[findAvailableBatteries] Found slots:', slots.length);
+  console.log('[findAvailableBatteries] Found slots with status charging/charged:', slots.length);
 
   if (slots.length === 0) {
     return [];
@@ -659,13 +702,13 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
   const slotIds = slots.map(s => s.slot_id);
 
   // 4. Tìm batteries trong các slots này (WITH LOCK if in transaction)
-  // Note: Không dùng include với lock để tránh "FOR UPDATE on outer join" error
+  // ✅ QUAN TRỌNG: Battery.current_soc là source of truth, không cần check slot status nữa
   const batteryQueryOptions = {
     where: {
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
-      current_soc: { [Op.gt]: 90 }, // Pin phải có hơn 90% SOC
-      current_soh: { [Op.gte]: 70 } // Pin phải có SOH >= 70%
+      current_soc: { [Op.gte]: 90 },  // ✅ SOURCE OF TRUTH: SOC >= 90%
+      current_soh: { [Op.gte]: 70 }   // Pin phải có SOH >= 70%
     }
   };
 
@@ -675,23 +718,12 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
     batteryQueryOptions.transaction = t;
   }
 
-  const batteries = await Battery.findAll(batteryQueryOptions);
+  const availableBatteries = await Battery.findAll(batteryQueryOptions);
 
-  // 4. Filter batteries by slot status 'charged' separately (avoid lock on join)
-  const chargedBatteryIds = await CabinetSlot.findAll({
-    where: {
-      slot_id: { [Op.in]: batteries.map(b => b.slot_id) },
-      status: 'charged'
-    },
-    attributes: ['slot_id'],
-    transaction: t
-  });
-
-  const chargedSlotIds = new Set(chargedBatteryIds.map(s => s.slot_id));
-  const availableBatteries = batteries.filter(b => chargedSlotIds.has(b.slot_id));
+  console.log('[findAvailableBatteries] Found batteries matching criteria:', availableBatteries.length);
 
   // 5. Trả về tất cả batteries available
-  // Miễn còn pin đủ điều kiện là được, hệ thống sẽ tự phân bổ
+  // Pin có SOC >= 90% + trong slot 'charging' hoặc 'charged' đều OK
   return availableBatteries;
 }
 
@@ -699,35 +731,31 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
  * ========================================
  * HELPER: CHECK DUPLICATE BOOKING
  * ========================================
- * Kiểm tra driver/vehicle có booking trùng time slot không
+ * Kiểm tra vehicle có booking pending khác không
  * 
- * @param {string} driver_id - UUID của driver
- * @param {string} vehicle_id - UUID của vehicle
- * @param {Date} startTime - Thời gian booking
+ * BUSINESS RULE:
+ * - Một VEHICLE chỉ được có TỐI ĐA 1 booking với status='pending' mỗi lúc
+ * - Chỉ khi booking cũ đã completed hoặc cancelled thì vehicle đó mới được đặt booking mới
+ * - Driver có thể có nhiều booking pending, NHƯNG mỗi xe chỉ 1 booking pending
+ * 
+ * VÍ DỤ:
+ * - Driver A có 3 xe (Xe1, Xe2, Xe3)
+ * - Xe1 có booking pending → Xe1 KHÔNG đặt được booking khác
+ * - Xe1 có booking pending → Xe2, Xe3 VẪN đặt được (vì khác xe)
+ * 
+ * @param {string} driver_id - UUID của driver (không dùng để check)
+ * @param {string} vehicle_id - UUID của vehicle (dùng để check)
+ * @param {Date} scheduledTime - Thời gian booking (không dùng để check trùng nữa)
  * @param {string} excludeBookingId - Booking ID cần exclude (khi update)
  * @param {Transaction} t - Sequelize transaction (optional)
- * @throws {Error} - Nếu có duplicate booking
+ * @throws {Error} - Nếu vehicle có pending booking khác
  */
-async function checkDuplicateBooking(driver_id, vehicle_id, startTime, excludeBookingId = null, t = null) {
-  // Check trong khoảng ±30 phút
-  const timeSlotStart = new Date(startTime);
-  timeSlotStart.setMinutes(timeSlotStart.getMinutes() - 30);
-  
-  const timeSlotEnd = new Date(startTime);
-  timeSlotEnd.setMinutes(timeSlotEnd.getMinutes() + 30);
-
+async function checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, excludeBookingId = null, t = null) {
+  // CHỈ check vehicle có booking pending nào không
+  // KHÔNG check driver vì driver có thể có nhiều xe, mỗi xe 1 booking pending
   const whereClause = {
-    [Op.or]: [
-      { driver_id },
-      { vehicle_id }
-    ],
-    scheduled_start_time: {
-      [Op.between]: [timeSlotStart, timeSlotEnd]
-    },
-    // Only check pending bookings, ignore cancelled/completed (completed shouldn't block new swaps)
-    status: {
-      [Op.in]: ['pending']
-    }
+    vehicle_id,  // ← CHỈ check vehicle_id, không check driver_id
+    status: 'pending'
   };
 
   // Exclude booking hiện tại khi update
@@ -736,7 +764,8 @@ async function checkDuplicateBooking(driver_id, vehicle_id, startTime, excludeBo
   }
 
   const queryOptions = {
-    where: whereClause
+    where: whereClause,
+    attributes: ['booking_id', 'driver_id', 'vehicle_id', 'scheduled_time', 'status']
   };
 
   // Add transaction and lock if provided
@@ -745,10 +774,12 @@ async function checkDuplicateBooking(driver_id, vehicle_id, startTime, excludeBo
     queryOptions.transaction = t;
   }
 
-  const duplicateBooking = await Booking.findOne(queryOptions);
+  const existingPendingBooking = await Booking.findOne(queryOptions);
 
-  if (duplicateBooking) {
-    const err = new Error('You already have a booking in this time slot (±30 minutes). Please choose another time.');
+  if (existingPendingBooking) {
+    const err = new Error(
+      `Cannot create new booking. This vehicle already has a pending booking (ID: ${existingPendingBooking.booking_id}) scheduled at ${existingPendingBooking.scheduled_time}. Please complete or cancel the existing booking first.`
+    );
     err.status = 409;
     throw err;
   }
@@ -807,20 +838,27 @@ async function checkAvailability(station_id, vehicle_id) {
   const battery_type_code = vehicle.model.batteryType.battery_type_code;
 
   // 3. Find available batteries for this battery type RIGHT NOW
+  // ✅ Sử dụng logic mới: cho phép cả 'charging' và 'charged', SOC >= 90%
   const now = new Date();
   const availableBatteries = await findAvailableBatteries(station_id, battery_type_id, now);
 
-  // 4. Count current pending bookings at this station (within next 30 minutes)
+  // 4. ✅ ĐẾM ĐÚNG SỐ PIN đang bị giữ bởi pending bookings
+  // Count số lượng PIN thực tế (qua BookingBattery), không phải số booking
   const next30Min = new Date(now.getTime() + 30 * 60000);
   
-  const currentPendingBookings = await Booking.count({
-    where: {
-      station_id,
-      status: 'pending',
-      scheduled_time: {
-        [Op.between]: [now, next30Min]
-      }
-    }
+  const reservedBatteriesCount = await BookingBattery.count({
+    include: [{
+      model: Booking,
+      as: 'booking',
+      where: {
+        station_id,
+        status: 'pending',  // ✅ Chỉ pending, cancelled/completed KHÔNG tính
+        scheduled_time: {
+          [Op.between]: [now, next30Min]
+        }
+      },
+      attributes: []
+    }]
   });
 
   // 5. Get total capacity of station
@@ -833,13 +871,14 @@ async function checkAvailability(station_id, vehicle_id) {
   });
 
   // 6. Calculate effective availability
-  const effectiveAvailable = Math.max(0, availableBatteries.length - currentPendingBookings);
+  // ✅ Trừ đúng số PIN bị giữ, không phải số booking
+  const effectiveAvailable = Math.max(0, availableBatteries.length - reservedBatteriesCount);
   const isAvailable = effectiveAvailable > 0;
 
   return {
     available: isAvailable,
     message: isAvailable 
-      ? `Station has available batteries for ${battery_type_code}` 
+      ? `Station has ${effectiveAvailable} available ${battery_type_code} batteries` 
       : `No ${battery_type_code} batteries available at this station right now`,
     station: {
       station_id: station.station_id,
@@ -852,10 +891,10 @@ async function checkAvailability(station_id, vehicle_id) {
       battery_type_code
     },
     availability_details: {
-      available_batteries_count: availableBatteries.length,
+      total_batteries_ready: availableBatteries.length,  // ✅ Đổi tên rõ hơn
+      reserved_by_pending_bookings: reservedBatteriesCount,  // ✅ Số PIN bị giữ
+      available_now: effectiveAvailable,
       total_slots: totalSlots,
-      current_pending_bookings: currentPendingBookings,
-      effective_available: effectiveAvailable,
       station_status: station.status
     }
   };

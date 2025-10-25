@@ -125,7 +125,7 @@ const getMyBookings = [
 
 /**
  * Validation cho việc hủy booking
- * DELETE /api/booking/:id
+ * PATCH /api/booking/:id/cancel
  */
 const cancelBooking = [
   param('id')

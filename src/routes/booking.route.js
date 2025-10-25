@@ -335,11 +335,11 @@ router.patch(
 
 /**
  * @swagger
- * /api/booking/{id}:
- *   delete:
+ * /api/booking/{id}/cancel:
+ *   patch:
  *     tags: [Booking]
- *     summary: Cancel booking (soft delete)
- *     description: Cancel a pending booking by updating its status to 'cancelled'. Cannot cancel within 5 minutes of scheduled start time. This is a soft delete - the booking record is preserved for history.
+ *     summary: Cancel a booking
+ *     description: Cancel a pending booking by updating its status to 'cancelled'. The booking record is preserved for history.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -350,6 +350,7 @@ router.patch(
  *           type: string
  *           format: uuid
  *         description: Booking ID to cancel
+ *         example: 550e8400-e29b-41d4-a716-446655440000
  *     responses:
  *       200:
  *         description: Booking cancelled successfully
@@ -375,10 +376,9 @@ router.patch(
  *         description: |
  *           Unprocessable Entity - Cannot cancel:
  *           - Booking status is not 'pending' (already completed or cancelled)
- *           - Trying to cancel within 5 minutes of scheduled start time
  */
-router.delete(
-  '/:id',
+router.patch(
+  '/:id/cancel',
   verifyToken,
   authorizeRole('driver'),
   validate(bookingValidation.cancelBooking),
