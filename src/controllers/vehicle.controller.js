@@ -151,6 +151,25 @@ const deleteVehicle = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * ========================================
+ * GET VEHICLES WITHOUT BATTERIES (IDs only)
+ * ========================================
+ * GET /api/vehicles/without-batteries
+ * 
+ * @description Lấy danh sách vehicle_id và account_id của xe chưa có pin
+ * @access Private
+ */
+const getVehiclesWithoutBatteries = asyncHandler(async (req, res) => {
+  const vehicles = await vehicleService.getVehiclesWithoutBatteries();
+
+  return res.status(200).json({
+    message: 'Vehicles without batteries retrieved successfully',
+    count: vehicles.length,
+    vehicles: vehicles
+  });
+});
+
 // ========================================
 // EXPORTS
 // ========================================
@@ -160,5 +179,6 @@ module.exports = {
   getVehicleByVin,
   getVehicleById,
   updateVehicle,
-  deleteVehicle
+  deleteVehicle,
+  getVehiclesWithoutBatteries
 };
