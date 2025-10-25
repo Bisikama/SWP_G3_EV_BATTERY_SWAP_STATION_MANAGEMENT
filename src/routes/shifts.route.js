@@ -9,9 +9,16 @@ router.get('/',
     shiftController.findAll
 );
 
-router.get('/:id', 
+router.get('/id/:id', 
     validate(shiftValidator.findById), 
     shiftController.findById
+);
+
+router.get('/staff/:staff_id', 
+    verifyToken, 
+    authorizeRole('staff'), 
+    validate(shiftValidator.findByStaff), 
+    shiftController.findByStaff
 );
 
 router.post('/', 
@@ -28,18 +35,11 @@ router.put('/:id',
     shiftController.update
 );
 
-router.put('/:id/cancel', 
+router.delete('/:id/', 
     verifyToken, 
     authorizeRole('admin'), 
-    validate(shiftValidator.cancel), 
-    shiftController.cancel
-);
-
-router.put('/:id/confirm', 
-    verifyToken, 
-    authorizeRole('staff'), 
-    validate(shiftValidator.confirm), 
-    shiftController.confirm
+    validate(shiftValidator.remove), 
+    shiftController.remove
 );
 
 module.exports = router;
@@ -58,7 +58,7 @@ module.exports = router;
  *     Shift:
  *       type: object
  *       properties:
- *         id:
+ *         shift_id:
  *           type: string
  *           format: uuid
  *           example: "f5b7b480-4d0a-4af9-82b9-cb7a69cbf4c0"
@@ -89,7 +89,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift:
+ * /api/shifts:
  *   get:
  *     summary: Get all shifts
  *     tags: [Shifts]
@@ -106,7 +106,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift/{id}:
+ * /api/shifts/id/{id}:
  *   get:
  *     summary: Get a shift by ID
  *     tags: [Shifts]
@@ -131,7 +131,36 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift:
+ * /api/shifts/staff/{staff_id}:
+ *   get:
+ *     summary: Get shifts assigned to a specific staff (staff only)
+ *     tags: [Shifts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staff_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Staff account ID
+ *     responses:
+ *       200:
+ *         description: List of shifts for the staff
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Shift'
+ *       403:
+ *         description: Only staff can access their own shifts
+ */
+
+/**
+ * @swagger
+ * /api/shifts:
  *   post:
  *     summary: Create a new shift (admin only)
  *     tags: [Shifts]
@@ -148,18 +177,14 @@ module.exports = router;
  *               staff_id:
  *                 type: string
  *                 format: uuid
- *                 example: "d12f30b0-1a4f-46ef-bb83-f0223bdf2371"
  *               station_id:
  *                 type: integer
- *                 example: 12
  *               start_time:
  *                 type: string
  *                 format: date-time
- *                 example: "2025-10-20T08:00:00.000Z"
  *               end_time:
  *                 type: string
  *                 format: date-time
- *                 example: "2025-10-20T16:00:00.000Z"
  *     responses:
  *       201:
  *         description: Shift created successfully
@@ -175,7 +200,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift/{id}:
+ * /api/shifts/{id}:
  *   put:
  *     summary: Update a shift (admin only)
  *     tags: [Shifts]
@@ -224,9 +249,9 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shift/{id}/cancel:
- *   put:
- *     summary: Cancel a shift (admin only)
+ * /api/shifts/{id}:
+ *   delete:
+ *     summary: Delete a shift (admin only, cannot delete ongoing shift)
  *     tags: [Shifts]
  *     security:
  *       - bearerAuth: []
@@ -240,42 +265,15 @@ module.exports = router;
  *         description: Shift ID
  *     responses:
  *       200:
- *         description: Shift cancelled
+ *         description: Shift deleted successfully
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Shift'
+ *       400:
+ *         description: Cannot delete shift currently in progress
  *       403:
- *         description: Only the shift admin can cancel
- *       404:
- *         description: Shift not found
- */
-
-/**
- * @swagger
- * /api/shift/{id}/confirm:
- *   put:
- *     summary: Confirm a shift (staff only)
- *     tags: [Shifts]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Shift ID
- *     responses:
- *       200:
- *         description: Shift confirmed
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Shift'
- *       403:
- *         description: Only assigned staff can confirm
+ *         description: Only admins can delete
  *       404:
  *         description: Shift not found
  */

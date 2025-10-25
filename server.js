@@ -38,7 +38,7 @@ app.use('/api/vehicle-model', vehicleModelRoutes);
 app.use('/api/subscription-plan', subscriptionPlanRoutes);
 app.use('/api/station', stationRoutes);
 app.use('/api/support-ticket', supportTicketsRoutes);
-app.use('/api/shift', shiftRoutes);
+app.use('/api/shifts', shiftRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/invoice', invoiceRoutes);

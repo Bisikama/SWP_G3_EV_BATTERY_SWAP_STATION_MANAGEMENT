@@ -36,7 +36,6 @@ module.exports = {
           station_id: station.station_id,
           start_time: new Date(shiftDate.setHours(6, 0, 0)),
           end_time: new Date(shiftDate.setHours(14, 0, 0)),
-          status: day === 0 ? 'confirmed' : 'assigned'
         });
 
         // Afternoon shift: 2 PM - 10 PM
@@ -47,7 +46,6 @@ module.exports = {
           station_id: station.station_id,
           start_time: new Date(shiftDate.setHours(14, 0, 0)),
           end_time: new Date(shiftDate.setHours(22, 0, 0)),
-          status: day === 0 ? 'confirmed' : 'assigned'
         });
       });
     }

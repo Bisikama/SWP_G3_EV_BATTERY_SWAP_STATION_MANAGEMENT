@@ -6,6 +6,12 @@ const findById = [
     .isUUID().withMessage('id must be a uuid')
 ];
 
+const findByStaff = [
+  param('staff_id')
+  	.notEmpty().withMessage('staff_id is required')
+    .isUUID().withMessage('staff_id must be a uuid')
+];
+
 const create = [
   body('staff_id')
 		.notEmpty().withMessage('staff_id is required')
@@ -92,16 +98,10 @@ const update = [
     }),
 ];
 
-const cancel = [
+const remove = [
   param('id')
   	.notEmpty().withMessage('id is required')
     .isUUID().withMessage('id must be a uuid')
 ];
 
-const confirm = [
-  param('id')
-  	.notEmpty().withMessage('id is required')
-    .isUUID().withMessage('id must be a uuid')
-];
-
-module.exports = { findById, create, update, cancel, confirm };
+module.exports = { findById, findByStaff, create, update, remove };
