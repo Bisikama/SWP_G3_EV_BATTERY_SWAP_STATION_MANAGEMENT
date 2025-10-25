@@ -400,10 +400,8 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  *           schema:
  *             type: object
  *             required:
- *               - driver_id
  *               - vehicle_id
  *               - station_id
- *               - battery_type_id
  *               - batteriesIn
  *             properties:
  *               driver_id:

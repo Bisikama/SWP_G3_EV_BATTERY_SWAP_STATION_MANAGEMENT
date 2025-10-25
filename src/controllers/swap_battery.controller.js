@@ -179,52 +179,80 @@ async function executeSwapInternal(params, res) {
 
   try {
     const {
-      driver_id,
       vehicle_id,
       station_id,
-      battery_type_id,
       batteriesIn
     } = params;
 
     console.log(`\n🔄 ========== EXECUTING BATTERY SWAP ==========`);
-    console.log(`Driver: ${driver_id}`);
     console.log(`Vehicle: ${vehicle_id}`);
     console.log(`Station: ${station_id}`);
-    console.log(`Battery Type: ${battery_type_id}`);
     console.log(`Batteries IN: ${batteriesIn.length}`);
 
     const swapResults = [];
 
-    // Bước 1: Xử lý pin cũ đưa vào
-    console.log('\n📥 Step 1: Processing batteries IN (old batteries)...');
+    // Bước 1: Kiểm tra tất cả pin trong batteriesIn có thuộc về vehicle_id không
+    console.log('\n🔍 Step 1: Validating battery ownership...');
     for (const batteryIn of batteriesIn) {
-      const { slot_id, battery_id } = batteryIn;
+      const battery = await db.Battery.findByPk(batteryIn.battery_id, {
+        attributes: ['battery_id', 'vehicle_id', 'battery_serial'],
+        transaction
+      });
 
-      const battery = await db.Battery.findByPk(battery_id, { transaction });
       if (!battery) {
         await transaction.rollback();
         return res.status(404).json({
           success: false,
-          message: `Battery ${battery_id} không tồn tại`
+          message: `Pin ${batteryIn.battery_id} không tồn tại`
         });
       }
 
-      const soh_in = battery.current_soh;
-      const newSlotStatus = soh_in < 15 ? 'faulty' : 'charging';
+      if (battery.vehicle_id !== vehicle_id) {
+        await transaction.rollback();
+        return res.status(403).json({
+          success: false,
+          message: `Pin ${battery.battery_serial} (${battery.battery_id}) không thuộc về xe này. Không được phép đổi pin của xe khác.`,
+          data: {
+            battery_id: battery.battery_id,
+            battery_serial: battery.battery_serial,
+            battery_vehicle_id: battery.vehicle_id,
+            requested_vehicle_id: vehicle_id
+          }
+        });
+      }
 
-      console.log(`  📦 Battery ${battery_id} (SOH: ${soh_in}%) → Slot ${slot_id} (status: ${newSlotStatus})`);
+      console.log(`   ✅ Battery ${battery.battery_id} belongs to vehicle ${vehicle_id}`);
+    }
 
-      await swapBatteryService.updateSlotStatus(slot_id, newSlotStatus);
-      await swapBatteryService.updateOldBatteryToSlot(battery_id, slot_id);
+    console.log(`✅ All batteries belong to vehicle ${vehicle_id}`);
+    
+    // Bước 1.5: Lấy battery_type_id của vehicle
+    console.log('\n🔍 Step 1.5: Getting battery type of vehicle...');
+    const vehicle = await db.Vehicle.findByPk(vehicle_id, {
+      attributes: ['vehicle_id', 'model_id', 'driver_id'],
+      include: [{
+        model: db.VehicleModel,
+        as: 'model',
+        attributes: ['model_id', 'battery_type_id'],
+        include: [{
+          model: db.BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id']
+        }]
+      }],
+      transaction
+    });
 
-      swapResults.push({
-        type: 'IN',
-        battery_id,
-        slot_id,
-        soh: soh_in,
-        slot_status: newSlotStatus
+    if (!vehicle || !vehicle.model) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy thông tin xe hoặc loại pin của xe'
       });
     }
+    const driverId = vehicle.driver_id;
+    const vehicleBatteryTypeId = vehicle.model.battery_type_id;
+    console.log(`✅ Vehicle battery type: ${vehicleBatteryTypeId} (${vehicle.model.batteryType?.type_name})`);
 
     // Bước 2: Tự động lấy pin mới từ DB
     console.log('\n📤 Step 2: Finding available batteries to swap OUT...');
@@ -232,7 +260,7 @@ async function executeSwapInternal(params, res) {
     const requiredQuantity = batteriesIn.length;
     const availableSlots = await swapBatteryService.getAvailableBatteriesForSwap(
       parseInt(station_id),
-      parseInt(battery_type_id),
+      parseInt(vehicleBatteryTypeId),
       requiredQuantity
     );
 
@@ -282,19 +310,68 @@ async function executeSwapInternal(params, res) {
       });
     }
 
+    // Bước 1: Xử lý pin cũ đưa vào
+    console.log('\n📥 Step 1: Processing batteries IN (old batteries)...');
+    for (const batteryIn of batteriesIn) {
+      const { slot_id, battery_id } = batteryIn;
+
+      const battery = await db.Battery.findByPk(battery_id, { transaction });
+      if (!battery) {
+        await transaction.rollback();
+        return res.status(404).json({
+          success: false,
+          message: `Battery ${battery_id} không tồn tại`
+        });
+      }
+
+      const soh_in = battery.current_soh;
+      const newSlotStatus = soh_in < 15 ? 'faulty' : 'charging';
+
+      console.log(`  📦 Battery ${battery_id} (SOH: ${soh_in}%) → Slot ${slot_id} (status: ${newSlotStatus})`);
+
+      await swapBatteryService.updateSlotStatus(slot_id, newSlotStatus);
+      await swapBatteryService.updateOldBatteryToSlot(battery_id, slot_id);
+
+      swapResults.push({
+        type: 'IN',
+        battery_id,
+        slot_id,
+        soh: soh_in,
+        slot_status: newSlotStatus
+      });
+    }
+
+    
+
     // Bước 4: Kiểm tra xe có swap record trước đó không (để xác định lần đầu đổi pin)
     console.log('\n📝 Step 4: Checking if this is first-time swap...');
     const existingSwapCount = await db.SwapRecord.count({
       where: {
-        vehicle_id: vehicle_id,
-        battery_id_in: { [db.Sequelize.Op.ne]: null } // Chỉ đếm swap có pin trả vào (loại trừ first-time pickup)
+        vehicle_id: vehicle_id
       },
       transaction
     });
     
     const isFirstTimeSwap = existingSwapCount === 0;
-    console.log(`  Existing swap records (with battery_in): ${existingSwapCount}`);
+    console.log(`  Existing swap records: ${existingSwapCount}`);
     console.log(`  Is first-time swap: ${isFirstTimeSwap}`);
+
+    // Nếu là lần đầu đổi pin → Không cho dùng API này, yêu cầu dùng API lấy pin lần đầu
+    if (isFirstTimeSwap) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Xe này chưa lấy pin lần đầu. Vui lòng sử dụng lấy pin lần đầu trước khi thực hiện đổi pin.',
+        data: {
+          vehicle_id: vehicle_id,
+          existing_swap_count: existingSwapCount,
+          is_first_time: true,
+          required_action: 'Use POST /api/swap/first-time-pickup or POST /api/swap/execute-first-time-with-booking'
+        }
+      });
+    }
+
+    console.log(`✅ Vehicle has previous swap records. Proceeding with battery swap...`);
 
     // Bước 5: Tạo swap records và tính soh_usage đồng thời
     console.log('\n📝 Step 5: Creating swap records and calculating soh_usage...');
@@ -310,7 +387,6 @@ async function executeSwapInternal(params, res) {
 
       // Query previous swap TRƯỚC KHI tạo swap mới (chỉ khi KHÔNG phải lần đầu)
       let previousSwapRecord = null;
-      if (!isFirstTimeSwap) {
         previousSwapRecord = await db.SwapRecord.findOne({
           where: {
             vehicle_id: vehicle_id,
@@ -319,11 +395,11 @@ async function executeSwapInternal(params, res) {
           order: [['swap_time', 'DESC']],
           transaction
         });
-      }
+      
 
       // Tạo swap record
       const swapRecord = await swapBatteryService.createSwapRecord({
-        driver_id,
+        driver_id : driverId,
         vehicle_id,
         station_id,
         battery_id_in: batteryIn.battery_id,
@@ -350,48 +426,45 @@ async function executeSwapInternal(params, res) {
     }
 
     // Bước 6: Update subscription.soh_usage (chỉ khi KHÔNG phải lần đầu và có thay đổi)
-    if (!isFirstTimeSwap && totalSohUsage !== 0) {
       console.log('\n📊 Step 6: Updating subscription soh_usage...');
       
-      const subscription = await db.Subscription.findOne({
-        where: {
-          vehicle_id: vehicle_id,
-          status: 'active'
-        },
+    
+
+// ✅ Query subscription TRƯỚC
+const subscription = await db.Subscription.findOne({
+  where: {
+    vehicle_id: vehicle_id,
+    status: 'active'
+  },
+  transaction
+});
+
+if (!subscription) {
+  console.log(`  ⚠️ No active subscription found for vehicle ${vehicle_id}`);
+} else {
+  const newSwapCount = subscription.swap_count + swapRecords.length;
+
+  if (!isFirstTimeSwap && totalSohUsage !== 0) {
+    // Cập nhật CẢ soh_usage VÀ swap_count
+    const currentSohUsage = parseFloat(subscription.soh_usage) || 0;
+    const newSohUsage = currentSohUsage + totalSohUsage;
+
+    await db.Subscription.update(
+      { 
+        soh_usage: newSohUsage, 
+        swap_count: newSwapCount 
+      },
+      {
+        where: { subscription_id: subscription.subscription_id },
         transaction
-      });
-
-      if (subscription) {
-        const currentSohUsage = parseFloat(subscription.soh_usage) || 0;
-        const newSohUsage = currentSohUsage + totalSohUsage;
-        const newSwapCount = subscription.swap_count + swapRecords.length;
-
-        // Cập nhật cả soh_usage và swap_count
-        await db.Subscription.update(
-          { soh_usage: newSohUsage, swap_count: newSwapCount },
-          {
-            where: { subscription_id: subscription.subscription_id },
-            transaction
-          }
-        );
-
-        console.log(`  ✅ Subscription soh_usage updated: ${currentSohUsage.toFixed(2)}% → ${newSohUsage.toFixed(2)}% (Δ ${totalSohUsage > 0 ? '+' : ''}${totalSohUsage.toFixed(2)}%)`);
-      } else {
-        console.log(`  ⚠️ No active subscription found for vehicle ${vehicle_id}`);
       }
-    } else {
-      console.log('\n📊 Step 6: No soh_usage change (totalSohUsage = 0)');
-        const newSwapCount = subscription.swap_count + swapRecords.length;
+    );
 
-        // Cập nhật cả soh_usage và swap_count
-        await db.Subscription.update(
-          { swap_count: newSwapCount },
-          {
-            where: { subscription_id: subscription.subscription_id },
-            transaction
-          }
-        );
-    }
+    console.log(`  ✅ Subscription updated:`);
+    console.log(`     - soh_usage: ${currentSohUsage.toFixed(2)}% → ${newSohUsage.toFixed(2)}% (Δ ${totalSohUsage > 0 ? '+' : ''}${totalSohUsage.toFixed(2)}%)`);
+    console.log(`     - swap_count: ${subscription.swap_count} → ${newSwapCount} (+${swapRecords.length})`);
+  } 
+}
 
     await transaction.commit();
 
@@ -401,10 +474,10 @@ async function executeSwapInternal(params, res) {
       success: true,
       message: 'Đổi pin thành công',
       data: {
-        driver_id,
+        driver_id : driverId,
         vehicle_id,
         station_id,
-        battery_type_id,
+        battery_type_id: vehicleBatteryTypeId,
         swap_summary: {
           batteries_in: batteriesIn.length,
           batteries_out: batteriesOut.length,
@@ -678,7 +751,6 @@ async function validateAndPrepareSwapWithBooking(req, res) {
         driver_id,
         vehicle_id,
         station_id: parseInt(station_id),
-        battery_type_id: parseInt(battery_type_id),
         validation_summary: {
           is_first_time: isFirstTime,
           has_active_subscription: true,
@@ -1003,20 +1075,20 @@ async function executeSwapWithBookingInternal(params, res) {
  * }
  */
 async function executeSwap(req, res) {
-  const { driver_id, vehicle_id, station_id, battery_type_id, batteriesIn } = req.body;
+  const { vehicle_id, station_id, batteriesIn } = req.body;
 
   // Validation input
-  if (!driver_id || !vehicle_id) {
+  if (!vehicle_id) {
     return res.status(400).json({
       success: false,
-      message: 'driver_id và vehicle_id là bắt buộc'
+      message: 'vehicle_id là bắt buộc'
     });
   }
 
-  if (!station_id || !battery_type_id) {
+  if (!station_id) {
     return res.status(400).json({
       success: false,
-      message: 'station_id và battery_type_id là bắt buộc'
+      message: 'station_id là bắt buộc'
     });
   }
 
