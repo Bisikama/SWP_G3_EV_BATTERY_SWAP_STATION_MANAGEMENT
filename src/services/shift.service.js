@@ -17,6 +17,17 @@ async function findByStaff(staff_id) {
   });
 }
 
+async function findCurrent(staff_id) {
+  const now = new Date();
+  return db.Shift.findOne({
+    where: {
+      staff_id,
+      start_time: { [db.Sequelize.Op.lte]: now },
+      end_time: { [db.Sequelize.Op.gte]: now }
+    }
+  });
+}
+
 async function createShift(user, data) {
 	data.admin_id = user.account_id;
   const staff = await db.Account.findByPk(data.staff_id);
@@ -114,4 +125,4 @@ async function removeShift(user, id) {
   return shift;
 }
 
-module.exports = { findAll, findById, findByStaff, createShift, updateShift, removeShift };
+module.exports = { findAll, findById, findByStaff, findCurrent, createShift, updateShift, removeShift };
