@@ -130,20 +130,24 @@ async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
  * Service 5: Cập nhật slot status sau khi nhận pin
  * @param {number} slot_id - ID của slot
  * @param {string} status - Status mới ('charging' hoặc 'faulty')
+ * @param {Object} transaction - Transaction (optional)
  * @returns {Object} - Slot đã cập nhật
  */
-async function updateSlotStatus(slot_id, status) {
+async function updateSlotStatus(slot_id, status, transaction = null) {
   try {
+    const options = transaction ? { where: { slot_id: slot_id }, transaction } : { where: { slot_id: slot_id } };
+    
     const [updatedRows] = await CabinetSlot.update(
       { status: status },
-      { where: { slot_id: slot_id } }
+      options
     );
 
     if (updatedRows === 0) {
       throw new Error(`Không thể cập nhật slot ${slot_id}`);
     }
 
-    const updatedSlot = await CabinetSlot.findByPk(slot_id);
+    const findOptions = transaction ? { transaction } : {};
+    const updatedSlot = await CabinetSlot.findByPk(slot_id, findOptions);
     return updatedSlot;
   } catch (error) {
     console.error('Error in updateSlotStatus:', error);
@@ -157,27 +161,32 @@ async function updateSlotStatus(slot_id, status) {
  * - Set vehicle_id thành null
  * @param {string} battery_id - ID của battery
  * @param {number} slot_id - ID của slot
+ * @param {Object} transaction - Transaction (optional)
  * @returns {Object} - Battery đã cập nhật
  */
-async function updateOldBatteryToSlot(battery_id, slot_id) {
+async function updateOldBatteryToSlot(battery_id, slot_id, transaction = null) {
   try {
+    const options = transaction ? { where: { battery_id: battery_id }, transaction } : { where: { battery_id: battery_id } };
+    
     const [updatedRows] = await Battery.update(
       {
         slot_id: slot_id,
         vehicle_id: null
       },
-      { where: { battery_id: battery_id } }
+      options
     );
 
     if (updatedRows === 0) {
       throw new Error(`Không thể cập nhật battery ${battery_id}`);
     }
 
+    const findOptions = transaction ? { transaction } : {};
     const updatedBattery = await Battery.findByPk(battery_id, {
       include: [
         { model: CabinetSlot, as: 'cabinetSlot' },
         { model: BatteryType, as: 'batteryType' }
-      ]
+      ],
+      ...findOptions
     });
     return updatedBattery;
   } catch (error) {
@@ -192,26 +201,31 @@ async function updateOldBatteryToSlot(battery_id, slot_id) {
  * - Update vehicle_id
  * @param {string} battery_id - ID của battery
  * @param {string} vehicle_id - ID của vehicle
+ * @param {Object} transaction - Transaction (optional)
  * @returns {Object} - Battery đã cập nhật
  */
-async function updateNewBatteryToVehicle(battery_id, vehicle_id) {
+async function updateNewBatteryToVehicle(battery_id, vehicle_id, transaction = null) {
   try {
+    const options = transaction ? { where: { battery_id: battery_id }, transaction } : { where: { battery_id: battery_id } };
+    
     const [updatedRows] = await Battery.update(
       {
         slot_id: null,
         vehicle_id: vehicle_id
       },
-      { where: { battery_id: battery_id } }
+      options
     );
 
     if (updatedRows === 0) {
       throw new Error(`Không thể cập nhật battery ${battery_id}`);
     }
 
+    const findOptions = transaction ? { transaction } : {};
     const updatedBattery = await Battery.findByPk(battery_id, {
       include: [
         { model: BatteryType, as: 'batteryType' }
-      ]
+      ],
+      ...findOptions
     });
     return updatedBattery;
   } catch (error) {
@@ -274,9 +288,10 @@ async function getAvailableBatteriesForSwap(station_id, battery_type_id, quantit
 /**
  * Service 5: Tạo swap record
  * @param {Object} swapData - Dữ liệu swap
+ * @param {Object} transaction - Transaction (optional)
  * @returns {Object} - SwapRecord đã tạo
  */
-async function createSwapRecord(swapData) {
+async function createSwapRecord(swapData, transaction = null) {
   try {
     const {
       driver_id,
@@ -288,6 +303,32 @@ async function createSwapRecord(swapData) {
       soh_out
     } = swapData;
 
+     // ✅ Validation chi tiết hơn
+    console.log('🔍 Creating SwapRecord with data:', {
+      driver_id,
+      vehicle_id,
+      station_id,
+      battery_id_in,
+      battery_id_out,
+      soh_in,
+      soh_out
+    });
+
+    if (!driver_id) {
+      throw new Error('Swap record must be associated with a driver (driver_id is required)');
+    }
+
+    if (!vehicle_id) {
+      throw new Error('Swap record must be associated with a vehicle (vehicle_id is required)');
+    }
+
+    if (!station_id) {
+      throw new Error('Swap record must be associated with a station (station_id is required)');
+    }
+
+
+    const options = transaction ? { transaction } : {};
+
     const swapRecord = await SwapRecord.create({
       driver_id,
       vehicle_id,
@@ -297,19 +338,60 @@ async function createSwapRecord(swapData) {
       soh_in,
       soh_out,
       swap_time: new Date()
-    });
+    }, options);
+
+    
+
+    return swapRecord;
+  } catch (error) {
+    console.error('Error in createSwapRecord:', error);
+    throw error;
+  }
+}
+
+/**
+ * Service: Tạo swap record với booking_id
+ * @param {Object} swapData - Dữ liệu swap (bao gồm booking_id)
+ * @param {Object} transaction - Transaction (optional)
+ * @returns {Object} - SwapRecord đã tạo
+ */
+async function createSwapRecordWithBooking(swapData, transaction = null) {
+  try {
+    const {
+      driver_id,
+      vehicle_id,
+      station_id,
+      battery_id_in,
+      battery_id_out,
+      soh_in,
+      soh_out
+    } = swapData;
+
+    const options = transaction ? { transaction } : {};
+
+    const swapRecord = await SwapRecord.create({
+      driver_id,
+      vehicle_id,
+      station_id,
+      battery_id_in,
+      battery_id_out,
+      soh_in,
+      soh_out,
+      swap_time: new Date()
+    }, options);
 
     // Lấy thông tin đầy đủ
     const fullRecord = await SwapRecord.findByPk(swapRecord.swap_id, {
       include: [
         { model: Battery, as: 'returnedBattery', include: [{ model: BatteryType, as: 'batteryType' }] },
         { model: Battery, as: 'retrievedBattery', include: [{ model: BatteryType, as: 'batteryType' }] }
-      ]
+      ],
+      ...options
     });
 
     return fullRecord;
   } catch (error) {
-    console.error('Error in createSwapRecord:', error);
+    console.error('Error in createSwapRecordWithBooking:', error);
     throw error;
   }
 }
@@ -387,5 +469,6 @@ module.exports = {
   updateNewBatteryToVehicle,
   getAvailableBatteriesForSwap,
   createSwapRecord,
+  createSwapRecordWithBooking,  // ← THÊM MỚI
   getFirstTimeBatteries
 };

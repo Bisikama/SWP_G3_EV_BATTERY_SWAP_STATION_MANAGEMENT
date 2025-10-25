@@ -391,6 +391,42 @@ async function findVehicleWithModel(vehicle_id) {
   return vehicle;
 }
 
+/**
+ * ========================================
+ * GET VEHICLES WITHOUT BATTERIES (IDs only)
+ * ========================================
+ * Lấy danh sách vehicle_id và driver_id của xe chưa có pin
+ * 
+ * @returns {Promise<Array<object>>} - Mảng {vehicle_id, driver_id}
+ */
+async function getVehiclesWithoutBatteries() {
+  const { Battery, Sequelize } = require('../models');
+  const { Op } = Sequelize;
+
+  // Query tất cả xe và check battery
+  const vehicles = await Vehicle.findAll({
+    attributes: ['vehicle_id', 'driver_id'],
+    include: [
+      {
+        model: Battery,
+        as: 'batteries',
+        attributes: ['battery_id'],
+        required: false
+      }
+    ]
+  });
+
+  // Filter ra những xe không có battery nào và map sang object
+  const vehiclesWithoutBattery = vehicles
+    .filter(vehicle => !vehicle.batteries || vehicle.batteries.length === 0)
+    .map(vehicle => ({
+      vehicle_id: vehicle.vehicle_id,
+      account_id: vehicle.driver_id
+    }));
+
+  return vehiclesWithoutBattery;
+}
+
 // ========================================
 // EXPORTS
 // ========================================
@@ -402,5 +438,6 @@ module.exports = {
   updateVehicle,
   deleteVehicle,
   checkVehicleOwnership,
-  findVehicleWithModel
+  findVehicleWithModel,
+  getVehiclesWithoutBatteries
 };

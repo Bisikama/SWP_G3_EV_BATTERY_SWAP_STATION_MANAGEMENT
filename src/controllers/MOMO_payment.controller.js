@@ -289,7 +289,7 @@ async function handlePaymentIPN (req, res)  {
           start_date: pay_date,
           end_date: due_date,
           cancel_time: null,
-          sub_status: 'active'  // ← Kích hoạt ngay
+          status: 'active'  // ← Kích hoạt ngay
         };
         
         const newSubscription = await Subscription.create(subscriptionData);
@@ -299,7 +299,7 @@ async function handlePaymentIPN (req, res)  {
         console.log(`   - invoice_id: ${newSubscription.invoice_id}`);
         console.log(`   - vehicle_id: ${newSubscription.vehicle_id}`);
         console.log(`   - plan_id: ${newSubscription.plan_id}`);
-        console.log(`   - sub_status: ${newSubscription.sub_status}`);
+        console.log(`   - status: ${newSubscription.status}`);
         console.log(`   - start_date: ${newSubscription.start_date}`);
         console.log(`   - end_date: ${newSubscription.end_date}`);
       } else {
