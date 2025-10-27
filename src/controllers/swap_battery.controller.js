@@ -769,33 +769,6 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       console.log(`   ℹ️ First-time pickup does not require batteriesIn`);
     }
 
-    // Bước 6: Kiểm tra pin đã book có còn sẵn sàng không
-    console.log('\n🔍 Step 6: Validating booked batteries availability...');
-    for (const bb of bookedBatteries) {
-      const battery = bb.battery;
-      
-      // Kiểm tra pin có đang ở slot và ready không
-      const slot = await db.CabinetSlot.findOne({
-        where: {
-          battery_id: battery.battery_id,
-          status: ['charging', 'charged', 'locked']
-        }
-      });
-
-      if (!slot) {
-        return res.status(400).json({
-          success: false,
-          message: `Pin đã đặt ${battery.battery_id} không còn sẵn sàng hoặc không ở trạng thái 'charging'/'charged'/'locked'`,
-          data: {
-            battery_id: battery.battery_id,
-            battery_serial: battery.battery_serial
-          }
-        });
-      }
-
-      console.log(`   ✅ Battery ${battery.battery_id} is ready at slot ${slot.slot_id}`);
-    }
-
     console.log('\n✅ Tất cả kiểm tra đều hợp lệ. Sẵn sàng để xử lý với booking.');
     console.log('✅ ========== VALIDATION WITH BOOKING COMPLETE ==========\n');
 
@@ -809,7 +782,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       is_first_time: isFirstTime, // ← FLAG quan trọng để frontend biết gọi API nào
       data: {
         booking_id,
-        driver_id,
+        driver_id: booking.driver_id,
         vehicle_id,
         station_id: parseInt(station_id),
         validation_summary: {
@@ -821,9 +794,9 @@ async function validateAndPrepareSwapWithBooking(req, res) {
         },
         booked_batteries_out: bookedBatteries.map(bb => ({
           battery_id: bb.battery_id,
-          current_soc: bb.battery.current_soc,
-          current_soh: bb.battery.current_soh,
-          battery_serial: bb.battery.battery_serial
+          current_soc: bb.current_soc,
+          current_soh: bb.current_soh,
+          battery_serial: bb.battery_serial
         })),
         booking_info: {
           booking_id: booking.booking_id,
@@ -1689,6 +1662,86 @@ async function getEmptySlots(req, res) {
   }
 }
 
+/**
+ * API: Kiểm tra xe có lấy pin lần đầu chưa
+ * GET /api/swap/check-first-time-pickup
+ * Query: vehicle_id=uuid
+ */
+async function checkFirstTimePickup(req, res) {
+  try {
+    const { vehicle_id } = req.query;
+
+    if (!vehicle_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'vehicle_id là bắt buộc'
+      });
+    }
+
+    console.log(`\n🔍 Checking if vehicle ${vehicle_id} has taken first-time pickup...`);
+
+    // Đếm số lần swap của xe
+    const existingSwapCount = await db.SwapRecord.count({
+      where: {
+        vehicle_id: vehicle_id
+      }
+    });
+
+    const isFirstTime = existingSwapCount === 0;
+    
+    console.log(`   - Existing swap records: ${existingSwapCount}`);
+    console.log(`   - Is first-time: ${isFirstTime}`);
+
+    // Lấy thông tin xe để hiển thị thêm
+    const vehicle = await db.Vehicle.findByPk(vehicle_id, {
+      attributes: ['vehicle_id', 'license_plate', 'model_id'],
+      include: [
+        {
+          model: db.VehicleModel,
+          as: 'model',
+          attributes: ['model_id', 'name', 'battery_type_id', 'battery_quantity']
+        }
+      ]
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy xe với vehicle_id đã cho'
+      });
+    }
+
+    console.log(`✅ Vehicle check completed: ${vehicle.license_plate}`);
+
+    return res.status(200).json({
+      success: true,
+      message: isFirstTime 
+        ? 'Xe chưa lấy pin lần đầu' 
+        : 'Xe đã lấy pin lần đầu',
+      data: {
+        vehicle_id: vehicle.vehicle_id,
+        license_plate: vehicle.license_plate,
+        model_name: vehicle.model?.name,
+        battery_type_id: vehicle.model?.battery_type_id,
+        battery_quantity: vehicle.model?.battery_quantity,
+        is_first_time: isFirstTime,
+        total_swap_count: existingSwapCount,
+        status: isFirstTime ? 'never_swapped' : 'has_swapped',
+        required_action: isFirstTime 
+          ? 'Use POST /api/swap/first-time-pickup or POST /api/swap/execute-first-time-with-booking'
+          : 'Use regular swap APIs'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error in checkFirstTimePickup:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi kiểm tra trạng thái lấy pin lần đầu',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   validateAndPrepareSwap, // API 4: Validate và chuẩn bị đổi pin (không có booking)
   validateAndPrepareSwapWithBooking, // API 4b: Validate và chuẩn bị đổi pin với booking
@@ -1697,5 +1750,6 @@ module.exports = {
   executeFirstTimePickupWithBooking, // ← THÊM MỚI lấy pin lần đầu với booking và không cần validate
   getAvailableBatteries, // Lấy danh sách pin sẵn sàng để đổi
   firstTimeBatteryPickup, // Lấy lần đầu không có booking và không cần validate
-  getEmptySlots // Lấy danh sách slot trống tại station
+  getEmptySlots, // Lấy danh sách slot trống tại station
+  checkFirstTimePickup // Kiểm tra xe có lấy pin lần đầu chưa
 };
