@@ -288,16 +288,19 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
 
 /**
  * ========================================
- * DELETE VEHICLE
+ * DELETE VEHICLE (SOFT DELETE)
  * ========================================
- * Xóa xe
+ * Soft delete xe - set status = 'inactive'
  * 
  * @param {string} vehicle_id - UUID của xe
  * @param {string} driver_id - ID của driver (để check ownership)
- * @returns {Promise<object>} - Thông tin xe đã xóa
+ * @returns {Promise<object>} - Thông tin xe đã deactivate
  * @throws {Error} - Lỗi với status code
  */
 async function deleteVehicle(vehicle_id, driver_id) {
+  const { Subscription, Booking, Sequelize } = require('../models');
+  const { Op } = Sequelize;
+
   // Find vehicle
   const vehicle = await Vehicle.findByPk(vehicle_id);
   
@@ -314,27 +317,54 @@ async function deleteVehicle(vehicle_id, driver_id) {
     throw err;
   }
 
-  // Save info before delete
-  const deletedVehicleInfo = {
-    vehicle_id: vehicle.vehicle_id,
-    vin: vehicle.vin,
-    license_plate: vehicle.license_plate
-  };
-
-  // Delete vehicle
-  try {
-    await vehicle.destroy();
-  } catch (error) {
-    // Handle foreign key constraint error
-    if (error.name === 'SequelizeForeignKeyConstraintError') {
-      const err = new Error('Cannot delete vehicle. Vehicle is being used in swap records or bookings');
-      err.status = 409;
-      throw err;
-    }
-    throw error;
+  // Check nếu xe đã inactive rồi
+  if (vehicle.status === 'inactive') {
+    const err = new Error('Vehicle is already deactivated');
+    err.status = 400;
+    throw err;
   }
 
-  return deletedVehicleInfo;
+  // Check active subscription
+  const activeSubscription = await Subscription.findOne({
+    where: {
+      vehicle_id,
+      status: 'active',
+      end_date: {
+        [Op.gte]: new Date()
+      }
+    }
+  });
+
+  if (activeSubscription) {
+    const err = new Error('Cannot deactivate vehicle. Active subscription exists. Please cancel subscription first');
+    err.status = 409;
+    throw err;
+  }
+
+  // Check pending bookings
+  const pendingBooking = await Booking.findOne({
+    where: {
+      vehicle_id,
+      status: 'pending'
+    }
+  });
+
+  if (pendingBooking) {
+    const err = new Error('Cannot deactivate vehicle. Pending bookings exist. Please cancel bookings first');
+    err.status = 409;
+    throw err;
+  }
+
+  // Soft delete - set status = inactive
+  vehicle.status = 'inactive';
+  await vehicle.save();
+
+  return {
+    vehicle_id: vehicle.vehicle_id,
+    vin: vehicle.vin,
+    license_plate: vehicle.license_plate,
+    status: vehicle.status
+  };
 }
 
 /**
