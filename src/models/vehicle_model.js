@@ -39,6 +39,13 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(50),
         allowNull: false
       },
+      battery_slot: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
       avg_energy_usage: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,

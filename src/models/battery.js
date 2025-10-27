@@ -12,9 +12,22 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       this.hasMany(models.SwapRecord, { as: 'retrievedSwapRecords', foreignKey: 'battery_id_out' });
       this.hasMany(models.SwapRecord, { as: 'returnedSwapRecords', foreignKey: 'battery_id_in' });
-      this.belongsToMany(models.Transfer, { through: 'RetrievedTransferBattery', as: 'transferRetrievedRecords', foreignKey: 'battery_id', otherKey: 'transfer_id' });
-      this.belongsToMany(models.Transfer, { through: 'ReturnedTransferBattery', as: 'transferReturnedRecords', foreignKey: 'battery_id', otherKey: 'transfer_id' });
-      this.belongsToMany(models.Booking, { through: 'BookingBattery', as: 'bookingRecords', foreignKey: 'battery_id', otherKey: 'booking_id' });
+      this.belongsToMany(models.TransferDetail, { through: 'TransferBatteryDetails', as: 'transferDetails', foreignKey: 'battery_id', otherKey: 'transfer_detail_id' });
+      
+      // Many-to-Many with Booking through BookingBattery
+      this.belongsToMany(models.Booking, { 
+        through: models.BookingBattery, 
+        as: 'bookingRecords', 
+        foreignKey: 'battery_id', 
+        otherKey: 'booking_id' 
+      });
+      
+      // Many BookingBattery records
+      this.hasMany(models.BookingBattery, { 
+        as: 'bookingBatteries', 
+        foreignKey: 'battery_id' 
+      });
+      
       this.belongsTo(models.BatteryType, { as: 'batteryType', foreignKey: 'battery_type_id' });
       this.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id' });
       this.belongsTo(models.CabinetSlot, { as: 'cabinetSlot', foreignKey: 'slot_id' });

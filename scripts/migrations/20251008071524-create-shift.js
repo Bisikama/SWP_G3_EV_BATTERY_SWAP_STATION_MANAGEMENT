@@ -45,12 +45,7 @@ module.exports = {
       end_time: {
         type: Sequelize.DATE,
         allowNull: false
-      },
-      status: {
-        type: Sequelize.ENUM('assigned', 'confirmed', 'cancelled'),
-        allowNull: false,
-        defaultValue: 'assigned'
-      },
+      }
     });
   },
   

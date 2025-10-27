@@ -10,10 +10,8 @@ async function findById(id) {
 }
 
 async function createVehicleModel(data) {
-  if (data.battery_type_id) {
-    const bt = await db.BatteryType.findByPk(data.battery_type_id);
-    if (!bt) throw new ApiError(400, 'Invalid battery_type_id');
-  }
+  const bt = await db.BatteryType.findByPk(data.battery_type_id);
+  if (!bt) throw new ApiError(400, 'Invalid battery_type_id');
   return db.VehicleModel.create(data);
 }
 

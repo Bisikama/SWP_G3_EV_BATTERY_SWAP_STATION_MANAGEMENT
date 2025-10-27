@@ -14,10 +14,11 @@ module.exports = (sequelize, DataTypes) => {
       this.hasMany(models.SubscriptionPlan, { as: 'subscriptionPlans', foreignKey: 'admin_id' });
       this.hasMany(models.SupportTicket, { as: 'adminTickets', foreignKey: 'admin_id' });
       this.hasMany(models.Shift, { as: 'adminShifts', foreignKey: 'admin_id' });
-      this.hasMany(models.Transfer, { as: 'adminTransfers', foreignKey: 'admin_id' });
+      this.hasMany(models.TransferRequest, { as: 'adminTransferRequests', foreignKey: 'admin_id' });
       // Station Staff
-      this.hasMany(models.Transfer, { as: 'staffTransfers', foreignKey: 'staff_id' });
-      this.hasOne(models.Shift, { as: 'assignedShift', foreignKey: 'staff_id' });
+      this.hasMany(models.TransferRequest, { as: 'staffTransferRequests', foreignKey: 'staff_id' });
+      this.hasMany(models.TransferDetail, { as: 'staffTransferDetails', foreignKey: 'staff_id' });
+      this.hasMany(models.Shift, { as: 'assignedShift', foreignKey: 'staff_id' });
       // EV Driver
       this.hasMany(models.SupportTicket, { as: 'tickets', foreignKey: 'driver_id' });
       this.hasMany(models.Booking, { as: 'bookings', foreignKey: 'driver_id' });
@@ -70,7 +71,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 'active'
       },
-      permission: {
+      role: {
         type: DataTypes.ENUM('driver', 'admin', 'staff'),
         allowNull: false
       }

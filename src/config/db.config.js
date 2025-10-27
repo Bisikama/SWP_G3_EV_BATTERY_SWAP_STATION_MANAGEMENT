@@ -6,6 +6,7 @@ module.exports = {
     "password": process.env.REMOTE_DB_PASS,
     "database": process.env.REMOTE_DB_NAME,
     "host": process.env.REMOTE_DB_HOST,
+    "port": process.env.REMOTE_DB_PORT,
     "dialect": "postgres"
   },
   "demo": {
@@ -13,13 +14,15 @@ module.exports = {
     "password": process.env.LOCAL_DB_PASS,
     "database": process.env.LOCAL_DB_NAME,
     "host": process.env.LOCAL_DB_HOST,
-    "dialect": "mssql"
+    "port": process.env.LOCAL_DB_PORT,
+    "dialect": "postgres"
   },
   "production": {
     "username": process.env.REMOTE_DB_USER,
     "password": process.env.REMOTE_DB_PASS,
     "database": process.env.REMOTE_DB_NAME,
     "host": process.env.REMOTE_DB_HOST,
+    "port": process.env.REMOTE_DB_PORT,
     "dialect": "postgres"
   }
 }

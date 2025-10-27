@@ -16,7 +16,7 @@
 // ========================================
 
 'use strict';
-const { Vehicle, VehicleModel, Account } = require('../models');
+const { Vehicle, VehicleModel, BatteryType, Account } = require('../models');
 
 /**
  * ========================================
@@ -73,9 +73,9 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     throw err;
   }
 
-  // Check driver permission
+  // Check driver role
   const driver = await Account.findByPk(driver_id);
-  if (!driver || driver.permission !== 'driver') {
+  if (!driver || driver.role !== 'driver') {
     const err = new Error('Only drivers can register vehicles');
     err.status = 403;
     throw err;
@@ -115,7 +115,12 @@ async function getVehiclesByDriver(driver_id) {
       {
         model: VehicleModel,
         as: 'model',
-        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage']
+        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot'],
+        include: [{
+          model: BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id', 'battery_type_code', 'nominal_capacity']
+        }]
       }
     ]
   });
@@ -148,7 +153,12 @@ async function getVehicleByVin(vin) {
       {
         model: VehicleModel,
         as: 'model',
-        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage']
+        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot'],
+        include: [{
+          model: BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id', 'battery_type_code', 'nominal_capacity']
+        }]
       },
       {
         model: Account,
@@ -362,7 +372,12 @@ async function findVehicleWithModel(vehicle_id) {
       {
         model: VehicleModel,
         as: 'model',
-        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage']
+        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot'],
+        include: [{
+          model: BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_id', 'battery_type_code', 'nominal_capacity']
+        }]
       }
     ]
   });
@@ -376,6 +391,42 @@ async function findVehicleWithModel(vehicle_id) {
   return vehicle;
 }
 
+/**
+ * ========================================
+ * GET VEHICLES WITHOUT BATTERIES (IDs only)
+ * ========================================
+ * Lấy danh sách vehicle_id và driver_id của xe chưa có pin
+ * 
+ * @returns {Promise<Array<object>>} - Mảng {vehicle_id, driver_id}
+ */
+async function getVehiclesWithoutBatteries() {
+  const { Battery, Sequelize } = require('../models');
+  const { Op } = Sequelize;
+
+  // Query tất cả xe và check battery
+  const vehicles = await Vehicle.findAll({
+    attributes: ['vehicle_id', 'driver_id'],
+    include: [
+      {
+        model: Battery,
+        as: 'batteries',
+        attributes: ['battery_id'],
+        required: false
+      }
+    ]
+  });
+
+  // Filter ra những xe không có battery nào và map sang object
+  const vehiclesWithoutBattery = vehicles
+    .filter(vehicle => !vehicle.batteries || vehicle.batteries.length === 0)
+    .map(vehicle => ({
+      vehicle_id: vehicle.vehicle_id,
+      account_id: vehicle.driver_id
+    }));
+
+  return vehiclesWithoutBattery;
+}
+
 // ========================================
 // EXPORTS
 // ========================================
@@ -387,5 +438,6 @@ module.exports = {
   updateVehicle,
   deleteVehicle,
   checkVehicleOwnership,
-  findVehicleWithModel
+  findVehicleWithModel,
+  getVehiclesWithoutBatteries
 };

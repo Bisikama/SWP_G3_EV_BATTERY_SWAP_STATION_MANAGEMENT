@@ -63,6 +63,14 @@ module.exports = (sequelize, DataTypes) => {
           min: 0
         }
       },
+      swap_count: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        validate: {
+          min: 0
+        }
+      },
       start_date: {
         type: DataTypes.DATEONLY,
         allowNull: false
@@ -75,10 +83,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true
       },
-      sub_status: {
+      status: {
         type: DataTypes.ENUM('active', 'inactive'),
         allowNull: false,
         defaultValue: 'inactive'
+      },
+      swap_count: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
       }
     },
     {
@@ -93,7 +106,7 @@ module.exports = (sequelize, DataTypes) => {
   Subscription.beforeSave(async (subscription, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(subscription.driver_id);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Subscription owner must be a driver');
     }
   });

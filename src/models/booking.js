@@ -10,7 +10,20 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-        this.belongsToMany(models.Battery, { through: 'BookingBattery', as: 'batteries', foreignKey: 'booking_id', otherKey: 'battery_id' });
+        // Many-to-Many with Battery through BookingBattery
+        this.belongsToMany(models.Battery, { 
+          through: models.BookingBattery, 
+          as: 'batteries', 
+          foreignKey: 'booking_id', 
+          otherKey: 'battery_id' 
+        });
+        
+        // Many BookingBattery records
+        this.hasMany(models.BookingBattery, { 
+          as: 'bookingBatteries', 
+          foreignKey: 'booking_id' 
+        });
+        
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
         this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
         this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
@@ -52,13 +65,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: DataTypes.NOW
       },
-      scheduled_start_time: {
+      scheduled_time: {
         type: DataTypes.DATE,
-        allowNull: false
-      },
-      scheduled_end_time: {
-        type: DataTypes.DATE,
-        allowNull: false
+        allowNull: false,
+        comment: 'Scheduled start time for battery swap'
       },
       status: {
         type: DataTypes.ENUM('pending', 'completed', 'cancelled'),
@@ -78,7 +88,7 @@ module.exports = (sequelize, DataTypes) => {
   Booking.beforeSave(async (booking, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(booking.driver_id);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Booking must be associated with a driver');
     }
   });

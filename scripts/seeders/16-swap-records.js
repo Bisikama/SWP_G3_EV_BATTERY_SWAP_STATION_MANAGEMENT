@@ -1,6 +1,6 @@
 // seeders/16-swap-records.js
 'use strict';
-const db = require('../../src/models');
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -18,20 +18,21 @@ module.exports = {
 
     const swaps = [];
 
-    // Create 20 swap records over the past month
     for (let i = 0; i < 20; i++) {
       const daysAgo = Math.floor(Math.random() * 30);
       const swapDate = new Date();
       swapDate.setDate(swapDate.getDate() - daysAgo);
 
       swaps.push({
+        swap_id: uuidv4(), // generate UUID for PK
         driver_id: drivers[i % drivers.length].driver_id,
         vehicle_id: drivers[i % drivers.length].vehicle_id,
-        station_id: stations[i % stations.length].station_id
+        station_id: stations[i % stations.length].station_id,
+        swap_time: swapDate
       });
     }
 
-  await db.SwapRecord.bulkCreate(swaps, { validate: true });
+    await queryInterface.bulkInsert('SwapRecords', swaps, {});
   },
 
   async down(queryInterface, Sequelize) {

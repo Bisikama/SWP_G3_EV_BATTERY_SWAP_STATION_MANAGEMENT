@@ -79,14 +79,14 @@ module.exports = (sequelize, DataTypes) => {
   SupportTicket.beforeSave(async (ticket, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(ticket.driver_id);
-    if (!account || account.permission !== 'driver') {
+    if (!account || account.role !== 'driver') {
       throw new Error('Support ticket must be created by a driver');
     }
   });
   SupportTicket.beforeSave(async (ticket, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(ticket.admin_id);
-    if (!account || account.permission !== 'admin') {
+    if (!account || account.role !== 'admin') {
       throw new Error('Support ticket must be resolved by an admin');
     }
   });

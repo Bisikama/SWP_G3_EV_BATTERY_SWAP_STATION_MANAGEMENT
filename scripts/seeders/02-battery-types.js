@@ -1,10 +1,8 @@
-// seeders/02-battery-types.js
 'use strict';
-const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-  await db.BatteryType.bulkCreate([
+    await queryInterface.bulkInsert('BatteryTypes', [
       {
         battery_type_code: 'NMC-75',
         nominal_capacity: 75.00,
@@ -45,7 +43,13 @@ module.exports = {
         max_charge_current: 120.00,
         cell_chemistry: 'LFP'
       }
-  ], { validate: true });
+    ], {});
+
+    // Fix sequence to avoid conflicts with future inserts
+    await queryInterface.sequelize.query(`
+      SELECT setval(pg_get_serial_sequence('"BatteryTypes"', 'battery_type_id'), COALESCE(MAX(battery_type_id), 0)) 
+      FROM "BatteryTypes";
+    `);
   },
 
   async down(queryInterface, Sequelize) {

@@ -1,5 +1,5 @@
-// seeders/08-subscriptions.js
 'use strict';
+const { v4: uuidv4 } = require('uuid');
 const db = require('../../src/models');
 
 module.exports = {
@@ -27,7 +27,6 @@ module.exports = {
     );
 
     const byName = plans.reduce((acc, p) => { acc[p.plan_name] = p.plan_id; return acc; }, {});
-
     const planNames = [
       'Unlimited Basic',
       'Unlimited Standard',
@@ -43,21 +42,23 @@ module.exports = {
     const subscriptions = invoices.map((invoice, index) => {
       // Match vehicle với driver_id
       const vehicle = vehicles.find(v => v.driver_id === invoice.driver_id) || vehicles[index % vehicles.length];
-      
+
       return {
+        subscription_id: uuidv4(), // <-- generate UUID
         invoice_id: invoice.invoice_id,
         driver_id: invoice.driver_id,
         vehicle_id: vehicle.vehicle_id,
         plan_id: byName[planNames[index % planNames.length]] || fallbackPlanId,
         soh_usage: 0,
+        swap_count: 0,
         start_date: '2024-10-01',
         end_date: '2024-12-31',
         cancel_time: null,
-        sub_status: 'active'
+        status: 'active'
       };
     });
 
-    await db.Subscription.bulkCreate(subscriptions, { validate: true });
+    await queryInterface.bulkInsert('Subscriptions', subscriptions, {});
   },
 
   async down(queryInterface, Sequelize) {

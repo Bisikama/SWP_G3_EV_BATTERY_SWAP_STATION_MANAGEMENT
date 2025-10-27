@@ -48,7 +48,7 @@ async function login(req, res) {
 
 async function register(req, res) {
   const { email, password, fullname, phone_number } = req.body || {};
-  const permission = 'driver';
+  const role = 'driver';
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
@@ -92,7 +92,7 @@ async function register(req, res) {
     password_hash: hash,
     fullname: fullname || 'User',
     phone_number,
-    permission,
+    role,
     status: 'active'
   });
 
@@ -101,7 +101,7 @@ async function register(req, res) {
     email: newAccount.email,
     fullname: newAccount.fullname,
     phone_number: newAccount.phone_number,
-    permission: newAccount.permission,
+    role: newAccount.role,
     status: newAccount.status
   };
   return res.status(201).json({ 

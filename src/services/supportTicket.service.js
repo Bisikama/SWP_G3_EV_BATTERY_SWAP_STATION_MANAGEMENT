@@ -37,7 +37,7 @@ async function createSupportTicket(user, data) {
 
 	// auto assign admin to ticket
 	const admins = await db.Account.findAll({
-		where: { permission: 'admin' },
+		where: { role: 'admin' },
 		include: [{
 			model: db.SupportTicket,
 			as: 'tickets',

@@ -26,6 +26,13 @@ module.exports = {
         type: Sequelize.STRING(50),
         allowNull: false
       },
+      battery_slot: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        validate: {
+          min: 0
+        }
+      },
       avg_energy_usage: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,

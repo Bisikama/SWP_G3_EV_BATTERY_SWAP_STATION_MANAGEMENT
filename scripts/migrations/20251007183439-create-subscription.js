@@ -51,6 +51,11 @@ module.exports = {
         allowNull: false,
         defaultValue: 0
       },
+      swap_count: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
       start_date: {
         type: Sequelize.DATEONLY,
         allowNull: false
@@ -63,12 +68,16 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: true
       },
-      sub_status: {
+      status: {
         type: Sequelize.ENUM('active', 'inactive'),
         allowNull: false,
         defaultValue: 'inactive'
-      }
-
+      },
+      swap_count: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
     });
   },
 

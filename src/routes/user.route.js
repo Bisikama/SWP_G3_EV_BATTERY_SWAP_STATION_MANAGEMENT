@@ -23,12 +23,12 @@ router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) =
 
 // 🔐 Route cho phép cả Admin và Staff
 router.post('/station/update', verifyToken, authorizeRole('Admin', 'Staff'), (req, res) => {
-  res.json({ message: `Station updated by ${req.user.permission}` });
+  res.json({ message: `Station updated by ${req.user.role}` });
 });
 
 // 🔐 Route cho phép mọi user đăng nhập (không cần giới hạn role)
 router.get('/profile', verifyToken, (req, res) => {
-  res.json({ message: `Hello ${req.user.email}`, role: req.user.permission });
+  res.json({ message: `Hello ${req.user.email}`, role: req.user.role });
 });
 
 /**
@@ -302,8 +302,6 @@ router.get('/profile', verifyToken, (req, res) => {
  *           application/json:
  *             schema:
  *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
  *       500:
  *         description: Internal server error
  */
@@ -452,8 +450,6 @@ router.get('/profile', verifyToken, (req, res) => {
  *         description: User found successfully
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  *       404:
  *         description: User not found
  *       500:
@@ -479,8 +475,6 @@ router.get('/profile', verifyToken, (req, res) => {
  *         description: User found successfully
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  *       404:
  *         description: User not found
  *       500:

@@ -153,6 +153,52 @@ router.get('/vin/:vin',
 
 /**
  * @swagger
+ * /api/vehicles/without-batteries:
+ *   get:
+ *     tags: [Vehicle]
+ *     summary: Lấy danh sách xe chưa có pin
+ *     description: Lấy danh sách vehicle_id và account_id của những xe chưa có pin nào trong battery
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy dữ liệu thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicles without batteries retrieved successfully
+ *                 count:
+ *                   type: integer
+ *                   example: 5
+ *                 vehicles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       vehicle_id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: "550e8400-e29b-41d4-a716-446655440000"
+ *                       account_id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: "660e8400-e29b-41d4-a716-446655440001"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/without-batteries', 
+  verifyToken, 
+  vehicleController.getVehiclesWithoutBatteries
+);
+
+/**
+ * @swagger
  * /api/vehicles/{id}:
  *   get:
  *     tags: [Vehicle]
@@ -305,3 +351,4 @@ router.delete('/:id',
 );
 
 module.exports = router;
+
