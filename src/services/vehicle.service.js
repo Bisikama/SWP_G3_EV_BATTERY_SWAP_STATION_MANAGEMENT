@@ -87,7 +87,8 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     driver_id,
     model_id,
     vin: normalizedVin,
-    license_plate
+    license_plate,
+    status: 'active'  // Explicit set status (mặc dù DB có default, nhưng tốt hơn là explicit)
   });
 
   // Return vehicle with model information
