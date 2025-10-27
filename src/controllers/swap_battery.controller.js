@@ -1385,7 +1385,7 @@ async function executeFirstTimePickupWithBookingInternal(params, res) {
     // Step 2: Get vehicle
     const vehicle = await db.Vehicle.findByPk(vehicle_id, {
       attributes: ['vehicle_id', 'driver_id'],
-      include: [{ model: db.VehicleModel, as: 'VehicleModel' }],
+      include: [{ model: db.VehicleModel, as: 'model' }],
       transaction
     });
     if (!vehicle) {
@@ -1417,8 +1417,8 @@ async function executeFirstTimePickupWithBookingInternal(params, res) {
 
       // Update battery to vehicle
       await swapBatteryService.updateNewBatteryToVehicle(
-        vehicle_id,
         battery_id,
+        vehicle_id,
         transaction
       );
 
