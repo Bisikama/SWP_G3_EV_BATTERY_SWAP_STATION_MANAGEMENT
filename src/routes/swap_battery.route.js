@@ -230,7 +230,7 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  * @swagger
  * /api/swap/available-batteries:
  *   get:
- *     summary: Kiểm tra pin sẵn sàng
+ *     summary: Kiểm tra pin sẵn sàng tại trạm
  *     tags: [Battery Swap]
  *     description: Lấy danh sách pin có SOC >= 90% tại trạm
  *     security:
@@ -482,7 +482,7 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  * @swagger
  * /api/swap/execute:
  *   post:
- *     summary: Thực hiện đổi pin (sau khi validate)
+ *     summary: Thực hiện đổi pin không có booking (sau khi validate)
  *     tags: [Battery Swap]
  *     requestBody:
  *       required: true
@@ -520,9 +520,9 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  * @swagger
  * /api/swap/execute-with-booking:
  *   post:
- *     summary: Thực hiện đổi pin với booking (regular swap)
+ *     summary: Thực hiện đổi pin có booking (regular swap)
  *     tags: [Battery Swap]
- *     description: Dùng khi is_first_time = false
+ *     description: Dùng khi đổi pin định kỳ với booking 
  *     requestBody:
  *       required: true
  *       content:
@@ -576,7 +576,7 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  *   post:
  *     summary: Lấy pin lần đầu với booking
  *     tags: [Battery Swap]
- *     description: Dùng khi is_first_time = true
+ *     description: Dùng khi chưa có swap_record cho xe này
  *     requestBody:
  *       required: true
  *       content:

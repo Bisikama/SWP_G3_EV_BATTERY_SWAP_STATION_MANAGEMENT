@@ -226,6 +226,34 @@ async function executeSwapInternal(params, res) {
 
     console.log(`✅ All batteries belong to vehicle ${vehicle_id}`);
     
+    // Bước 4: Kiểm tra xe có swap record trước đó không (để xác định lần đầu đổi pin)
+    console.log('\n📝 Step 4: Checking if this is first-time swap...');
+    const existingSwapCount = await db.SwapRecord.count({
+      where: {
+        vehicle_id: vehicle_id
+      },
+      transaction
+    });
+    
+    const isFirstTimeSwap = existingSwapCount === 0;
+    console.log(`  Existing swap records: ${existingSwapCount}`);
+    console.log(`  Is first-time swap: ${isFirstTimeSwap}`);
+
+    // Nếu là lần đầu đổi pin → Không cho dùng API này, yêu cầu dùng API lấy pin lần đầu
+    if (isFirstTimeSwap) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Xe này chưa lấy pin lần đầu. Vui lòng sử dụng lấy pin lần đầu trước khi thực hiện đổi pin.',
+        data: {
+          vehicle_id: vehicle_id,
+          existing_swap_count: existingSwapCount,
+          is_first_time: true,
+          required_action: 'Use POST /api/swap/first-time-pickup or POST /api/swap/execute-first-time-with-booking'
+        }
+      });
+    }
+
     // Bước 1.5: Lấy battery_type_id của vehicle
     console.log('\n🔍 Step 1.5: Getting battery type of vehicle...');
     const vehicle = await db.Vehicle.findByPk(vehicle_id, {
@@ -343,33 +371,7 @@ async function executeSwapInternal(params, res) {
 
     
 
-    // Bước 4: Kiểm tra xe có swap record trước đó không (để xác định lần đầu đổi pin)
-    console.log('\n📝 Step 4: Checking if this is first-time swap...');
-    const existingSwapCount = await db.SwapRecord.count({
-      where: {
-        vehicle_id: vehicle_id
-      },
-      transaction
-    });
     
-    const isFirstTimeSwap = existingSwapCount === 0;
-    console.log(`  Existing swap records: ${existingSwapCount}`);
-    console.log(`  Is first-time swap: ${isFirstTimeSwap}`);
-
-    // Nếu là lần đầu đổi pin → Không cho dùng API này, yêu cầu dùng API lấy pin lần đầu
-    if (isFirstTimeSwap) {
-      await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'Xe này chưa lấy pin lần đầu. Vui lòng sử dụng lấy pin lần đầu trước khi thực hiện đổi pin.',
-        data: {
-          vehicle_id: vehicle_id,
-          existing_swap_count: existingSwapCount,
-          is_first_time: true,
-          required_action: 'Use POST /api/swap/first-time-pickup or POST /api/swap/execute-first-time-with-booking'
-        }
-      });
-    }
 
     console.log(`✅ Vehicle has previous swap records. Proceeding with battery swap...`);
 
@@ -1055,19 +1057,8 @@ async function executeSwapWithBookingInternal(params, res) {
       } else {
         console.log(`  ⚠️ No active subscription found for vehicle ${vehicle_id}`);
       }
-    } else if (isFirstTimeSwap) {
-      console.log('\n📊 Step 5: Skip soh_usage update (first-time swap)');
-      
-      console.log('\n🔄 Step 5.1: Updating vehicle.take_first to TRUE...');
-      await db.Vehicle.update(
-        { take_first: true },
-        {
-          where: { vehicle_id: vehicle_id },
-          transaction
-        }
-      );
-      console.log(`  ✅ Vehicle ${vehicle_id} take_first updated to TRUE`);
-    } else {
+    } 
+      else {
       console.log('\n📊 Step 5: No soh_usage change (totalSohUsage = 0)');
     }
 
@@ -1344,7 +1335,7 @@ async function executeFirstTimePickupWithBookingInternal(params, res) {
         batteries_out: processedBatteriesOut,
         vehicle: {
           vehicle_id: vehicle.vehicle_id,
-          take_first: vehicle.take_first
+          driver_id: vehicle.driver_id
         },
         booking: {
           booking_id: booking.booking_id,
