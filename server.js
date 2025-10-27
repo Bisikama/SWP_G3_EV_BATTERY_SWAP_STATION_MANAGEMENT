@@ -7,6 +7,7 @@ require('dotenv').config();
 const errorHandler = require('./src/middlewares/errorHandler');
 const { startCronJobs, stopCronJobs } = require('./src/config/cron.config');
 
+const authRoutes = require('./src/routes/auth.route');
 const userRoutes = require('./src/routes/user.route');
 const vehicleRoutes = require('./src/routes/vehicles.route');
 const batteryRoutes = require('./src/routes/battery.route');
@@ -29,7 +30,8 @@ app.use(cors);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, swaggerUiOptions));
 
 // routes
-app.use('/api/user', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/battery', batteryRoutes);
 app.use('/api/subscription', subscriptionRoutes);
