@@ -656,35 +656,61 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     for (const bb of bookedBatteriesRaw) {
       const battery = bb.battery;
       
-      // Tìm slot chứa battery này
-      const slot = await db.CabinetSlot.findOne({
-        where: { 
-          battery_id: battery.battery_id,
-          slot_status: ['charging', 'charged', 'locked']
-        },
-        attributes: ['slot_id', 'slot_number', 'slot_status']
+      // Battery có slot_id, lấy thông tin slot từ slot_id của battery
+      if (!battery.slot_id) {
+        return res.status(400).json({
+          success: false,
+          message: `Pin ${battery.battery_id} không có slot_id (chưa được gắn vào slot)`,
+          data: {
+            battery_id: battery.battery_id,
+            battery_serial: battery.battery_serial
+          }
+        });
+      }
+
+      // Lấy thông tin slot từ slot_id
+      const slot = await db.CabinetSlot.findByPk(battery.slot_id, {
+        attributes: ['slot_id', 'slot_number', 'status']
       });
 
       if (!slot) {
         return res.status(400).json({
           success: false,
-          message: `Pin  (${battery.battery_id}) không tìm thấy slot hoặc không ở trạng thái sẵn sàng`,
+          message: `Không tìm thấy slot ${battery.slot_id} cho pin ${battery.battery_id}`,
           data: {
-            battery_id: battery.battery_id
+            battery_id: battery.battery_id,
+            battery_serial: battery.battery_serial,
+            slot_id: battery.slot_id
+          }
+        });
+      }
+
+      // Kiểm tra slot status có sẵn sàng không
+      if (!['charging', 'charged', 'locked'].includes(slot.status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Pin ${battery.battery_serial} ở slot ${slot.slot_number} không ở trạng thái sẵn sàng (hiện tại: ${slot.status})`,
+          data: {
+            battery_id: battery.battery_id,
+            battery_serial: battery.battery_serial,
+            slot_id: slot.slot_id,
+            slot_status: slot.status,
+            expected_statuses: ['charging', 'charged', 'locked']
           }
         });
       }
 
       bookedBatteries.push({
         battery_id: battery.battery_id,
+        battery_serial: battery.battery_serial,
         current_soc: battery.current_soc,
         current_soh: battery.current_soh,
         slot_id: slot.slot_id,
         slot_number: slot.slot_number,
-        slot_status: slot.slot_status
+        slot_status: slot.status
       });
 
-      console.log(`   - Battery ${battery.battery_id}: SOC=${battery.current_soc}%, SOH=${battery.current_soh}% at Slot ${slot.slot_id} (${slot.slot_status})`);
+      console.log(`   - Battery ${battery.battery_id}: SOC=${battery.current_soc}%, SOH=${battery.current_soh}% at Slot ${slot.slot_id} (${slot.status})`);
     }
 
     // Bước 5: Validate dựa trên first-time hay không
@@ -752,7 +778,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       const slot = await db.CabinetSlot.findOne({
         where: {
           battery_id: battery.battery_id,
-          slot_status: ['charging', 'charged', 'locked']
+          status: ['charging', 'charged', 'locked']
         }
       });
 
@@ -1647,7 +1673,7 @@ async function getEmptySlots(req, res) {
         empty_slots: emptySlots.map(slot => ({
           slot_id: slot.slot_id,
           slot_number: slot.slot_number,
-          slot_status: slot.slot_status,
+          slot_status: slot.status,
           cabinet_id: slot.cabinet_id,
           battery_id: slot.battery_id
         }))
