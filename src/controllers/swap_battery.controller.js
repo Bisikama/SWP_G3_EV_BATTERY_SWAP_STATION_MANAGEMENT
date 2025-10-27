@@ -3,18 +3,16 @@ const db = require('../models');
 
 /**
  * API 4: Validate và tự động thực hiện swap nếu thỏa điều kiện
+ * Hỗ trợ cả first-time pickup và regular swap
  * POST /api/swap/validate-and-prepare
  * Body:
  * {
- *   "driver_id": "uuid",      // ← THÊM MỚI
- *   "vehicle_id": "uuid",     // ← THÊM MỚI
+ *   "driver_id": "uuid",
+ *   "vehicle_id": "uuid",
  *   "station_id": 1,
  *   "battery_type_id": 1,
  *   "requested_quantity": 2,
- *   "batteriesIn": [
- *     { "slot_id": 1, "battery_id": "uuid-old-1" },
- *     { "slot_id": 2, "battery_id": "uuid-old-2" }
- *   ]
+ *   "batteriesIn": [] // Optional: Để trống nếu first-time pickup
  * }
  */
 async function validateAndPrepareSwap(req, res) {
@@ -36,22 +34,10 @@ async function validateAndPrepareSwap(req, res) {
       });
     }
 
-    if (!batteriesIn || !Array.isArray(batteriesIn) || batteriesIn.length === 0) {
+    if (!battery_type_id) {
       return res.status(400).json({
         success: false,
-        message: 'batteriesIn phải là mảng không rỗng'
-      });
-    }
-
-    // Kiểm tra số lượng pin đưa vào không vượt quá số lượng yêu cầu
-    if (batteriesIn.length > requested_quantity) {
-      return res.status(400).json({
-        success: false,
-        message: `Số lượng pin đưa vào (${batteriesIn.length}) vượt quá số lượng đã chọn đổi (${requested_quantity})`,
-        data: {
-          batteries_in_count: batteriesIn.length,
-          requested_quantity: requested_quantity
-        }
+        message: 'battery_type_id là bắt buộc'
       });
     }
 
@@ -61,23 +47,83 @@ async function validateAndPrepareSwap(req, res) {
     console.log(`Station: ${station_id}`);
     console.log(`Battery Type: ${battery_type_id}`);
     console.log(`Requested Quantity: ${requested_quantity}`);
-    console.log(`Batteries IN: ${batteriesIn.length}`);
+    console.log(`Batteries IN: ${batteriesIn ? batteriesIn.length : 0}`);
 
+    // Bước 0: Kiểm tra xe có lấy pin lần đầu chưa
+    console.log('\n🔍 Step 0: Checking if this is first-time pickup...');
+    const existingSwapCount = await db.SwapRecord.count({
+      where: { vehicle_id: vehicle_id }
+    });
+    
+    const isFirstTime = existingSwapCount === 0;
+    console.log(`   - Existing swap records: ${existingSwapCount}`);
+    console.log(`   - Is first-time: ${isFirstTime}`);
 
-    // Bước 1: Validate pin đưa vào (kiểm tra cả vehicle ownership)
-    console.log('\n🔍 Step 1: Validating batteries IN...');
-    const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, vehicle_id);
+    // Kiểm tra batteriesIn dựa trên first-time status
+    if (!isFirstTime) {
+      // KHÔNG phải lần đầu → BẮT BUỘC phải có batteriesIn
+      if (!batteriesIn || !Array.isArray(batteriesIn) || batteriesIn.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'batteriesIn phải là mảng không rỗng (xe đã lấy pin lần đầu rồi, cần trả pin cũ)',
+          data: {
+            is_first_time: false,
+            existing_swap_count: existingSwapCount
+          }
+        });
+      }
 
-    // Lọc ra các pin hợp lệ
-    const validBatteries = validation.results.filter(r => r.valid);
-    const invalidBatteries = validation.results.filter(r => !r.valid);
+      // Kiểm tra số lượng pin đưa vào không vượt quá số lượng yêu cầu
+      if (batteriesIn.length > requested_quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Số lượng pin đưa vào (${batteriesIn.length}) vượt quá số lượng đã chọn đổi (${requested_quantity})`,
+          data: {
+            batteries_in_count: batteriesIn.length,
+            requested_quantity: requested_quantity
+          }
+        });
+      }
+    } else {
+      // LẦN ĐẦU → batteriesIn phải rỗng hoặc undefined
+      if (batteriesIn && batteriesIn.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Lấy pin lần đầu không cần trả pin cũ. batteriesIn phải rỗng hoặc không gửi.',
+          data: {
+            is_first_time: true,
+            batteries_in_count: batteriesIn.length
+          }
+        });
+      }
+    }
 
-    console.log(`✅ Valid batteries: ${validBatteries.length}/${batteriesIn.length}`);
-    if (invalidBatteries.length > 0) {
-      console.log(`❌ Invalid batteries: ${invalidBatteries.length}`);
-      invalidBatteries.forEach(b => {
-        console.log(`   - Battery ${b.battery_id}: ${b.error}`);
-      });
+    let validBatteries = [];
+    let invalidBatteries = [];
+    let batteryCheckQuantity = requested_quantity; // Số lượng pin cần check availability
+
+    if (!isFirstTime) {
+      // KHÔNG phải lần đầu → Validate pin đưa vào
+      console.log('\n🔍 Step 1: Validating batteries IN (not first-time)...');
+      const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, vehicle_id);
+
+      // Lọc ra các pin hợp lệ
+      validBatteries = validation.results.filter(r => r.valid);
+      invalidBatteries = validation.results.filter(r => !r.valid);
+
+      console.log(`✅ Valid batteries: ${validBatteries.length}/${batteriesIn.length}`);
+      if (invalidBatteries.length > 0) {
+        console.log(`❌ Invalid batteries: ${invalidBatteries.length}`);
+        invalidBatteries.forEach(b => {
+          console.log(`   - Battery ${b.battery_id}: ${b.error}`);
+        });
+      }
+
+      batteryCheckQuantity = validBatteries.length; // Check availability cho số pin hợp lệ
+    } else {
+      // LẦN ĐẦU → Skip validation batteriesIn
+      console.log('\n🔍 Step 1: Skipping batteries IN validation (first-time pickup)...');
+      console.log(`   ℹ️ First-time pickup does not require batteriesIn`);
     }
 
     // Bước 2: Kiểm tra pin sẵn sàng để đổi
@@ -85,47 +131,64 @@ async function validateAndPrepareSwap(req, res) {
     const availableSlots = await swapBatteryService.getAvailableBatteriesForSwap(
       parseInt(station_id),
       parseInt(battery_type_id),
-      validBatteries.length
+      batteryCheckQuantity
     );
 
-    console.log(`✅ Available batteries (SOC >= 90%): ${availableSlots.length}/${validBatteries.length}`);
+    console.log(`✅ Available batteries (SOC >= 90%): ${availableSlots.length}/${batteryCheckQuantity}`);
 
     // Kiểm tra các điều kiện
-    const hasEnoughValidBatteries = validBatteries.length === requested_quantity;
-    const hasEnoughAvailableBatteries = availableSlots.length >= validBatteries.length;
-    const canProceed = validBatteries.length > 0 && hasEnoughAvailableBatteries;
+    const hasEnoughValidBatteries = isFirstTime 
+      ? true // First-time không cần check valid batteries IN
+      : validBatteries.length === requested_quantity;
+    
+    const hasEnoughAvailableBatteries = availableSlots.length >= batteryCheckQuantity;
+    
+    const canProceed = isFirstTime 
+      ? hasEnoughAvailableBatteries // First-time chỉ cần đủ pin OUT
+      : (validBatteries.length > 0 && hasEnoughAvailableBatteries); // Regular swap cần cả 2
 
     // Xác định message và status
     let responseStatus = 200;
     let responseMessage = '';
-    let readyToExecute = false; // ← FLAG để frontend biết có thể execute không
+    let readyToExecute = false;
 
-    if (validBatteries.length === 0) {
-      // Không có pin hợp lệ
-      responseStatus = 400;
-      responseMessage = 'Không có viên pin nào hợp lệ. Vui lòng kiểm tra lại các pin đưa vào.';
-    } else if (!hasEnoughAvailableBatteries) {
-      // Không đủ pin để đổi
-      responseStatus = 400;
-      responseMessage = `Không đủ pin sẵn sàng để đổi.`;
-    } else if (!hasEnoughValidBatteries) {
-      // Có pin hợp lệ nhưng ít hơn số lượng yêu cầu → Cần xác nhận
-      responseStatus = 200;
-      responseMessage = `Chỉ có ${validBatteries.length}/${requested_quantity} viên pin hợp lệ. Yêu cầu chọn lại số lượng pin muốn đổi.`;
+    if (isFirstTime) {
+      // FIRST-TIME LOGIC
+      if (!hasEnoughAvailableBatteries) {
+        responseStatus = 400;
+        responseMessage = `Không đủ pin để lấy lần đầu. Cần ${batteryCheckQuantity} pin, chỉ có ${availableSlots.length} pin sẵn sàng.`;
+      } else {
+        responseStatus = 200;
+        readyToExecute = true;
+        responseMessage = `Sẵn sàng lấy pin lần đầu. Có ${availableSlots.length} pin sẵn sàng cho xe.`;
+      }
     } else {
-      // ✅ Tất cả đều hợp lệ → READY TO EXECUTE
-      responseStatus = 200;
-      readyToExecute = true;
-      responseMessage = `Tất cả ${validBatteries.length} pin đều hợp lệ. Sẵn sàng để đổi pin.`;
+      // REGULAR SWAP LOGIC
+      if (validBatteries.length === 0) {
+        responseStatus = 400;
+        responseMessage = 'Không có viên pin nào hợp lệ. Vui lòng kiểm tra lại các pin đưa vào.';
+      } else if (!hasEnoughAvailableBatteries) {
+        responseStatus = 400;
+        responseMessage = `Không đủ pin sẵn sàng để đổi.`;
+      } else if (!hasEnoughValidBatteries) {
+        responseStatus = 200;
+        responseMessage = `Chỉ có ${validBatteries.length}/${requested_quantity} viên pin hợp lệ. Yêu cầu chọn lại số lượng pin muốn đổi.`;
+      } else {
+        responseStatus = 200;
+        readyToExecute = true;
+        responseMessage = `Tất cả ${validBatteries.length} pin đều hợp lệ. Sẵn sàng để đổi pin.`;
+      }
     }
 
     console.log(`\n📊 Validation Result: ${responseMessage}`);
     console.log(`✅ ========== VALIDATION COMPLETE ==========\n`);
 
-    return res.status(responseStatus).json({
+    // Build response data
+    const responseData = {
       success: canProceed,
       message: responseMessage,
-      ready_to_execute: readyToExecute, // ← Frontend dùng flag này để biết có thể call execute không
+      ready_to_execute: readyToExecute,
+      is_first_time: isFirstTime, // ← FLAG quan trọng
       data: {
         driver_id,
         vehicle_id,
@@ -133,24 +196,14 @@ async function validateAndPrepareSwap(req, res) {
         battery_type_id: parseInt(battery_type_id),
         requested_quantity: requested_quantity,
         validation_summary: {
-          total_batteries_in: batteriesIn.length,
-          valid_batteries: validBatteries.length,
-          invalid_batteries: invalidBatteries.length,
+          is_first_time: isFirstTime,
+          existing_swap_count: existingSwapCount,
+          total_batteries_in: isFirstTime ? 0 : batteriesIn.length,
+          valid_batteries: isFirstTime ? 0 : validBatteries.length,
+          invalid_batteries: isFirstTime ? 0 : invalidBatteries.length,
           available_batteries_out: availableSlots.length,
           can_proceed: canProceed
         },
-        valid_batteries_in: validBatteries.map(v => ({
-          slot_id: v.slot_id,
-          battery_id: v.battery_id,
-          battery_soh: v.battery_soh,
-          battery_soc: v.battery_soc,
-          new_slot_status: v.new_slot_status
-        })),
-        invalid_batteries_in: invalidBatteries.map(v => ({
-          slot_id: v.slot_id,
-          battery_id: v.battery_id,
-          error: v.error
-        })),
         available_batteries_out: availableSlots.map(slot => ({
           slot_id: slot.slot_id,
           slot_number: slot.slot_number,
@@ -160,7 +213,26 @@ async function validateAndPrepareSwap(req, res) {
           current_soh: slot.battery.current_soh
         }))
       }
-    });
+    };
+
+    // Thêm valid_batteries_in và invalid_batteries_in chỉ khi KHÔNG phải first-time
+    if (!isFirstTime) {
+      responseData.data.valid_batteries_in = validBatteries.map(v => ({
+        slot_id: v.slot_id,
+        battery_id: v.battery_id,
+        battery_soh: v.battery_soh,
+        battery_soc: v.battery_soc,
+        new_slot_status: v.new_slot_status
+      }));
+      
+      responseData.data.invalid_batteries_in = invalidBatteries.map(v => ({
+        slot_id: v.slot_id,
+        battery_id: v.battery_id,
+        error: v.error
+      }));
+    }
+
+    return res.status(responseStatus).json(responseData);
   } catch (error) {
     console.error('❌ Error in validateAndPrepareSwap:', error);
     return res.status(500).json({
@@ -793,6 +865,8 @@ async function validateAndPrepareSwapWithBooking(req, res) {
           booked_batteries_out: bookedBatteries.length
         },
         booked_batteries_out: bookedBatteries.map(bb => ({
+          slot_id : bb.slot_id,
+          slot_status: bb.slot_status,
           battery_id: bb.battery_id,
           current_soc: bb.current_soc,
           current_soh: bb.current_soh,
@@ -1699,7 +1773,7 @@ async function checkFirstTimePickup(req, res) {
         {
           model: db.VehicleModel,
           as: 'model',
-          attributes: ['model_id', 'name', 'battery_type_id', 'battery_quantity']
+          attributes: ['model_id', 'name', 'battery_type_id', 'battery_slot']
         }
       ]
     });
@@ -1723,7 +1797,7 @@ async function checkFirstTimePickup(req, res) {
         license_plate: vehicle.license_plate,
         model_name: vehicle.model?.name,
         battery_type_id: vehicle.model?.battery_type_id,
-        battery_quantity: vehicle.model?.battery_quantity,
+        battery_slot: vehicle.model?.battery_slot,
         is_first_time: isFirstTime,
         total_swap_count: existingSwapCount,
         status: isFirstTime ? 'never_swapped' : 'has_swapped',
