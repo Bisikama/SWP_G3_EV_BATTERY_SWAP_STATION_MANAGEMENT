@@ -744,8 +744,10 @@ router.post('/validate-and-prepare', swapBatteryController.validateAndPrepareSwa
 router.post('/validate-with-booking', swapBatteryController.validateAndPrepareSwapWithBooking);
 router.post('/execute', verifyToken, swapBatteryController.executeSwap);
 router.post('/execute-with-booking', verifyToken, swapBatteryController.executeSwapWithBooking);
+router.post('/execute-first-time-with-booking', verifyToken, swapBatteryController.executeFirstTimePickupWithBooking); // ← THÊM MỚI
 router.get('/available-batteries', verifyToken, swapBatteryController.getAvailableBatteries);
 router.get('/empty-slots', verifyToken, swapBatteryController.getEmptySlots); // ← THÊM MỚI: Lấy slot trống
 router.get('/check-first-time-pickup', verifyToken, swapBatteryController.checkFirstTimePickup); // ← THÊM MỚI: Kiểm tra first-time
+router.post('/first-time-pickup', verifyToken, swapBatteryController.firstTimeBatteryPickup);
 
 module.exports = router;

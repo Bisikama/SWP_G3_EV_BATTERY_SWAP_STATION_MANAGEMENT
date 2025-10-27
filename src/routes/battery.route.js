@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const batteryController = require('../controllers/battery.controller');
-const { verifyToken } = require('../middlewares/verifyTokens');
+const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 
 /**
  * @swagger
