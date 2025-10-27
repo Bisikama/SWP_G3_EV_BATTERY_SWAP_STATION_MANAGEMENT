@@ -16,7 +16,8 @@
 // ========================================
 
 'use strict';
-const { Vehicle, VehicleModel, BatteryType, Account } = require('../models');
+const { Vehicle, VehicleModel, BatteryType, Account, Subscription, Booking, Sequelize } = require('../models');
+const { Op } = Sequelize;
 
 /**
  * ========================================
@@ -298,9 +299,6 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
  * @throws {Error} - Lỗi với status code
  */
 async function deleteVehicle(vehicle_id, driver_id) {
-  const { Subscription, Booking, Sequelize } = require('../models');
-  const { Op } = Sequelize;
-
   // Find vehicle
   const vehicle = await Vehicle.findByPk(vehicle_id);
   
@@ -324,17 +322,26 @@ async function deleteVehicle(vehicle_id, driver_id) {
     throw err;
   }
 
-  // Check active subscription
-  const activeSubscription = await Subscription.findOne({
-    where: {
-      vehicle_id,
-      status: 'active',
-      end_date: {
-        [Op.gte]: new Date()
+  // Check active subscription và pending bookings (parallel queries)
+  const [activeSubscription, pendingBooking] = await Promise.all([
+    Subscription.findOne({
+      where: {
+        vehicle_id,
+        status: 'active',
+        end_date: {
+          [Op.gte]: new Date()
+        }
       }
-    }
-  });
+    }),
+    Booking.findOne({
+      where: {
+        vehicle_id,
+        status: 'pending'
+      }
+    })
+  ]);
 
+  // Check active subscription
   if (activeSubscription) {
     const err = new Error('Cannot deactivate vehicle. Active subscription exists. Please cancel subscription first');
     err.status = 409;
@@ -342,13 +349,6 @@ async function deleteVehicle(vehicle_id, driver_id) {
   }
 
   // Check pending bookings
-  const pendingBooking = await Booking.findOne({
-    where: {
-      vehicle_id,
-      status: 'pending'
-    }
-  });
-
   if (pendingBooking) {
     const err = new Error('Cannot deactivate vehicle. Pending bookings exist. Please cancel bookings first');
     err.status = 409;
