@@ -84,6 +84,7 @@ router.post('/',
  *     parameters:
  *       - in: query
  *         name: status
+ *         required: true
  *         schema:
  *           type: string
  *           enum: [active, inactive, all]
