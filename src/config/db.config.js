@@ -23,6 +23,19 @@ module.exports = {
     "database": process.env.REMOTE_DB_NAME,
     "host": process.env.REMOTE_DB_HOST,
     "port": process.env.REMOTE_DB_PORT,
-    "dialect": "postgres"
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    },
+    "pool": {
+      "max": 5,
+      "min": 0,
+      "acquire": 30000,
+      "idle": 10000
+    },
+    "logging": false
   }
 }
