@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const batteryController = require('../controllers/battery.controller');
-const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+const { verifyToken } = require('../middlewares/verifyTokens');
 
 /**
  * @swagger
@@ -16,6 +16,8 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *   get:
  *     tags: [Batteries]
  *     summary: Count batteries by station and battery type
+ *     security:
+ *       - bearerAuth: []
  *     description: Get the total count of batteries filtered by station name and battery type code. This endpoint performs a complex query joining Battery, BatteryType, CabinetSlot, Cabinet, and Station tables.
  *     parameters:
  *       - in: query
@@ -73,6 +75,8 @@ router.get('/filterCount', verifyToken, batteryController.countByStationAndType)
  *   get:
  *     tags: [Batteries]
  *     summary: Get all batteries
+ *     security:
+ *       - bearerAuth: []
  *     description: Retrieve a list of all batteries in the system without any filters
  *     responses:
  *       200:

@@ -684,6 +684,9 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *   post:
  *     summary: Thực hiện đổi pin không có booking (sau khi validate)
  *     tags: [Battery Swap]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Dùng khi đổi pin không có booking
  *     requestBody:
  *       required: true
  *       content:
@@ -722,7 +725,9 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *   post:
  *     summary: Thực hiện đổi pin có booking (regular swap)
  *     tags: [Battery Swap]
- *     description: Dùng khi đổi pin định kỳ với booking 
+ *     security:
+ *       - bearerAuth: []
+ *     description: Dùng khi đổi pin định kỳ với booking
  *     requestBody:
  *       required: true
  *       content:
@@ -776,6 +781,8 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *   post:
  *     summary: Lấy pin lần đầu với booking
  *     tags: [Battery Swap]
+ *     security:
+ *       - bearerAuth: []
  *     description: Dùng khi chưa có swap_record cho xe này
  *     requestBody:
  *       required: true

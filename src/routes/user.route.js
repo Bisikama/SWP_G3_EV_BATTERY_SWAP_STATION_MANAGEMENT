@@ -3,7 +3,7 @@ const router = express.Router();
 const validateRegister = require('../middlewares/validateRegister');
 const { validateResetPassword } = require('../middlewares/validatePassword');
 const userController = require('../controllers/user.controller');
-const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+
 
 router.post('/login', userController.login);
 router.post('/request-verification', userController.requestEmailVerification);

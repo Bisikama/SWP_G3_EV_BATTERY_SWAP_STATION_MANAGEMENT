@@ -24,6 +24,8 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *   post:
  *     tags: [Invoice]
  *     summary: Create a new invoice for a vehicle and subscription plan
+ *     security:
+ *       - bearerAuth: []
  *     description: |
  *       Creates a new invoice for purchasing a subscription plan for a vehicle.
  *       
@@ -261,6 +263,8 @@ router.post('/create-from-subscription',verifyToken, invoiceController.createInv
  *   get:
  *     tags: [Invoice]
  *     summary: Get all invoices
+ *     security:
+ *       - bearerAuth: []
  *     description: Retrieve all invoices with full details including driver, subscription, plan, and vehicle information. Results are ordered by create date (newest first).
  *     responses:
  *       200:
@@ -300,6 +304,8 @@ router.get('/', verifyToken, invoiceController.getAllInvoices);
  *   get:
  *     tags: [Invoice]
  *     summary: Get payment history by vehicle ID
+ *     security:
+ *       - bearerAuth: []
  *     description: |
  *       Retrieves the complete payment history for a specific vehicle, including:
  *       - All paid invoices (status = 'paid' only)
@@ -409,6 +415,8 @@ router.get('/', verifyToken, invoiceController.getAllInvoices);
  *   get:
  *     tags: [Invoice]
  *     summary: Get payment history for all vehicles of a driver
+ *     security:
+ *       - bearerAuth: []
  *     description: |
  *       Retrieves the complete payment history for all vehicles owned by a specific driver, including:
  *       - All paid invoices (status = 'paid' only)
@@ -665,6 +673,8 @@ router.get('/payment-history/:vehicle_id', verifyToken, invoiceController.getPay
  *   get:
  *     tags: [Invoice]
  *     summary: Get invoice by ID
+ *     security:
+ *       - bearerAuth: []
  *     description: Retrieve a specific invoice by its UUID with full details including driver, subscription, plan, and vehicle information.
  *     parameters:
  *       - in: path

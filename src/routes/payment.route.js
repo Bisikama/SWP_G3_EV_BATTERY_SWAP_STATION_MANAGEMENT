@@ -23,6 +23,8 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *   post:
  *     tags: [Payment]
  *     summary: Create MoMo payment link
+ *     security:
+ *       - bearerAuth: []
  *     description: Generate a MoMo payment link for an invoice. Returns payUrl for user to complete payment. Only works with unpaid invoices.
  *     requestBody:
  *       required: true

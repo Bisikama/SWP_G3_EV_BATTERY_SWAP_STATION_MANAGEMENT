@@ -11,6 +11,8 @@ const { validate } = require('../middlewares/validateHandler');
  *   get:
  *     tags: [Battery Type]
  *     summary: Get all battery types
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Successfully retrieved list of battery types
