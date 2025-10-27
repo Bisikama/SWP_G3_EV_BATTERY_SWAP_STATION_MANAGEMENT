@@ -16,20 +16,6 @@ router.post('/reset-password', validateResetPassword, userController.resetPasswo
 router.get('/id/:id', userController.findById);
 router.get('/email/:email', userController.findByEmail);
 
-// 🔐 Route chỉ cho phép Admin truy cập
-router.get('/admin/dashboard', verifyToken, authorizeRole('Admin'), (req, res) => {
-  res.json({ message: `Welcome, Admin ${req.user.email}` });
-});
-
-// 🔐 Route cho phép cả Admin và Staff
-router.post('/station/update', verifyToken, authorizeRole('Admin', 'Staff'), (req, res) => {
-  res.json({ message: `Station updated by ${req.user.role}` });
-});
-
-// 🔐 Route cho phép mọi user đăng nhập (không cần giới hạn role)
-router.get('/profile', verifyToken, (req, res) => {
-  res.json({ message: `Hello ${req.user.email}`, role: req.user.role });
-});
 
 /**
  * @swagger

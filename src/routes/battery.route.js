@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const batteryController = require('../controllers/battery.controller');
+const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 
 /**
  * @swagger
@@ -64,7 +65,7 @@ const batteryController = require('../controllers/battery.controller');
  *                   type: string
  *                   example: Internal server error
  */
-router.get('/filterCount', batteryController.countByStationAndType);
+router.get('/filterCount', verifyToken, batteryController.countByStationAndType);
 
 /**
  * @swagger
@@ -135,6 +136,6 @@ router.get('/filterCount', batteryController.countByStationAndType);
  *                   type: string
  *                   example: Internal server error
  */
-router.get('/all', batteryController.getAll);
+router.get('/all', verifyToken, batteryController.getAll);
 
 module.exports = router;

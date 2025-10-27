@@ -9,6 +9,7 @@
 const express = require('express');
 const router = express.Router();
 const invoiceController = require('../controllers/invoice.controller');
+const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 
 /**
  * @swagger
@@ -252,7 +253,7 @@ const invoiceController = require('../controllers/invoice.controller');
  *                   example: "Database connection error"
  */
 // Tạo invoice từ vehicle_id và plan_id
-router.post('/create-from-subscription', invoiceController.createInvoiceFromSubscription);
+router.post('/create-from-subscription',verifyToken, invoiceController.createInvoiceFromSubscription);
 
 /**
  * @swagger
@@ -291,7 +292,7 @@ router.post('/create-from-subscription', invoiceController.createInvoiceFromSubs
  *                   example: An error occurred while fetching invoices
  */
 // Lấy tất cả invoices (optional - để test)
-router.get('/', invoiceController.getAllInvoices);
+router.get('/', verifyToken, invoiceController.getAllInvoices);
 
 /**
  * @swagger
@@ -653,10 +654,10 @@ router.get('/', invoiceController.getAllInvoices);
  *                   type: string
  */
 // Lấy lịch sử thanh toán theo driver_id (tất cả xe của driver) - ĐẶT TRƯỚC để tránh conflict
-router.get('/payment-history/driver/:driver_id', invoiceController.getPaymentHistoryByDriver);
+router.get('/payment-history/driver/:driver_id', verifyToken, invoiceController.getPaymentHistoryByDriver);
 
 // Lấy lịch sử thanh toán theo vehicle_id
-router.get('/payment-history/:vehicle_id', invoiceController.getPaymentHistoryByVehicle);
+router.get('/payment-history/:vehicle_id', verifyToken, invoiceController.getPaymentHistoryByVehicle);
 
 /**
  * @swagger
@@ -709,7 +710,7 @@ router.get('/payment-history/:vehicle_id', invoiceController.getPaymentHistoryBy
  *                   example: An error occurred while fetching the invoice
  */
 // Lấy invoice theo ID
-router.get('/:invoice_id', invoiceController.getInvoiceById);
+router.get('/:invoice_id', verifyToken , invoiceController.getInvoiceById);
 
 module.exports = router;
 

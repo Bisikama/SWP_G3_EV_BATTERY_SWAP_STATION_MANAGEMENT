@@ -17,7 +17,8 @@ const { validate } = require('../middlewares/validateHandler');
  *       500:
  *         description: Internal server error
  */
-router.get('/', 
+router.get('/',
+	verifyToken,
 	batteryTypeController.findAll
 );
 
