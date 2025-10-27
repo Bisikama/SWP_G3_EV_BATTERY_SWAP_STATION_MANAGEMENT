@@ -43,7 +43,7 @@ async function authenticate({ email, password }) {
   const payload = {
     account_id: account.account_id,
     email: account.email,
-    permission: account.permission
+    role: account.role
   };
   try {
     const token = jwt.sign(payload, secret, { expiresIn: '8h' });

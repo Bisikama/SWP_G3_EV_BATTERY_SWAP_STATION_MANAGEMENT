@@ -1,9 +1,10 @@
 const authService = require('../services/auth.service');
+const userService = require('../services/user.service');
 
 async function login(req, res) {
 	const { email, password } = req.body || {};
 	const token = await authService.authenticate({ email, password });
-	const account = await authService.findByEmail(email);
+	const account = await userService.findByEmail(email);
 	return res.status(200).json({
 		success: true,
 		payload: { token, account }

@@ -11,7 +11,7 @@ router.get('/',
     shiftController.findAll
 );
 
-router.get('/me', 
+router.get('/staff', 
     verifyToken, 
     authorizeRole('staff'), 
     shiftController.findByStaff
@@ -144,7 +144,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shifts/me:
+ * /api/shifts/staff:
  *   get:
  *     summary: Get all shifts for the logged-in staff
  *     tags: [Shifts]
