@@ -101,17 +101,31 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
  * Lấy tất cả xe của driver
  * 
  * @param {string} driver_id - ID của driver
+ * @param {object} options - { status?: 'active' | 'inactive' | 'all' }
  * @returns {Promise<Vehicle[]>} - Danh sách xe (kèm model)
  */
-async function getVehiclesByDriver(driver_id) {
+async function getVehiclesByDriver(driver_id, options = {}) {
   if (!driver_id) {
     const err = new Error('Driver ID is required');
     err.status = 400;
     throw err;
   }
 
+  const { status = 'active' } = options;
+
+  // Build where clause
+  const where = { driver_id };
+  
+  // Filter by status
+  if (status === 'active') {
+    where.status = 'active';
+  } else if (status === 'inactive') {
+    where.status = 'inactive';
+  }
+  // Nếu status === 'all' thì không filter
+
   const vehicles = await Vehicle.findAll({
-    where: { driver_id },
+    where,
     include: [
       {
         model: VehicleModel,
