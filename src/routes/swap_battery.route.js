@@ -737,7 +737,55 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *         description: Lỗi validation
  */
 
-
+/**
+ * @swagger
+ * /api/swap/execute-first-time-with-booking:
+ *   post:
+ *     summary: Lấy pin lần đầu với booking
+ *     tags: [Battery Swap]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Dùng khi chưa có swap_record cho xe này
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - booking_id
+ *               - driver_id
+ *               - vehicle_id
+ *               - station_id
+ *               - bookedBatteries
+ *             properties:
+ *               booking_id:
+ *                 type: string
+ *                 format: uuid
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *               vehicle_id:
+ *                 type: string
+ *                 format: uuid
+ *               station_id:
+ *                 type: integer
+ *               bookedBatteries:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     slot_id:
+ *                       type: integer
+ *                     battery_id:
+ *                       type: string
+ *                       format: uuid
+ *     responses:
+ *       200:
+ *         description: Lấy pin lần đầu thành công
+ *       400:
+ *         description: Lỗi validation
+ */
 
 // Routes
 router.post('/validate-and-prepare', swapBatteryController.validateAndPrepareSwap);
