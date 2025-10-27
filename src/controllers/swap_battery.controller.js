@@ -17,7 +17,7 @@ const db = require('../models');
  */
 async function validateAndPrepareSwap(req, res) {
   try {
-    const { driver_id, vehicle_id, battery_type_id, station_id, requested_quantity, batteriesIn } = req.body;
+    const { driver_id, vehicle_id, station_id, requested_quantity, batteriesIn } = req.body;
 
     // Validation input
     if (!vehicle_id || !driver_id) {
@@ -34,20 +34,66 @@ async function validateAndPrepareSwap(req, res) {
       });
     }
 
-    if (!battery_type_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'battery_type_id là bắt buộc'
-      });
-    }
 
     console.log(`\n🔍 ========== VALIDATING SWAP PREPARATION ==========`);
     console.log(`Driver: ${driver_id}`);
     console.log(`Vehicle: ${vehicle_id}`);
     console.log(`Station: ${station_id}`);
-    console.log(`Battery Type: ${battery_type_id}`);
     console.log(`Requested Quantity: ${requested_quantity}`);
     console.log(`Batteries IN: ${batteriesIn ? batteriesIn.length : 0}`);
+
+    // Bước -1: Kiểm tra vehicle có tồn tại và thuộc về driver không
+    console.log('\n🔍 Step -1: Validating vehicle ownership and battery type...');
+    const vehicle = await db.Vehicle.findByPk(vehicle_id, {
+      attributes: ['vehicle_id', 'driver_id', 'license_plate', 'model_id'],
+      include: [{
+        model: db.VehicleModel,
+        as: 'model',
+        attributes: ['model_id', 'name', 'battery_type_id', 'battery_slot'],
+      }]
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy xe với vehicle_id đã cho'
+      });
+    }
+
+    // Kiểm tra xe có thuộc về driver không
+    if (vehicle.driver_id !== driver_id) {
+      return res.status(403).json({
+        success: false,
+        message: `Xe ${vehicle.license_plate} không thuộc về tài xế này. Không được phép đổi pin cho xe của người khác.`,
+        data: {
+          vehicle_id: vehicle.vehicle_id,
+          vehicle_license_plate: vehicle.license_plate,
+          vehicle_driver_id: vehicle.driver_id,
+          requested_driver_id: driver_id
+        }
+      });
+    }
+
+    console.log(`   ✅ Vehicle ${vehicle.license_plate} belongs to driver ${driver_id}`);
+
+    // Kiểm tra battery_type_id có khớp với xe không
+    const vehicleBatteryTypeId = vehicle.model.battery_type_id;
+
+    // Kiểm tra số lượng pin không vượt quá battery_slot của vehicle model
+    const maxBatterySlots = vehicle.model.battery_slot;
+    if (requested_quantity > maxBatterySlots) {
+      return res.status(400).json({
+        success: false,
+        message: `Số lượng pin yêu cầu (${requested_quantity}) vượt quá số lượng pin tối đa của xe ${vehicle.model.name} (${maxBatterySlots} pin)`,
+        data: {
+          requested_quantity: requested_quantity,
+          max_battery_slots: maxBatterySlots,
+          vehicle_model: vehicle.model.name
+        }
+      });
+    }
+
+    console.log(`   ✅ Requested quantity (${requested_quantity}) is within vehicle capacity (${maxBatterySlots})`);
 
     // Bước 0: Kiểm tra xe có lấy pin lần đầu chưa
     console.log('\n🔍 Step 0: Checking if this is first-time pickup...');
@@ -130,7 +176,7 @@ async function validateAndPrepareSwap(req, res) {
     console.log('\n🔋 Step 2: Checking available batteries for swap...');
     const availableSlots = await swapBatteryService.getAvailableBatteriesForSwap(
       parseInt(station_id),
-      parseInt(battery_type_id),
+      parseInt(vehicleBatteryTypeId),
       batteryCheckQuantity
     );
 
@@ -193,7 +239,7 @@ async function validateAndPrepareSwap(req, res) {
         driver_id,
         vehicle_id,
         station_id: parseInt(station_id),
-        battery_type_id: parseInt(battery_type_id),
+        battery_type_id: parseInt(vehicleBatteryTypeId),
         requested_quantity: requested_quantity,
         validation_summary: {
           is_first_time: isFirstTime,
@@ -479,7 +525,8 @@ async function executeSwapInternal(params, res) {
         battery_id_in: batteryIn.battery_id,
         battery_id_out: batteryOut.battery_id,
         soh_in: batteryInData.current_soh,
-        soh_out: batteryOutData.current_soh
+        soh_out: batteryOutData.current_soh,
+        transaction
       });
 
       swapRecords.push(swapRecord);
@@ -487,7 +534,7 @@ async function executeSwapInternal(params, res) {
 
       // Tính soh_usage ngay sau khi tạo (chỉ khi KHÔNG phải lần đầu)
       if (!isFirstTimeSwap && previousSwapRecord) {
-        const sohDiff = swapRecord.soh_in - previousSwapRecord.soh_out;
+        const sohDiff = previousSwapRecord.soh_out - swapRecord.soh_in;
         totalSohUsage += sohDiff;
         
         console.log(`  📉 Battery ${swapRecord.battery_id_in}:`);
@@ -508,7 +555,11 @@ async function executeSwapInternal(params, res) {
 const subscription = await db.Subscription.findOne({
   where: {
     vehicle_id: vehicle_id,
-    status: 'active'
+    status: 'active',
+    vehicle_id: vehicle_id,
+    status: 'active',
+    start_date: { [db.Sequelize.Op.lte]: new Date() },
+    end_date: { [db.Sequelize.Op.gte]: new Date() }
   },
   transaction
 });
@@ -518,9 +569,9 @@ if (!subscription) {
 } else {
   const newSwapCount = subscription.swap_count + swapRecords.length;
 
-  if (!isFirstTimeSwap && totalSohUsage !== 0) {
+  if (!isFirstTimeSwap) {
     // Cập nhật CẢ soh_usage VÀ swap_count
-    const currentSohUsage = parseFloat(subscription.soh_usage) || 0;
+    const currentSohUsage = parseFloat(subscription.soh_usage);
     const newSohUsage = currentSohUsage + totalSohUsage;
 
     await db.Subscription.update(
@@ -1049,6 +1100,24 @@ async function executeSwapWithBookingInternal(params, res) {
     console.log(`  Existing swap records (with battery_in): ${existingSwapCount}`);
     console.log(`  Is first-time swap: ${isFirstTimeSwap}`);
 
+    // Nếu là lần đầu đổi pin → Không cho dùng API này, yêu cầu dùng API lấy pin lần đầu
+    if (isFirstTimeSwap) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Xe này chưa lấy pin lần đầu. Vui lòng sử dụng API lấy pin lần đầu trước khi thực hiện đổi pin với booking.',
+        data: {
+          vehicle_id: vehicle_id,
+          booking_id: booking_id,
+          existing_swap_count: existingSwapCount,
+          is_first_time: true,
+          required_action: 'Use POST /api/swap/execute-first-time-with-booking for first-time pickup with booking'
+        }
+      });
+    }
+
+    console.log(`✅ Vehicle has previous swap records. Proceeding with booking swap...`);
+
     // Bước 4: Tạo swap records và tính soh_usage
     console.log('\n📝 Step 4: Creating swap records and calculating soh_usage...');
     const swapRecords = [];
@@ -1090,7 +1159,7 @@ async function executeSwapWithBookingInternal(params, res) {
 
       // Tính soh_usage (chỉ khi KHÔNG phải lần đầu)
       if (!isFirstTimeSwap && previousSwapRecord) {
-        const sohDiff = swapRecord.soh_in - previousSwapRecord.soh_out;
+        const sohDiff =  previousSwapRecord.soh_out - swapRecord.soh_in;
         totalSohUsage += sohDiff;
         
         console.log(`  📉 Battery ${swapRecord.battery_id_in}:`);
@@ -1109,7 +1178,9 @@ async function executeSwapWithBookingInternal(params, res) {
       const subscription = await db.Subscription.findOne({
         where: {
           vehicle_id: vehicle_id,
-          status: 'active'
+          status: 'active',
+          start_date: { [db.Sequelize.Op.lte]: new Date() },
+          end_date: { [db.Sequelize.Op.gte]: new Date() }
         },
         transaction
       });
