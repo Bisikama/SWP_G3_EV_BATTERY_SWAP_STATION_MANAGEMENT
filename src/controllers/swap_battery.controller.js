@@ -1630,6 +1630,48 @@ async function firstTimeBatteryPickup(req, res) {
   }
 }
 
+async function getEmptySlots(req, res) {
+  try {
+    const { station_id } = req.query;
+
+    if (!station_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'station_id là bắt buộc'
+      });
+    }
+
+    console.log(`\n🔍 Getting empty slots for station: ${station_id}`);
+
+    const emptySlots = await swapBatteryService.getEmptySlots(parseInt(station_id));
+
+    console.log(`✅ Found ${emptySlots.length} empty slots at station ${station_id}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Lấy danh sách slot trống thành công',
+      data: {
+        station_id: parseInt(station_id),
+        total_empty_slots: emptySlots.length,
+        empty_slots: emptySlots.map(slot => ({
+          slot_id: slot.slot_id,
+          slot_number: slot.slot_number,
+          slot_status: slot.slot_status,
+          cabinet_id: slot.cabinet_id,
+          battery_id: slot.battery_id
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error in getEmptySlots:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy danh sách slot trống',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   validateAndPrepareSwap, // API 4: Validate và chuẩn bị đổi pin (không có booking)
   validateAndPrepareSwapWithBooking, // API 4b: Validate và chuẩn bị đổi pin với booking
@@ -1637,5 +1679,6 @@ module.exports = {
   executeSwapWithBooking, // API 5b: Thực hiện đổi pin với booking
   executeFirstTimePickupWithBooking, // ← THÊM MỚI lấy pin lần đầu với booking và không cần validate
   getAvailableBatteries, // Lấy danh sách pin sẵn sàng để đổi
-  firstTimeBatteryPickup // Lấy lần đầu không có booking và không cần validate
+  firstTimeBatteryPickup, // Lấy lần đầu không có booking và không cần validate
+  getEmptySlots // Lấy danh sách slot trống tại station
 };

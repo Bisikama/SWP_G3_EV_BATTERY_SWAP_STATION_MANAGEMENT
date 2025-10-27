@@ -262,6 +262,97 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
 
 /**
  * @swagger
+ * /api/swap/empty-slots:
+ *   get:
+ *     summary: Lấy danh sách slot trống tại trạm
+ *     tags: [Battery Swap]
+ *     description: Lấy tất cả các slot có trạng thái 'empty' tại một trạm cụ thể
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: station_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID của trạm cần lấy slot trống
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Danh sách slot trống
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Lấy danh sách slot trống thành công"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     station_id:
+ *                       type: integer
+ *                       example: 1
+ *                     total_empty_slots:
+ *                       type: integer
+ *                       example: 5
+ *                     empty_slots:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           slot_id:
+ *                             type: integer
+ *                             example: 10
+ *                           slot_number:
+ *                             type: string
+ *                             example: "A-05"
+ *                           slot_status:
+ *                             type: string
+ *                             example: "empty"
+ *                           cabinet_id:
+ *                             type: integer
+ *                             example: 2
+ *                           battery_id:
+ *                             type: string
+ *                             nullable: true
+ *                             example: null
+ *       400:
+ *         description: Missing station_id parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "station_id là bắt buộc"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Lỗi khi lấy danh sách slot trống"
+ *                 error:
+ *                   type: string
+ */
+
+/**
+ * @swagger
  * /api/swap/first-time-pickup:
  *   post:
  *     summary: Lấy pin lần đầu cho xe mới
@@ -534,6 +625,7 @@ router.post('/execute', swapBatteryController.executeSwap);
 router.post('/execute-with-booking', swapBatteryController.executeSwapWithBooking);
 router.post('/execute-first-time-with-booking', swapBatteryController.executeFirstTimePickupWithBooking); // ← THÊM MỚI
 router.get('/available-batteries', swapBatteryController.getAvailableBatteries);
+router.get('/empty-slots', swapBatteryController.getEmptySlots); // ← THÊM MỚI: Lấy slot trống
 router.post('/first-time-pickup', swapBatteryController.firstTimeBatteryPickup);
 
 module.exports = router;
