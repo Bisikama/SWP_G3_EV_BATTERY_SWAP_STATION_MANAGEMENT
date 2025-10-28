@@ -81,9 +81,20 @@ const findByVin = [
     .matches(/^[A-HJ-NPR-Z0-9]{17}$/i).withMessage('VIN contains invalid characters')
 ];
 
+/**
+ * Validation cho tham số User ID trong URL
+ * GET /api/vehicles/user/:userId
+ */
+const findByUserId = [
+  param('userId')
+    .notEmpty().withMessage('User ID is required')
+    .isUUID().withMessage('User ID must be a valid UUID')
+];
+
 module.exports = {
   register,
   update,
   findById,
-  findByVin
+  findByVin,
+  findByUserId
 };

@@ -172,6 +172,30 @@ const getVehiclesWithoutBatteries = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * ========================================
+ * GET VEHICLES BY USER ID (KIOSK - NO AUTH)
+ * ========================================
+ * GET /api/vehicles/user/:userId
+ * 
+ * @description Lấy danh sách xe của user (dành cho kiosk - không cần token)
+ * @access Public
+ */
+const getVehiclesByUserId = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  // Gọi service để lấy vehicles (chỉ active)
+  const vehicles = await vehicleService.getVehiclesByDriver(userId, { status: 'active' });
+
+  return res.status(200).json({
+    message: vehicles.length > 0 
+      ? 'Vehicles retrieved successfully' 
+      : 'No vehicles found for this user',
+    count: vehicles.length,
+    vehicles
+  });
+});
+
 // ========================================
 // EXPORTS
 // ========================================
@@ -182,5 +206,6 @@ module.exports = {
   getVehicleById,
   updateVehicle,
   deleteVehicle,
-  getVehiclesWithoutBatteries
+  getVehiclesWithoutBatteries,
+  getVehiclesByUserId
 };
