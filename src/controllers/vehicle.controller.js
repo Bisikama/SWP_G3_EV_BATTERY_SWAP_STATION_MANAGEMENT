@@ -47,15 +47,17 @@ const registerVehicle = asyncHandler(async (req, res) => {
  * ========================================
  * GET MY VEHICLES
  * ========================================
- * GET /api/vehicles
+ * GET /api/vehicles?status=active|inactive|all
  * 
  * @description Lấy danh sách xe của driver đang đăng nhập
+ * @query status - Filter by status (default: 'active')
  * @access Private
  */
 const getMyVehicles = asyncHandler(async (req, res) => {
   const driver_id = req.user.account_id;
+  const { status } = req.query;
 
-  const vehicles = await vehicleService.getVehiclesByDriver(driver_id);
+  const vehicles = await vehicleService.getVehiclesByDriver(driver_id, { status });
 
   return res.status(200).json({
     message: 'Vehicles retrieved successfully',

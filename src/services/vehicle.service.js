@@ -16,7 +16,8 @@
 // ========================================
 
 'use strict';
-const { Vehicle, VehicleModel, BatteryType, Account } = require('../models');
+const { Vehicle, VehicleModel, BatteryType, Account, Subscription, Booking, Sequelize } = require('../models');
+const { Op } = Sequelize;
 
 /**
  * ========================================
@@ -86,7 +87,8 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     driver_id,
     model_id,
     vin: normalizedVin,
-    license_plate
+    license_plate,
+    status: 'active'  // Explicit set status (mặc dù DB có default, nhưng tốt hơn là explicit)
   });
 
   // Return vehicle with model information
@@ -100,17 +102,31 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
  * Lấy tất cả xe của driver
  * 
  * @param {string} driver_id - ID của driver
+ * @param {object} options - { status?: 'active' | 'inactive' | 'all' }
  * @returns {Promise<Vehicle[]>} - Danh sách xe (kèm model)
  */
-async function getVehiclesByDriver(driver_id) {
+async function getVehiclesByDriver(driver_id, options = {}) {
   if (!driver_id) {
     const err = new Error('Driver ID is required');
     err.status = 400;
     throw err;
   }
 
+  const { status = 'active' } = options;
+
+  // Build where clause
+  const where = { driver_id };
+  
+  // Filter by status
+  if (status === 'active') {
+    where.status = 'active';
+  } else if (status === 'inactive') {
+    where.status = 'inactive';
+  }
+  // Nếu status === 'all' thì không filter
+
   const vehicles = await Vehicle.findAll({
-    where: { driver_id },
+    where,
     include: [
       {
         model: VehicleModel,
@@ -288,13 +304,13 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
 
 /**
  * ========================================
- * DELETE VEHICLE
+ * DELETE VEHICLE (SOFT DELETE)
  * ========================================
- * Xóa xe
+ * Soft delete xe - set status = 'inactive'
  * 
  * @param {string} vehicle_id - UUID của xe
  * @param {string} driver_id - ID của driver (để check ownership)
- * @returns {Promise<object>} - Thông tin xe đã xóa
+ * @returns {Promise<object>} - Thông tin xe đã deactivate
  * @throws {Error} - Lỗi với status code
  */
 async function deleteVehicle(vehicle_id, driver_id) {
@@ -314,27 +330,56 @@ async function deleteVehicle(vehicle_id, driver_id) {
     throw err;
   }
 
-  // Save info before delete
-  const deletedVehicleInfo = {
-    vehicle_id: vehicle.vehicle_id,
-    vin: vehicle.vin,
-    license_plate: vehicle.license_plate
-  };
-
-  // Delete vehicle
-  try {
-    await vehicle.destroy();
-  } catch (error) {
-    // Handle foreign key constraint error
-    if (error.name === 'SequelizeForeignKeyConstraintError') {
-      const err = new Error('Cannot delete vehicle. Vehicle is being used in swap records or bookings');
-      err.status = 409;
-      throw err;
-    }
-    throw error;
+  // Check nếu xe đã inactive rồi
+  if (vehicle.status === 'inactive') {
+    const err = new Error('Vehicle is already deactivated');
+    err.status = 400;
+    throw err;
   }
 
-  return deletedVehicleInfo;
+  // Check active subscription và pending bookings (parallel queries)
+  const [activeSubscription, pendingBooking] = await Promise.all([
+    Subscription.findOne({
+      where: {
+        vehicle_id,
+        status: 'active',
+        end_date: {
+          [Op.gte]: new Date()
+        }
+      }
+    }),
+    Booking.findOne({
+      where: {
+        vehicle_id,
+        status: 'pending'
+      }
+    })
+  ]);
+
+  // Check active subscription
+  if (activeSubscription) {
+    const err = new Error('Cannot deactivate vehicle. Active subscription exists. Please cancel subscription first');
+    err.status = 409;
+    throw err;
+  }
+
+  // Check pending bookings
+  if (pendingBooking) {
+    const err = new Error('Cannot deactivate vehicle. Pending bookings exist. Please cancel bookings first');
+    err.status = 409;
+    throw err;
+  }
+
+  // Soft delete - set status = inactive
+  vehicle.status = 'inactive';
+  await vehicle.save();
+
+  return {
+    vehicle_id: vehicle.vehicle_id,
+    vin: vehicle.vin,
+    license_plate: vehicle.license_plate,
+    status: vehicle.status
+  };
 }
 
 /**

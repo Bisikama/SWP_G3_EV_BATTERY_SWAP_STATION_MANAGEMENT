@@ -78,9 +78,19 @@ router.post('/',
  *   get:
  *     tags: [Vehicle]
  *     summary: Get all vehicles of authenticated driver
- *     description: Retrieve a list of all vehicles registered by the current driver
+ *     description: Retrieve a list of all vehicles registered by the current driver. Can filter by vehicle status.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, all]
+ *           default: active
+ *         description: Filter vehicles by status (default is 'active')
+ *         example: active
  *     responses:
  *       200:
  *         description: Vehicles retrieved successfully
