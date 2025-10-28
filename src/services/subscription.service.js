@@ -6,7 +6,14 @@ async function findAll() {
 }
 
 async function findById(id) {
-  return db.Subscription.findByPk(id);
+  return db.Subscription.findByPk(id, {
+    include: [
+      { model: db.Account, as: 'driver' },
+      { model: db.Vehicle, as: 'vehicle' },
+      { model: db.SubscriptionPlan, as: 'plan' },
+      { model: db.Invoice, as: 'invoice' },
+    ]
+  });
 }
 
 async function findByVehicle(vehicle_id) {
@@ -22,7 +29,7 @@ async function findActiveSubscriptionByVehicle(user, vehicle_id) {
   if (!vehicle) throw new ApiError(404, 'Vehicle not found');
   if (vehicle.driver_id !== user.account_id) throw new ApiError(403, 'You are not authorized to access this vehicle');
   const today = new Date();
-  return db.Subscription.findOne({
+  const sub = db.Subscription.findOne({
     where: {
       vehicle_id,
       cancel_time: null,
@@ -30,9 +37,10 @@ async function findActiveSubscriptionByVehicle(user, vehicle_id) {
       end_date: { [db.Sequelize.Op.gte]: today },
     },
   });
+  return findById(sub.subscription_id);
 }
 
-async function createSubscription(user, { vehicle_id, plan_id } ) {
+async function createSubscription(user, { vehicle_id, plan_id, invoice_id } ) {
   const plan = await db.SubscriptionPlan.findByPk(plan_id);
   if (!plan) throw new ApiError(404, 'Subscription plan not found');
 
@@ -49,22 +57,27 @@ async function createSubscription(user, { vehicle_id, plan_id } ) {
     driver_id: user.account_id,
     vehicle_id,
     plan_id,
+    invoice_id,
     start_date: start,
     end_date: end,
     cancel_time: null
   };
   const created = await db.Subscription.create(payload);
-  return created;
+  return findById(created.subscription_id);
 }
 
-async function cancelSubscription({ user, subscription_id }) {
+async function cancelSubscription(user, subscription_id) {
   const subscription = await db.Subscription.findByPk(subscription_id);
   if (!subscription) throw new ApiError(404, 'Subscription not found');
   if (subscription.driver_id !== user.account_id) throw new ApiError(403, 'You are not authorized to cancel this subscription');
 
-  if (subscription.cancel_time) throw new ApiError(400, 'Subscription is already cancelled');
+  if (subscription.status === 'inactive') 
+    throw new ApiError(400, 'This subscription is already inactive and cannot be cancelled');
+  if (subscription.cancel_time) 
+    throw new ApiError(400, 'Subscription is already cancelled');
   subscription.cancel_time = new Date();
-  
+  subscription.status = 'inactive';
+
   await subscription.save();
   
   return subscription;

@@ -28,11 +28,11 @@ router.put('/:id',
     stationController.update
 );
 
-router.delete('/:id', 
+router.put('/:id/status', 
     verifyToken, 
     authorizeRole('admin'), 
-    validate(stationValidator.remove), 
-    stationController.remove
+    validate(stationValidator.updateStatus), 
+    stationController.updateStatus
 );
 
 module.exports = router;
@@ -267,12 +267,11 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/station/{id}:
- *   delete:
+ * /api/station/{id}/status:
+ *   put:
  *     tags: [Stations]
- *     summary: Delete a station
- *     description: Delete a station by ID. Only administrators can delete.  
- *       Deletion is not allowed if the station has linked cabinets, shifts, or bookings.
+ *     summary: Update station status
+ *     description: Update the status of an existing station. Only administrators can update.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -282,9 +281,22 @@ module.exports = router;
  *         description: Station ID
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [operational, maintenance, closed]
+ *                 example: maintenance
  *     responses:
  *       200:
- *         description: Station deleted successfully
+ *         description: Station status updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -293,14 +305,16 @@ module.exports = router;
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 payload:
+ *                   $ref: '#/components/schemas/Station'
+ *       400:
+ *         description: Validation error (e.g., missing or invalid status)
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden
  *       404:
  *         description: Station not found
- *       409:
- *         description: Cannot delete station because linked resources exist
  *       500:
  *         description: Internal server error
  */
