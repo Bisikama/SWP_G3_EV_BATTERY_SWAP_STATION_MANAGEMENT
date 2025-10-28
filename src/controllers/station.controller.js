@@ -26,10 +26,11 @@ async function update(req, res) {
   return res.status(200).json({ success: true, payload: { station: updated } });
 }
 
-async function remove(req, res) {
+async function updateStatus(req, res) {
   const { id } = req.params;
-  await stationService.deleteStation(id);
-  return res.status(200).json({ success: true });
+  const { status } = req.body || {};
+  const updated = await stationService.updateStationStatus(id, status);
+  return res.status(200).json({ success: true, payload: { station: updated } });
 }
 
-module.exports = { findAll, findById, create, update, remove };
+module.exports = { findAll, findById, create, update, updateStatus };

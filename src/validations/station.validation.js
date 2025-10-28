@@ -59,10 +59,15 @@ const update = [
     .isIn(['operational','maintenance','closed']).withMessage('status must be operational|maintenance|closed')
 ];
 
-const remove = [
+const updateStatus = [
   param('id')
     .notEmpty().withMessage('id is required')
-    .isInt().withMessage('id must be an integer')
+    .isInt().withMessage('id must be an integer'),
+
+  body('status')
+    .notEmpty().withMessage('status is required')
+    .isIn(['operational','maintenance','closed'])
+    .withMessage('status must be one of: operational, maintenance, closed')
 ];
 
-module.exports = { findById, create, update, remove };
+module.exports = { findById, create, update, updateStatus };
