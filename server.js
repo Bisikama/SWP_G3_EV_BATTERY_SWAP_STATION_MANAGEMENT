@@ -7,6 +7,7 @@ require('dotenv').config();
 const errorHandler = require('./src/middlewares/errorHandler');
 const { startCronJobs, stopCronJobs } = require('./src/config/cron.config');
 
+const authRoutes = require('./src/routes/auth.route');
 const userRoutes = require('./src/routes/user.route');
 const vehicleRoutes = require('./src/routes/vehicles.route');
 const batteryRoutes = require('./src/routes/battery.route');
@@ -22,6 +23,7 @@ const invoiceRoutes = require('./src/routes/invoice.route');
 const bookingRoutes = require('./src/routes/booking.route');
 const transferRoutes = require('./src/routes/transfer.route');
 const swapBatteryRoutes = require('./src/routes/swap_battery.route');
+const cabinetRoutes = require('./src/routes/cabinet.route')
 
 const app = express();
 app.use(express.json());
@@ -29,7 +31,8 @@ app.use(cors);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, swaggerUiOptions));
 
 // routes
-app.use('/api/user', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/battery', batteryRoutes);
 app.use('/api/subscription', subscriptionRoutes);
@@ -44,6 +47,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/invoice', invoiceRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/swap', swapBatteryRoutes);
+app.use('/api/cabinets', cabinetRoutes);
 
 // catch errors
 app.use(errorHandler);

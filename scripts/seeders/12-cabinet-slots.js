@@ -10,16 +10,13 @@ module.exports = {
     );
 
     const slots = [];
-    const statuses = ['empty', 'charging', 'charged', 'faulty'];
 
     cabinets.forEach(cabinet => {
       for (let i = 1; i <= cabinet.battery_capacity; i++) {
         const rand = Math.random() * 100;
         let status;
         if (rand < 20) status = 'empty';
-        else if (rand < 40) status = 'charging';
-        else if (rand < 95) status = 'charged';
-        else status = 'faulty';
+        else status = 'occupied';
 
         slots.push({
           cabinet_id: cabinet.cabinet_id,

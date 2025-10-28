@@ -1,144 +1,97 @@
-'use strict';
-const { Account } = require('../models');
+const db = require('../models');
+const ApiError = require('../utils/ApiError');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const SALT_ROUNDS = 10;
-const tokenBlacklist = require('../utils/tokenBlacklist');
+const paginate = require('../utils/paginate');
+paginate(db.Account);
 
-async function findAll() {
-  return Account.findAll({
-    attributes: [
-      'account_id',
-      'email',
-      'fullname',
-      'phone_number',
-      'role',
-      'status'
-    ]
+async function findAll(page = 1, pageSize = 10, query = {}) {
+  return db.Account.paginate(
+    query,
+    {
+      page,
+      pageSize,
+      attributes: { exclude: ['password_hash'] },
+      order: [['account_id', 'ASC']]
+    }
+  );
+}
+
+async function findAllDriver(page = 1, pageSize = 10) {
+  return findAll(page, pageSize, {
+    role: 'driver'
+  });
+}
+
+async function findAllStaff(page = 1, pageSize = 10) {
+  return findAll(page, pageSize, {
+    role: 'staff'
   });
 }
 
 async function findById(id) {
   if (!id) return null;
-  return Account.findByPk(id, {
-    attributes: [
-      'account_id',
-      'email',
-      'fullname',
-      'phone_number',
-      'role',
-      'driving_license',
-      'citizen_id',
-      'status'
-    ]
+  return db.Account.findByPk(id, {
+    attributes: {
+      exclude: ['password_hash']
+    }
   });
 }
 
 async function findByEmail(email) {
   if (!email) return null;
-  return Account.findOne({
+  return db.Account.findOne({
     where: { email },
-    attributes: [
-      'account_id',
-      'email',
-      'fullname',
-      'phone_number',
-      'role',
-      'status'
-    ]
+    attributes: {
+      exclude: ['password_hash']
+    }
   });
 }
 
-async function authenticate({ email, password }) {
-  if (!email || !password) {
-    const err = new Error('Email and password are required');
-    err.status = 400;
-    throw err;
-  }
-
-  const account = await Account.findOne({ where: { email } });
-  if (!account) {
-    const err = new Error('Email or password is incorrect');
-    err.status = 401;
-    throw err;
-  }
-
-  let match;
-  try {
-    match = await bcrypt.compare(password, account.password_hash);
-  } catch (err) {
-    console.error('Error comparing password', err);
-    const e = new Error('Failed to verify password');
-    e.status = 500;
-    throw e;
-  }
-
-  if (!match) {
-    const err = new Error('Email or password is incorrect');
-    err.status = 401;
-    throw err;
-  }
-
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    const err = new Error('Server configuration error');
-    err.status = 500;
-    throw err;
-  }
-
-  const payload = {
-    account_id: account.account_id,
-    email: account.email,
-    role: account.role
-  };
-  try {
-    const token = jwt.sign(payload, secret, { expiresIn: '8h' });
-    return token;
-  } catch (err) {
-    console.error('JWT sign error', err);
-    const e = new Error('Authentication error');
-    e.status = 500;
-    throw e;
-  }
-}
-
-async function createAccount({ email, password, fullname, phone_number, role = 'driver' }) {
-  if (!email || !password) {
-    const err = new Error('Email and password are required');
-    err.status = 400;
-    throw err;
-  }
-
-  const emailExists = await Account.findOne({ where: { email } });
+async function createStaff(data) {
+  const emailExists = await db.Account.findOne({ where: { email: data.email } });
   if (emailExists) {
-    const err = new Error('Email already registered');
-    err.status = 409;
-    throw err;
+    throw new ApiError(400, 'Email already registered');
   }
-
-  const phoneExists = await Account.findOne({ where: { phone_number } });
+  const phoneExists = await db.Account.findOne({ where: { phone_number: data.phone_number } });
   if (phoneExists) {
-    const err = new Error('Phone number already registered');
-    err.status = 409;
-    throw err;
+    throw new ApiError(400, 'Phone number already registered');
   }
-
   let newAccount;
-  try {
-    const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    newAccount = await Account.create({ email, password_hash: hash, fullname, phone_number, role });
-  } catch (err) {
-    console.error('DB error in createAccount (create)', err);
-    const e = new Error('Database error');
-    e.status = 500;
-    throw e;
-  }
-
+  const hash = await bcrypt.hash(data.password, SALT_ROUNDS);
+  data.password_hash = hash;
+  data.role = 'staff';
+  delete data.password;
+  newAccount = await db.Account.create(data);
   return findById(newAccount.account_id);
 }
 
-function logout(token) {
-  tokenBlacklist.add(token);
+async function updateDriverPassword(user, oldPassword, newPassword, confirmPassword) {
+  const account = await db.Account.findByPk(user.account_id);
+  if (!account) throw new ApiError(404, 'Account not found');
+
+  const match = await bcrypt.compare(oldPassword, account.password_hash);
+  if (!match) throw new ApiError(400, 'Old password is incorrect');
+
+  if (newPassword !== confirmPassword) {
+    throw new ApiError(400, 'New password and confirm password do not match');
+  }
+
+  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await account.update({ password_hash: hash });
+
+  return { message: 'Password updated successfully' };
 }
 
-module.exports = { findAll, findById, findByEmail, authenticate, createAccount, logout };
+async function updateDriver(user, data) {
+  const { fullname, phone_number, citizen_id, driving_license } = data;
+
+  const account = await db.Account.findByPk(user.account_id);
+  if (!account) throw new ApiError(404, 'Account not found');
+
+  await account.update({ fullname, phone_number, citizen_id, driving_license });
+
+  return findById(user.account_id);
+}
+
+module.exports = { findAllDriver, findAllStaff, findById, findByEmail, createStaff, updateDriver, updateDriverPassword };

@@ -6,19 +6,28 @@ const shiftValidator = require('../validations/shift.validation');
 const { validate } = require('../middlewares/validateHandler');
 
 router.get('/', 
+    verifyToken, 
+    authorizeRole('staff', 'admin'), 
     shiftController.findAll
 );
 
-router.get('/id/:id', 
-    validate(shiftValidator.findById), 
-    shiftController.findById
-);
-
-router.get('/staff/:staff_id', 
+router.get('/staff', 
     verifyToken, 
     authorizeRole('staff'), 
-    validate(shiftValidator.findByStaff), 
     shiftController.findByStaff
+);
+
+router.get('/current', 
+    verifyToken, 
+    authorizeRole('staff'), 
+    shiftController.findCurrent
+);
+
+router.get('/:id', 
+    verifyToken, 
+    authorizeRole('staff', 'admin'), 
+    validate(shiftValidator.findById), 
+    shiftController.findById
 );
 
 router.post('/', 
@@ -93,6 +102,8 @@ module.exports = router;
  *   get:
  *     summary: Get all shifts
  *     tags: [Shifts]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of all shifts
@@ -106,10 +117,12 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shifts/id/{id}:
+ * /api/shifts/{id}:
  *   get:
  *     summary: Get a shift by ID
  *     tags: [Shifts]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -131,23 +144,15 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/shifts/staff/{staff_id}:
+ * /api/shifts/staff:
  *   get:
- *     summary: Get shifts assigned to a specific staff (staff only)
+ *     summary: Get all shifts for the logged-in staff
  *     tags: [Shifts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: staff_id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Staff account ID
  *     responses:
  *       200:
- *         description: List of shifts for the staff
+ *         description: List of shifts for current staff
  *         content:
  *           application/json:
  *             schema:
@@ -156,6 +161,25 @@ module.exports = router;
  *                 $ref: '#/components/schemas/Shift'
  *       403:
  *         description: Only staff can access their own shifts
+ */
+
+/**
+ * @swagger
+ * /api/shifts/current:
+ *   get:
+ *     summary: Get the current active shift for logged-in staff
+ *     tags: [Shifts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current shift for staff
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Shift'
+ *       404:
+ *         description: No active shift found
  */
 
 /**
@@ -172,7 +196,11 @@ module.exports = router;
  *         application/json:
  *           schema:
  *             type: object
- *             required: [staff_id, station_id, start_time, end_time]
+ *             required:
+ *               - staff_id
+ *               - station_id
+ *               - start_time
+ *               - end_time
  *             properties:
  *               staff_id:
  *                 type: string
@@ -264,12 +292,8 @@ module.exports = router;
  *           format: uuid
  *         description: Shift ID
  *     responses:
- *       200:
- *         description: Shift deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Shift'
+ *       204:
+ *         description: Shift deleted successfully (No Content)
  *       400:
  *         description: Cannot delete shift currently in progress
  *       403:
