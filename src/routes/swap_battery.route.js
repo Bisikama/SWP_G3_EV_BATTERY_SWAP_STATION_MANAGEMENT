@@ -230,7 +230,7 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  * @swagger
  * /api/swap/available-batteries:
  *   get:
- *     summary: Kiểm tra pin sẵn sàng
+ *     summary: Kiểm tra pin sẵn sàng tại trạm
  *     tags: [Battery Swap]
  *     description: Lấy danh sách pin có SOC >= 90% tại trạm
  *     security:
@@ -258,6 +258,297 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  *         description: Missing parameters
  *       500:
  *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/swap/empty-slots:
+ *   get:
+ *     summary: Lấy danh sách slot trống tại trạm
+ *     tags: [Battery Swap]
+ *     description: Lấy tất cả các slot có trạng thái 'empty' tại một trạm cụ thể
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: station_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID của trạm cần lấy slot trống
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Danh sách slot trống
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Lấy danh sách slot trống thành công"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     station_id:
+ *                       type: integer
+ *                       example: 1
+ *                     total_empty_slots:
+ *                       type: integer
+ *                       example: 5
+ *                     empty_slots:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           slot_id:
+ *                             type: integer
+ *                             example: 10
+ *                           slot_number:
+ *                             type: string
+ *                             example: "A-05"
+ *                           slot_status:
+ *                             type: string
+ *                             example: "empty"
+ *                           cabinet_id:
+ *                             type: integer
+ *                             example: 2
+ *                           battery_id:
+ *                             type: string
+ *                             nullable: true
+ *                             example: null
+ *       400:
+ *         description: Missing station_id parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "station_id là bắt buộc"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Lỗi khi lấy danh sách slot trống"
+ *                 error:
+ *                   type: string
+ */
+
+/**
+ * @swagger
+ * /api/swap/empty-slots:
+ *   get:
+ *     summary: Lấy danh sách slot trống tại trạm
+ *     tags: [Battery Swap]
+ *     description: Lấy tất cả các slot có trạng thái 'empty' tại một trạm cụ thể
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: station_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID của trạm cần lấy slot trống
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Danh sách slot trống
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Lấy danh sách slot trống thành công"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     station_id:
+ *                       type: integer
+ *                       example: 1
+ *                     total_empty_slots:
+ *                       type: integer
+ *                       example: 5
+ *                     empty_slots:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           slot_id:
+ *                             type: integer
+ *                             example: 10
+ *                           slot_number:
+ *                             type: string
+ *                             example: "A-05"
+ *                           slot_status:
+ *                             type: string
+ *                             example: "empty"
+ *                           cabinet_id:
+ *                             type: integer
+ *                             example: 2
+ *                           battery_id:
+ *                             type: string
+ *                             nullable: true
+ *                             example: null
+ *       400:
+ *         description: Missing station_id parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "station_id là bắt buộc"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Lỗi khi lấy danh sách slot trống"
+ *                 error:
+ *                   type: string
+ */
+
+/**
+ * @swagger
+ * /api/swap/check-first-time-pickup:
+ *   get:
+ *     summary: Kiểm tra xe có lấy pin lần đầu chưa
+ *     tags: [Battery Swap]
+ *     description: Kiểm tra xem một xe đã từng thực hiện swap pin hay chưa (để xác định có phải lần đầu không)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vehicle_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID của xe cần kiểm tra
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *     responses:
+ *       200:
+ *         description: Kết quả kiểm tra
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Xe chưa lấy pin lần đầu"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     vehicle_id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: "550e8400-e29b-41d4-a716-446655440000"
+ *                     license_plate:
+ *                       type: string
+ *                       example: "29A-12345"
+ *                     model_name:
+ *                       type: string
+ *                       example: "VinFast VF8"
+ *                     battery_type_id:
+ *                       type: integer
+ *                       example: 1
+ *                     battery_quantity:
+ *                       type: integer
+ *                       example: 2
+ *                     is_first_time:
+ *                       type: boolean
+ *                       example: true
+ *                       description: true nếu xe chưa lấy pin lần đầu, false nếu đã lấy rồi
+ *                     total_swap_count:
+ *                       type: integer
+ *                       example: 0
+ *                       description: Tổng số lần đã swap pin
+ *                     status:
+ *                       type: string
+ *                       enum: [never_swapped, has_swapped]
+ *                       example: "never_swapped"
+ *                     required_action:
+ *                       type: string
+ *                       example: "Use POST /api/swap/first-time-pickup or POST /api/swap/execute-first-time-with-booking"
+ *       400:
+ *         description: Missing vehicle_id parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "vehicle_id là bắt buộc"
+ *       404:
+ *         description: Vehicle not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Không tìm thấy xe với vehicle_id đã cho"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Lỗi khi kiểm tra trạng thái lấy pin lần đầu"
+ *                 error:
+ *                   type: string
  */
 
 /**
@@ -391,7 +682,7 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  * @swagger
  * /api/swap/execute:
  *   post:
- *     summary: Thực hiện đổi pin (sau khi validate)
+ *     summary: Thực hiện đổi pin không có booking (sau khi validate)
  *     tags: [Battery Swap]
  *     requestBody:
  *       required: true
@@ -429,9 +720,9 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  * @swagger
  * /api/swap/execute-with-booking:
  *   post:
- *     summary: Thực hiện đổi pin với booking (regular swap)
+ *     summary: Thực hiện đổi pin có booking (regular swap)
  *     tags: [Battery Swap]
- *     description: Dùng khi is_first_time = false
+ *     description: Dùng khi đổi pin định kỳ với booking 
  *     requestBody:
  *       required: true
  *       content:
@@ -485,7 +776,7 @@ const swapBatteryController = require('../controllers/swap_battery.controller');
  *   post:
  *     summary: Lấy pin lần đầu với booking
  *     tags: [Battery Swap]
- *     description: Dùng khi is_first_time = true
+ *     description: Dùng khi chưa có swap_record cho xe này
  *     requestBody:
  *       required: true
  *       content:
@@ -534,6 +825,8 @@ router.post('/execute', swapBatteryController.executeSwap);
 router.post('/execute-with-booking', swapBatteryController.executeSwapWithBooking);
 router.post('/execute-first-time-with-booking', swapBatteryController.executeFirstTimePickupWithBooking); // ← THÊM MỚI
 router.get('/available-batteries', swapBatteryController.getAvailableBatteries);
+router.get('/empty-slots', swapBatteryController.getEmptySlots); // ← THÊM MỚI: Lấy slot trống
+router.get('/check-first-time-pickup', swapBatteryController.checkFirstTimePickup); // ← THÊM MỚI: Kiểm tra first-time
 router.post('/first-time-pickup', swapBatteryController.firstTimeBatteryPickup);
 
 module.exports = router;
