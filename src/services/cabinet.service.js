@@ -59,4 +59,18 @@ async function findEmptySlot(cabinet_id) {
 	});
 }
 
-module.exports = { findAll, findById, findByStation, findEmptySlot };
+async function chargeFull(cabinet_id) {
+	const batteries = db.Battery.findAll({
+		include: [
+			{ model: 'CabinetSlot', as: 'slot', 
+				where: {
+					cabinet_id
+				}
+			}
+		]
+	});
+	batteries.current_soc = 90.00;
+	return batteries;
+}
+
+module.exports = { findAll, findById, findByStation, findEmptySlot, chargeFull };
