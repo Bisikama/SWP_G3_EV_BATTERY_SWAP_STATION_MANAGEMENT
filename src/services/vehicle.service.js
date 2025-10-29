@@ -31,7 +31,9 @@ const { Op } = Sequelize;
  * @throws {Error} - Lỗi với status code
  */
 async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
-  // Validate required fields
+  // ========================================
+  // STEP 1: VALIDATE REQUIRED FIELDS
+  // ========================================
   if (!vin || !model_id || !license_plate) {
     const err = new Error('VIN, model_id, and license_plate are required');
     err.status = 400;
@@ -41,75 +43,9 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
   // Chuẩn hóa VIN sang uppercase
   const normalizedVin = vin.toUpperCase();
 
-  // Check VIN duplicate
-  const existingVin = await Vehicle.findOne({ 
-    where: { vin: normalizedVin } 
-  });
-  
-  if (existingVin) {
-    // Nếu xe đang active → throw error
-    if (existingVin.status === 'active') {
-      const err = new Error('VIN already registered');
-      err.status = 409;
-      err.field = 'vin';
-      throw err;
-    }
-    
-    // Nếu xe đã inactive → cho phép reactivate
-    if (existingVin.status === 'inactive') {
-      // Check biển số không được trùng bất kỳ xe nào (kể cả chính xe này)
-      const duplicatePlate = await Vehicle.findOne({ 
-        where: { license_plate } 
-      });
-      
-      if (duplicatePlate) {
-        const err = new Error('License plate already registered');
-        err.status = 409;
-        err.field = 'license_plate';
-        throw err;
-      }
-
-      // Validate model exists
-      const vehicleModel = await VehicleModel.findByPk(model_id);
-      if (!vehicleModel) {
-        const err = new Error('Vehicle model not found');
-        err.status = 404;
-        err.field = 'model_id';
-        throw err;
-      }
-
-      // Check driver role
-      const driver = await Account.findByPk(driver_id);
-      if (!driver || driver.role !== 'driver') {
-        const err = new Error('Only drivers can register vehicles');
-        err.status = 403;
-        throw err;
-      }
-
-      // UPDATE xe cũ: đổi owner, update fields, reactivate
-      existingVin.driver_id = driver_id;
-      existingVin.model_id = model_id;
-      existingVin.license_plate = license_plate;
-      existingVin.status = 'active';
-      await existingVin.save();
-
-      // Return vehicle with model information
-      return findVehicleWithModel(existingVin.vehicle_id);
-    }
-  }
-
-  // Check license plate duplicate (cho cả trường hợp tạo mới)
-  const existingPlate = await Vehicle.findOne({ 
-    where: { license_plate } 
-  });
-  
-  if (existingPlate) {
-    const err = new Error('License plate already registered');
-    err.status = 409;
-    err.field = 'license_plate';
-    throw err;
-  }
-
+  // ========================================
+  // STEP 2: VALIDATE MODEL & DRIVER (1 LẦN DUY NHẤT)
+  // ========================================
   // Validate model exists
   const vehicleModel = await VehicleModel.findByPk(model_id);
   if (!vehicleModel) {
@@ -127,13 +63,78 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     throw err;
   }
 
+  // ========================================
+  // STEP 3: CHECK VIN EXISTENCE
+  // ========================================
+  const existingVin = await Vehicle.findOne({ 
+    where: { vin: normalizedVin } 
+  });
+  
+  if (existingVin) {
+    // ────────────────────────────────────
+    // CASE A: VIN ACTIVE → ERROR
+    // ────────────────────────────────────
+    if (existingVin.status === 'active') {
+      const err = new Error('VIN already registered');
+      err.status = 409;
+      err.field = 'vin';
+      throw err;
+    }
+    
+    // ────────────────────────────────────
+    // CASE B: VIN INACTIVE → REACTIVATE
+    // ────────────────────────────────────
+    if (existingVin.status === 'inactive') {
+      // Check biển số không được trùng bất kỳ xe nào (kể cả chính xe này)
+      const duplicatePlate = await Vehicle.findOne({ 
+        where: { license_plate } 
+      });
+      
+      if (duplicatePlate) {
+        const err = new Error('License plate already registered');
+        err.status = 409;
+        err.field = 'license_plate';
+        throw err;
+      }
+
+      // Model & driver đã validate ở trên rồi, không cần check lại
+      
+      // UPDATE xe cũ: đổi owner, update fields, reactivate
+      existingVin.driver_id = driver_id;
+      existingVin.model_id = model_id;
+      existingVin.license_plate = license_plate;
+      existingVin.status = 'active';
+      await existingVin.save();
+
+      // Return vehicle with model information
+      return findVehicleWithModel(existingVin.vehicle_id);
+    }
+  }
+
+  // ========================================
+  // STEP 4: CREATE NEW VEHICLE
+  // ========================================
+  // Check license plate duplicate
+  const existingPlate = await Vehicle.findOne({ 
+    where: { license_plate } 
+  });
+  
+  if (existingPlate) {
+    const err = new Error('License plate already registered');
+    err.status = 409;
+    err.field = 'license_plate';
+    throw err;
+  }
+
+  // Model & driver đã validate ở trên rồi, không cần check lại
+
   // Create vehicle
   const newVehicle = await Vehicle.create({
     driver_id,
     model_id,
     vin: normalizedVin,
     license_plate,
-    status: 'active'  // Explicit set status (mặc dù DB có default, nhưng tốt hơn là explicit)
+    status: 'active'
   });
 
   // Return vehicle with model information
