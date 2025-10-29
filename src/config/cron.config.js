@@ -1,6 +1,8 @@
 const cron = require('node-cron');
 const { deactivateExpiredSubscriptions } = require('../jobs/subscription.job');
 const { cancelExpiredBookings } = require('../jobs/booking.job');
+const { autoCharge } = require('../jobs/charging.job');
+const { now } = require('sequelize/lib/utils');
 
 /**
  * Khởi động tất cả cron jobs
@@ -42,12 +44,21 @@ function startCronJobs() {
   // const invoiceReminderJob = cron.schedule('0 9 * * *', () => {
   //   sendInvoiceReminders();
   // });
+
+  const chargingJob = cron.schedule('*/5 * * * *', () => {
+    const durationHours = 5 / 60;
+    autoCharge(durationHours);
+  }, {
+    scheduled: true,
+    timezone: "Asia/Ho_Chi_Minh"
+  });
   
   console.log('✅ ========== ALL CRON JOBS INITIALIZED ==========\n');
   
   return {
     subscriptionJob,
-    bookingJob
+    bookingJob,
+    chargingJob
     // invoiceReminderJob, // Thêm jobs khác ở đây
   };
 }

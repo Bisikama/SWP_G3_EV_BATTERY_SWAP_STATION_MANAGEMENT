@@ -26,8 +26,10 @@ const register = [
   body('license_plate')
     .notEmpty().withMessage('License plate is required')
     .isString().withMessage('License plate must be a string')
-    .isLength({ min: 1, max: 20 }).withMessage('License plate must be between 1 and 20 characters')
     .trim()
+    .matches(/^[0-9]{2}[A-Z]{1,2}-[0-9]{4,5}$/i)
+    .withMessage('License plate format invalid. Vietnam motorcycle format: 30A-12345, 51F-98765, 59X1-12345')
+    .isLength({ max: 20 })
 ];
 
 /**
@@ -42,8 +44,10 @@ const update = [
   body('license_plate')
     .optional()
     .isString().withMessage('License plate must be a string')
-    .isLength({ min: 1, max: 20 }).withMessage('License plate must be between 1 and 20 characters')
-    .trim(),
+    .trim()
+    .matches(/^[0-9]{2}[A-Z]{1,2}-[0-9]{4,5}$/i)
+    .withMessage('License plate format invalid. Vietnam motorcycle format: 30A-12345, 51F-98765, 59X1-12345')
+    .isLength({ max: 20 }),
 
   body('model_id')
     .optional()
@@ -81,9 +85,20 @@ const findByVin = [
     .matches(/^[A-HJ-NPR-Z0-9]{17}$/i).withMessage('VIN contains invalid characters')
 ];
 
+/**
+ * Validation cho tham số User ID trong URL
+ * GET /api/vehicles/user/:userId
+ */
+const findByUserId = [
+  param('userId')
+    .notEmpty().withMessage('User ID is required')
+    .isUUID().withMessage('User ID must be a valid UUID')
+];
+
 module.exports = {
   register,
   update,
   findById,
-  findByVin
+  findByVin,
+  findByUserId
 };

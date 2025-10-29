@@ -78,9 +78,19 @@ router.post('/',
  *   get:
  *     tags: [Vehicle]
  *     summary: Get all vehicles of authenticated driver
- *     description: Retrieve a list of all vehicles registered by the current driver
+ *     description: Retrieve a list of all vehicles registered by the current driver. Can filter by vehicle status.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, all]
+ *           default: active
+ *         description: Filter vehicles by status (default is 'active')
+ *         example: active
  *     responses:
  *       200:
  *         description: Vehicles retrieved successfully
@@ -107,6 +117,50 @@ router.post('/',
 router.get('/', 
   verifyToken, 
   vehicleController.getMyVehicles
+);
+
+/**
+ * @swagger
+ * /api/vehicles/user/{userId}:
+ *   get:
+ *     tags: [Vehicle]
+ *     summary: Get vehicles by user ID (Kiosk - No auth required)
+ *     description: Retrieve all active vehicles of a user. This endpoint is used by kiosk for battery swap operations and does not require authentication.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User/Driver account ID
+ *         example: 550e8400-e29b-41d4-a716-446655440000
+ *     responses:
+ *       200:
+ *         description: Vehicles retrieved successfully (or empty if no vehicles found)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Vehicles retrieved successfully
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 vehicles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Invalid user ID format
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/user/:userId', 
+  validate(vehicleValidation.findByUserId), 
+  vehicleController.getVehiclesByUserId
 );
 
 /**

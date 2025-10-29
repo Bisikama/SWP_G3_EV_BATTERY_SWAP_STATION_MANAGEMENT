@@ -12,7 +12,7 @@ const docs = {
     },
     servers: [
       { url: `http://localhost:${process.env.PORT}`, description: 'Local server' },
-      { url: 'https://api.example.com', description: 'Hosting server' },
+      { url: `${process.env.BACKEND_URL}`, description: 'Hosting server' },
     ],
     components: {
       securitySchemes: {

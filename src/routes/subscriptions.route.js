@@ -248,6 +248,9 @@ router.get('/vehicles-without-subscription',
  *                 format: uuid
  *               plan_id:
  *                 type: integer
+ *               invoice_id:
+ *                 type: string
+ *                 format: uuid
  *     responses:
  *       201:
  *         description: Subscription created successfully

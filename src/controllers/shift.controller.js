@@ -14,8 +14,14 @@ async function findById(req, res) {
 }
 
 async function findByStaff(req, res) {
-  const { staff_id } = req.params;
+  const staff_id = req.user.account_id;
   const shifts = await shiftService.findByStaff(staff_id);
+  return res.status(200).json({ success: true, payload: { shift: shifts } });
+}
+
+async function findCurrent(req, res) {
+  const staff_id = req.user.account_id;
+  const shifts = await shiftService.findCurrent(staff_id);
   return res.status(200).json({ success: true, payload: { shift: shifts } });
 }
 
@@ -38,4 +44,4 @@ async function remove(req, res) {
   return res.status(200).json({ success: true });
 }
 
-module.exports = { findAll, findById, findByStaff, create, update, remove };
+module.exports = { findAll, findById, findByStaff, findCurrent, create, update, remove };

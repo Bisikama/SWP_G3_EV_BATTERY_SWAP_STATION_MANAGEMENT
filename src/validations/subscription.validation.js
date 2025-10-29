@@ -31,7 +31,11 @@ const create = [
 
   body('vehicle_id')
   	.notEmpty().withMessage('vehicle_id is required')
-    .isUUID().withMessage('vehicle_id must be a uuid')
+    .isUUID().withMessage('vehicle_id must be a uuid'),
+
+  body('invoice_id')
+  	.notEmpty().withMessage('invoice_id is required')
+    .isUUID().withMessage('invoice_id must be a uuid')
 ];
 
 const cancel = [

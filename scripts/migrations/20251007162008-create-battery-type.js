@@ -47,13 +47,6 @@ module.exports = {
           min: 0
         }
       },
-      max_charge_current: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
       cell_chemistry: {
         type: Sequelize.ENUM('Li-ion','LFP'),
         allowNull: false

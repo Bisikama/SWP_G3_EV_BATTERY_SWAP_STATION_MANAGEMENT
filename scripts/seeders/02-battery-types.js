@@ -10,7 +10,6 @@ module.exports = {
         min_voltage: 300.00,
         max_voltage: 420.00,
         rated_charge_current: 150.00,
-        max_charge_current: 200.00,
         cell_chemistry: 'Li-ion'
       },
       {
@@ -20,7 +19,6 @@ module.exports = {
         min_voltage: 280.00,
         max_voltage: 400.00,
         rated_charge_current: 120.00,
-        max_charge_current: 160.00,
         cell_chemistry: 'LFP'
       },
       {
@@ -30,7 +28,6 @@ module.exports = {
         min_voltage: 280.00,
         max_voltage: 410.00,
         rated_charge_current: 100.00,
-        max_charge_current: 140.00,
         cell_chemistry: 'Li-ion'
       },
       {
@@ -40,7 +37,6 @@ module.exports = {
         min_voltage: 260.00,
         max_voltage: 380.00,
         rated_charge_current: 80.00,
-        max_charge_current: 120.00,
         cell_chemistry: 'LFP'
       }
     ], {});

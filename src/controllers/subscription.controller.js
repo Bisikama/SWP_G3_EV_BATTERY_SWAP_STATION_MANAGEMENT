@@ -33,19 +33,18 @@ async function findActiveByVehicle(req, res) {
 }
 
 async function create(req, res) {
+  const { vehicle_id, plan_id, invoice_id } = req.body;
   const created = await subscriptionService.createSubscription(req.user, {
-    vehicle_id: req.body.vehicle_id,
-    plan_id: req.body.plan_id,
+    vehicle_id,
+    plan_id,
+    invoice_id
   });
   return res.status(201).json({ success: true, payload: { subscription: created } });
 }
 
 async function cancel(req, res) {
   const { id } = req.params;
-  const cancelled = await subscriptionService.cancelSubscription({
-    subscription_id: id,
-    user: req.user
-  });
+  const cancelled = await subscriptionService.cancelSubscription(req.user, id);
   return res.status(200).json({ success: true, payload: { subscription: cancelled } });
 }
 

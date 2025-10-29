@@ -47,15 +47,17 @@ const registerVehicle = asyncHandler(async (req, res) => {
  * ========================================
  * GET MY VEHICLES
  * ========================================
- * GET /api/vehicles
+ * GET /api/vehicles?status=active|inactive|all
  * 
  * @description Lấy danh sách xe của driver đang đăng nhập
+ * @query status - Filter by status (default: 'active')
  * @access Private
  */
 const getMyVehicles = asyncHandler(async (req, res) => {
   const driver_id = req.user.account_id;
+  const { status } = req.query;
 
-  const vehicles = await vehicleService.getVehiclesByDriver(driver_id);
+  const vehicles = await vehicleService.getVehiclesByDriver(driver_id, { status });
 
   return res.status(200).json({
     message: 'Vehicles retrieved successfully',
@@ -170,6 +172,30 @@ const getVehiclesWithoutBatteries = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * ========================================
+ * GET VEHICLES BY USER ID (KIOSK - NO AUTH)
+ * ========================================
+ * GET /api/vehicles/user/:userId
+ * 
+ * @description Lấy danh sách xe của user (dành cho kiosk - không cần token)
+ * @access Public
+ */
+const getVehiclesByUserId = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  // Gọi service để lấy vehicles (chỉ active)
+  const vehicles = await vehicleService.getVehiclesByDriver(userId, { status: 'active' });
+
+  return res.status(200).json({
+    message: vehicles.length > 0 
+      ? 'Vehicles retrieved successfully' 
+      : 'No vehicles found for this user',
+    count: vehicles.length,
+    vehicles
+  });
+});
+
 // ========================================
 // EXPORTS
 // ========================================
@@ -180,5 +206,6 @@ module.exports = {
   getVehicleById,
   updateVehicle,
   deleteVehicle,
-  getVehiclesWithoutBatteries
+  getVehiclesWithoutBatteries,
+  getVehiclesByUserId
 };
