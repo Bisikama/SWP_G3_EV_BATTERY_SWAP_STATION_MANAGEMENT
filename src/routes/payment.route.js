@@ -9,7 +9,7 @@
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/MOMO_payment.controller');
-
+const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 /**
  * @swagger
  * tags:
@@ -23,6 +23,8 @@ const paymentController = require('../controllers/MOMO_payment.controller');
  *   post:
  *     tags: [Payment]
  *     summary: Create MoMo payment link
+ *     security:
+ *       - bearerAuth: []
  *     description: Generate a MoMo payment link for an invoice. Returns payUrl for user to complete payment. Only works with unpaid invoices.
  *     requestBody:
  *       required: true
@@ -280,7 +282,7 @@ const paymentController = require('../controllers/MOMO_payment.controller');
 // ========================================
 
 // Tạo payment link
-router.post('/create', paymentController.createPayment);
+router.post('/create', verifyToken, paymentController.createPayment);
 
 // Nhận kết quả từ redirect (user quay về sau khi thanh toán)
 router.get('/result', paymentController.getPaymentResult);

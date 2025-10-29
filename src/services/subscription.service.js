@@ -35,6 +35,7 @@ async function findActiveSubscriptionByVehicle(user, vehicle_id) {
       cancel_time: null,
       start_date: { [db.Sequelize.Op.lte]: today },
       end_date: { [db.Sequelize.Op.gte]: today },
+      status: 'active'
     },
   });
   return findById(sub.subscription_id);

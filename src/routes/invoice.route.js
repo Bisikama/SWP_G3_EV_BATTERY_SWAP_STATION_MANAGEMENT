@@ -9,6 +9,7 @@
 const express = require('express');
 const router = express.Router();
 const invoiceController = require('../controllers/invoice.controller');
+const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 
 /**
  * @swagger
@@ -23,6 +24,8 @@ const invoiceController = require('../controllers/invoice.controller');
  *   post:
  *     tags: [Invoice]
  *     summary: Create a new invoice for a vehicle and subscription plan
+ *     security:
+ *       - bearerAuth: []
  *     description: |
  *       Creates a new invoice for purchasing a subscription plan for a vehicle.
  *       
@@ -252,7 +255,7 @@ const invoiceController = require('../controllers/invoice.controller');
  *                   example: "Database connection error"
  */
 // Tạo invoice từ vehicle_id và plan_id
-router.post('/create-from-subscription', invoiceController.createInvoiceFromSubscription);
+router.post('/create-from-subscription',verifyToken, invoiceController.createInvoiceFromSubscription);
 
 /**
  * @swagger
@@ -260,6 +263,8 @@ router.post('/create-from-subscription', invoiceController.createInvoiceFromSubs
  *   get:
  *     tags: [Invoice]
  *     summary: Get all invoices
+ *     security:
+ *       - bearerAuth: []
  *     description: Retrieve all invoices with full details including driver, subscription, plan, and vehicle information. Results are ordered by create date (newest first).
  *     responses:
  *       200:
@@ -291,7 +296,7 @@ router.post('/create-from-subscription', invoiceController.createInvoiceFromSubs
  *                   example: An error occurred while fetching invoices
  */
 // Lấy tất cả invoices (optional - để test)
-router.get('/', invoiceController.getAllInvoices);
+router.get('/', verifyToken, invoiceController.getAllInvoices);
 
 /**
  * @swagger
@@ -299,6 +304,8 @@ router.get('/', invoiceController.getAllInvoices);
  *   get:
  *     tags: [Invoice]
  *     summary: Get payment history by vehicle ID
+ *     security:
+ *       - bearerAuth: []
  *     description: |
  *       Retrieves the complete payment history for a specific vehicle, including:
  *       - All paid invoices (status = 'paid' only)
@@ -408,6 +415,8 @@ router.get('/', invoiceController.getAllInvoices);
  *   get:
  *     tags: [Invoice]
  *     summary: Get payment history for all vehicles of a driver
+ *     security:
+ *       - bearerAuth: []
  *     description: |
  *       Retrieves the complete payment history for all vehicles owned by a specific driver, including:
  *       - All paid invoices (status = 'paid' only)
@@ -653,10 +662,10 @@ router.get('/', invoiceController.getAllInvoices);
  *                   type: string
  */
 // Lấy lịch sử thanh toán theo driver_id (tất cả xe của driver) - ĐẶT TRƯỚC để tránh conflict
-router.get('/payment-history/driver/:driver_id', invoiceController.getPaymentHistoryByDriver);
+router.get('/payment-history/driver/:driver_id', verifyToken, invoiceController.getPaymentHistoryByDriver);
 
 // Lấy lịch sử thanh toán theo vehicle_id
-router.get('/payment-history/:vehicle_id', invoiceController.getPaymentHistoryByVehicle);
+router.get('/payment-history/:vehicle_id', verifyToken, invoiceController.getPaymentHistoryByVehicle);
 
 /**
  * @swagger
@@ -664,6 +673,8 @@ router.get('/payment-history/:vehicle_id', invoiceController.getPaymentHistoryBy
  *   get:
  *     tags: [Invoice]
  *     summary: Get invoice by ID
+ *     security:
+ *       - bearerAuth: []
  *     description: Retrieve a specific invoice by its UUID with full details including driver, subscription, plan, and vehicle information.
  *     parameters:
  *       - in: path
@@ -709,7 +720,7 @@ router.get('/payment-history/:vehicle_id', invoiceController.getPaymentHistoryBy
  *                   example: An error occurred while fetching the invoice
  */
 // Lấy invoice theo ID
-router.get('/:invoice_id', invoiceController.getInvoiceById);
+router.get('/:invoice_id', verifyToken , invoiceController.getInvoiceById);
 
 module.exports = router;
 
