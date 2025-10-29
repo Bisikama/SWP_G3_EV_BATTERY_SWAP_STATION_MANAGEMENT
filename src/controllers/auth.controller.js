@@ -1,5 +1,10 @@
 const authService = require('../services/auth.service');
 const userService = require('../services/user.service');
+const { Account, EmailChallenge } = require('../models');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const { generateVerificationCode, sendVerificationEmail, sendPasswordResetEmail, sendPasswordChangeConfirmation } = require('../utils/emailService');
+
 
 async function login(req, res) {
 	const { email, password } = req.body || {};
