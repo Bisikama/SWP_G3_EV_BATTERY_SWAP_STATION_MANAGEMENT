@@ -104,198 +104,160 @@ function formatBookingResponse(booking) {
  * @throws {Error} - Lỗi với status code
  */
 async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time, battery_quantity = 1 }) {
-  // ============================================
-  // TRANSACTION WRAPPER - Fix Race Condition
-  // ============================================
-  return await sequelize.transaction({
-    isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
-  }, async (t) => {
-    
-    // 1. Validate required fields
-    if (!vehicle_id || !station_id || !scheduled_time) {
-      const err = new Error('Vehicle ID, Station ID, and Scheduled time are required');
-      err.status = 400;
-      throw err;
-    }
+  // 1. Validate required fields
+  if (!vehicle_id || !station_id || !scheduled_time) {
+    const err = new Error('Vehicle ID, Station ID, and Scheduled time are required');
+    err.status = 400;
+    throw err;
+  }
 
-    // Validate battery_quantity
-    if (!Number.isInteger(battery_quantity) || battery_quantity < 1) {
-      const err = new Error('Battery quantity must be a positive integer');
-      err.status = 400;
-      throw err;
-    }
+  // Validate battery_quantity
+  if (!Number.isInteger(battery_quantity) || battery_quantity < 1) {
+    const err = new Error('Battery quantity must be a positive integer');
+    err.status = 400;
+    throw err;
+  }
 
-    // Validate scheduled_time is in the future
-    const scheduledTime = new Date(scheduled_time);
-    const now = new Date();
-    if (scheduledTime <= now) {
-      const err = new Error('Scheduled time must be in the future');
-      err.status = 400;
-      throw err;
-    }
+  // Validate scheduled_time is in the future
+  const scheduledTime = new Date(scheduled_time);
+  const now = new Date();
+  if (scheduledTime <= now) {
+    const err = new Error('Scheduled time must be in the future');
+    err.status = 400;
+    throw err;
+  }
 
-    // 2. Check vehicle exists (WITH LOCK - no include to avoid JOIN lock issue)
-    const vehicle = await Vehicle.findByPk(vehicle_id, {
-      attributes: ['vehicle_id', 'driver_id', 'model_id', 'license_plate'],
-      lock: t.LOCK.UPDATE,
-      transaction: t
-    });
-
-    if (!vehicle) {
-      const err = new Error('Vehicle not found');
-      err.status = 404;
-      throw err;
-    }
-
-    // Get vehicle model and battery type separately (no lock needed for reference data)
-    const vehicleModel = await VehicleModel.findByPk(vehicle.model_id, {
-      include: [{
-        model: BatteryType,
-        as: 'batteryType'
-      }],
-      transaction: t
-    });
-
-    if (!vehicleModel || !vehicleModel.batteryType) {
-      const err = new Error('Vehicle model or battery type not found');
-      err.status = 404;
-      throw err;
-    }
-
-    // Attach model to vehicle for consistent object structure
-    vehicle.model = vehicleModel;
-
-    // 2b. Validate battery_quantity against vehicle's battery_slot capacity
-    if (battery_quantity > vehicleModel.battery_slot) {
-      const err = new Error(
-        `This vehicle (${vehicleModel.brand} ${vehicleModel.name}) can only swap up to ${vehicleModel.battery_slot} ${vehicleModel.battery_slot === 1 ? 'battery' : 'batteries'} at once. You requested ${battery_quantity}.`
-      );
-      err.status = 422;
-      throw err;
-    }
-
-    console.log(`[DEBUG] Battery swap request: ${battery_quantity}/${vehicleModel.battery_slot} batteries for ${vehicleModel.brand} ${vehicleModel.name}`);
-
-    // 3. Check vehicle ownership
-    if (vehicle.driver_id !== driver_id) {
-      const err = new Error('You do not own this vehicle');
-      err.status = 403;
-      throw err;
-    }
-
-    // 4. Check station exists and operational (WITH LOCK)
-    const station = await Station.findOne({
-      where: {
-        station_id,
-        status: 'operational'
-      },
-      lock: t.LOCK.UPDATE,
-      transaction: t
-    });
-    
-    if (!station) {
-      const err = new Error('Station not found or not operational');
-      err.status = 404;
-      throw err;
-    }
-
-    // 5. Check vehicle has active subscription (WITH TRANSACTION)
-    const activeSubscription = await checkVehicleSubscription(vehicle_id, t);
-
-    // Note: battery_cap đã bị loại bỏ trong database mới
-    // Không còn giới hạn số lượng battery per swap theo plan
-    // Giới hạn chỉ phụ thuộc vào available batteries tại station
-
-    // 6. Check duplicate booking (WITH LOCK)
-    await checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, null, t);
-
-    // 7. Find available batteries at station (WITH LOCK)
-    const battery_type_id = vehicle.model.battery_type_id;
-    
-    let availableBatteries;
-    try {
-      console.log('[DEBUG] Searching for available batteries...', { station_id, battery_type_id, requested: battery_quantity });
-      availableBatteries = await findAvailableBatteries(station_id, battery_type_id, scheduledTime, t);
-      console.log('[DEBUG] Found batteries:', availableBatteries.length);
-    } catch (error) {
-      console.error('[ERROR] findAvailableBatteries failed:', error.message);
-      console.error('[ERROR] Stack:', error.stack);
-      throw error;
-    }
-
-    if (availableBatteries.length < battery_quantity) {
-      const err = new Error(`Not enough available batteries at this station. Available: ${availableBatteries.length}, Requested: ${battery_quantity}`);
-      err.status = 422;
-      throw err;
-    }
-
-    // 9. Create booking (IN TRANSACTION)
-    const newBooking = await Booking.create({
-      driver_id,
-      vehicle_id,
-      station_id,
-      scheduled_time: scheduledTime,
-      status: 'pending' // Explicit set status (mặc dù model có defaultValue)
-    }, { transaction: t });
-
-    // 10. Select batteries and double-check availability (CONFLICT DETECTION)
-    const selectedBatteries = availableBatteries.slice(0, battery_quantity);
-    
-    // Re-verify batteries are still available with lock
-    const batteryIds = selectedBatteries.map(b => b.battery_id);
-    const lockedBatteries = await Battery.findAll({
-      where: {
-        battery_id: { [Op.in]: batteryIds },
-        current_soc: { [Op.gt]: 90 },
-        current_soh: { [Op.gte]: 70 } // Pin phải có SOH >= 70% (đồng nhất với findAvailableBatteries)
-      },
-      lock: t.LOCK.UPDATE,
-      transaction: t
-    });
-
-    if (lockedBatteries.length < battery_quantity) {
-      const err = new Error(`Battery availability changed during booking. Please try again. (Expected: ${battery_quantity}, Got: ${lockedBatteries.length})`);
-      err.status = 409; // Conflict
-      throw err;
-    }
-
-    console.log(`[DEBUG] Successfully locked ${lockedBatteries.length} batteries for booking`);
-
-    // 11. Associate batteries with booking (IN TRANSACTION)
-    const bookingBatteryPromises = lockedBatteries.map(battery => 
-      BookingBattery.create({
-        booking_id: newBooking.booking_id,
-        battery_id: battery.battery_id
-      }, { transaction: t })
-    );
-    
-    await Promise.all(bookingBatteryPromises);
-
-    // 12. Lock cabinet slots for reserved batteries (IN TRANSACTION)
-    const batteryIdsToLock = lockedBatteries.map(b => b.battery_id);
-    
-    // Find slot_ids from batteries
-    const slotIds = lockedBatteries
-      .map(b => b.slot_id)
-      .filter(id => id !== null && id !== undefined);
-    
-    if (slotIds.length > 0) {
-      await CabinetSlot.update(
-        { status: 'locked' },
-        {
-          where: {
-            slot_id: { [Op.in]: slotIds }
-          },
-          transaction: t
-        }
-      );
-      console.log(`[DEBUG] Successfully locked ${slotIds.length} cabinet slot(s) for booking`);
-    }
-
-    // 13. Return booking with full details (WITH TRANSACTION to read uncommitted data)
-    // Transaction will commit here automatically if no errors
-    return getBookingById(newBooking.booking_id, driver_id, t);
+  // 2. Check vehicle exists
+  const vehicle = await Vehicle.findByPk(vehicle_id, {
+    attributes: ['vehicle_id', 'driver_id', 'model_id', 'license_plate']
   });
+
+  if (!vehicle) {
+    const err = new Error('Vehicle not found');
+    err.status = 404;
+    throw err;
+  }
+
+  // Get vehicle model and battery type separately
+  const vehicleModel = await VehicleModel.findByPk(vehicle.model_id, {
+    include: [{
+      model: BatteryType,
+      as: 'batteryType'
+    }]
+  });
+
+  if (!vehicleModel || !vehicleModel.batteryType) {
+    const err = new Error('Vehicle model or battery type not found');
+    err.status = 404;
+    throw err;
+  }
+
+  // Attach model to vehicle for consistent object structure
+  vehicle.model = vehicleModel;
+
+  // 2b. Validate battery_quantity against vehicle's battery_slot capacity
+  if (battery_quantity > vehicleModel.battery_slot) {
+    const err = new Error(
+      `This vehicle (${vehicleModel.brand} ${vehicleModel.name}) can only swap up to ${vehicleModel.battery_slot} ${vehicleModel.battery_slot === 1 ? 'battery' : 'batteries'} at once. You requested ${battery_quantity}.`
+    );
+    err.status = 422;
+    throw err;
+  }
+
+  console.log(`[DEBUG] Battery swap request: ${battery_quantity}/${vehicleModel.battery_slot} batteries for ${vehicleModel.brand} ${vehicleModel.name}`);
+
+  // 3. Check vehicle ownership
+  if (vehicle.driver_id !== driver_id) {
+    const err = new Error('You do not own this vehicle');
+    err.status = 403;
+    throw err;
+  }
+
+  // 4. Check station exists and operational
+  const station = await Station.findOne({
+    where: {
+      station_id,
+      status: 'operational'
+    }
+  });
+  
+  if (!station) {
+    const err = new Error('Station not found or not operational');
+    err.status = 404;
+    throw err;
+  }
+
+  // 5. Check vehicle has active subscription
+  const activeSubscription = await checkVehicleSubscription(vehicle_id);
+
+  // Note: battery_cap đã bị loại bỏ trong database mới
+  // Không còn giới hạn số lượng battery per swap theo plan
+  // Giới hạn chỉ phụ thuộc vào available batteries tại station
+
+  // 6. Check duplicate booking
+  await checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, null);
+
+  // 7. Find available batteries at station
+  const battery_type_id = vehicle.model.battery_type_id;
+  
+  let availableBatteries;
+  try {
+    console.log('[DEBUG] Searching for available batteries...', { station_id, battery_type_id, requested: battery_quantity });
+    availableBatteries = await findAvailableBatteries(station_id, battery_type_id, scheduledTime);
+    console.log('[DEBUG] Found batteries:', availableBatteries.length);
+  } catch (error) {
+    console.error('[ERROR] findAvailableBatteries failed:', error.message);
+    console.error('[ERROR] Stack:', error.stack);
+    throw error;
+  }
+
+  if (availableBatteries.length < battery_quantity) {
+    const err = new Error(`Not enough available batteries at this station. Available: ${availableBatteries.length}, Requested: ${battery_quantity}`);
+    err.status = 422;
+    throw err;
+  }
+
+  // 8. Create booking
+  const newBooking = await Booking.create({
+    driver_id,
+    vehicle_id,
+    station_id,
+    scheduled_time: scheduledTime,
+    status: 'pending'
+  });
+
+  // 9. Select batteries
+  const selectedBatteries = availableBatteries.slice(0, battery_quantity);
+
+  // 10. Associate batteries with booking
+  const bookingBatteryPromises = selectedBatteries.map(battery => 
+    BookingBattery.create({
+      booking_id: newBooking.booking_id,
+      battery_id: battery.battery_id
+    })
+  );
+  
+  await Promise.all(bookingBatteryPromises);
+
+  // 11. Lock cabinet slots for reserved batteries
+  const slotIds = selectedBatteries
+    .map(b => b.slot_id)
+    .filter(id => id !== null && id !== undefined);
+  
+  if (slotIds.length > 0) {
+    await CabinetSlot.update(
+      { status: 'locked' },
+      {
+        where: {
+          slot_id: { [Op.in]: slotIds }
+        }
+      }
+    );
+    console.log(`[DEBUG] Successfully locked ${slotIds.length} cabinet slot(s) for booking`);
+  }
+
+  // 12. Return booking with full details
+  return getBookingById(newBooking.booking_id, driver_id);
 }
 
 /**
@@ -368,17 +330,16 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
  * 
  * @param {string} booking_id - UUID của booking
  * @param {string} driver_id - ID của driver (để check ownership)
- * @param {Transaction} t - Sequelize transaction (optional)
  * @returns {Promise<Booking>} - Booking details
  */
-async function getBookingById(booking_id, driver_id = null, t = null) {
+async function getBookingById(booking_id, driver_id = null) {
   if (!booking_id) {
     const err = new Error('Booking ID is required');
     err.status = 400;
     throw err;
   }
 
-  const queryOptions = {
+  const booking = await Booking.findByPk(booking_id, {
     include: [
       {
         model: Account,
@@ -412,14 +373,7 @@ async function getBookingById(booking_id, driver_id = null, t = null) {
         through: { attributes: [] }
       }
     ]
-  };
-
-  // Add transaction if provided
-  if (t) {
-    queryOptions.transaction = t;
-  }
-
-  const booking = await Booking.findByPk(booking_id, queryOptions);
+  });
 
   if (!booking) {
     const err = new Error('Booking not found');
@@ -588,29 +542,20 @@ async function cancelBooking(booking_id, driver_id) {
  * Kiểm tra vehicle có subscription active không
  * 
  * @param {string} vehicle_id - UUID của vehicle
- * @param {Transaction} t - Sequelize transaction (optional)
  * @throws {Error} - Nếu không có subscription active
  */
-async function checkVehicleSubscription(vehicle_id, t = null) {
+async function checkVehicleSubscription(vehicle_id) {
   const today = new Date().toISOString().split('T')[0];
 
-  // Step 1: Find active subscription (WITH LOCK if transaction exists)
-  const subscriptionQueryOptions = {
+  // Step 1: Find active subscription
+  const activeSubscription = await Subscription.findOne({
     where: {
       vehicle_id,
       cancel_time: null,
       end_date: { [Op.gte]: today }
     },
     attributes: ['subscription_id', 'plan_id', 'vehicle_id', 'start_date', 'end_date']
-  };
-
-  // Add transaction and lock ONLY for Subscription table (no JOIN)
-  if (t) {
-    subscriptionQueryOptions.lock = t.LOCK.UPDATE;
-    subscriptionQueryOptions.transaction = t;
-  }
-
-  const activeSubscription = await Subscription.findOne(subscriptionQueryOptions);
+  });
 
   if (!activeSubscription) {
     const err = new Error('Vehicle does not have an active subscription. Please subscribe first.');
@@ -618,10 +563,9 @@ async function checkVehicleSubscription(vehicle_id, t = null) {
     throw err;
   }
 
-  // Step 2: Get plan details separately (NO LOCK needed for read-only reference data)
+  // Step 2: Get plan details separately
   const plan = await SubscriptionPlan.findByPk(activeSubscription.plan_id, {
-    attributes: ['plan_id', 'plan_name', 'plan_fee', 'swap_fee', 'soh_cap'],
-    transaction: t // Include in transaction but don't lock
+    attributes: ['plan_id', 'plan_name', 'plan_fee', 'swap_fee', 'soh_cap']
   });
 
   if (!plan) {
@@ -645,31 +589,22 @@ async function checkVehicleSubscription(vehicle_id, t = null) {
  * @param {number} station_id - ID của station
  * @param {number} battery_type_id - ID của battery type
  * @param {Date} datetime - Thời gian booking
- * @param {Transaction} t - Sequelize transaction (optional)
  * @returns {Promise<Battery[]>} - Danh sách batteries available
  */
 
-async function findAvailableBatteries(station_id, battery_type_id, datetime = null, t = null) {
-  // 1. Tìm tất cả cabinets tại station (WITH LOCK if transaction)
+async function findAvailableBatteries(station_id, battery_type_id, datetime = null) {
+  // 1. Tìm tất cả cabinets tại station
   console.log('[findAvailableBatteries] Searching for cabinets at station:', station_id);
   
   let cabinets;
   try {
-    const cabinetQueryOptions = {
+    cabinets = await Cabinet.findAll({
       where: { 
         station_id,
         status: 'operational'
       },
       attributes: ['cabinet_id', 'station_id', 'cabinet_code']
-    };
-
-    // Add transaction and lock if provided (no include to avoid join lock)
-    if (t) {
-      cabinetQueryOptions.lock = t.LOCK.UPDATE;
-      cabinetQueryOptions.transaction = t;
-    }
-
-    cabinets = await Cabinet.findAll(cabinetQueryOptions);
+    });
     console.log('[findAvailableBatteries] Found cabinets:', cabinets.length);
   } catch (error) {
     console.error('[ERROR] Cabinet query failed:', error.message);
@@ -680,7 +615,7 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
     return [];
   }
 
-  // 2. Lấy tất cả slots của các cabinets này (separate query, no lock)
+  // 2. Lấy tất cả slots của các cabinets này
   // ✅ CHO PHÉP CẢ 'charging' VÀ 'charged' (loại trừ 'locked', 'empty', 'faulty')
   const cabinetIds = cabinets.map(c => c.cabinet_id);
   const slots = await CabinetSlot.findAll({
@@ -688,8 +623,7 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
       cabinet_id: { [Op.in]: cabinetIds },
       status: { [Op.in]: ['charging', 'charged'] }  // ✅ Cả hai đều OK
     },
-    attributes: ['slot_id', 'cabinet_id', 'status'],
-    transaction: t
+    attributes: ['slot_id', 'cabinet_id', 'status']
   });
 
   console.log('[findAvailableBatteries] Found slots with status charging/charged:', slots.length);
@@ -701,24 +635,16 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
   // 3. Lấy tất cả slot_ids
   const slotIds = slots.map(s => s.slot_id);
 
-  // 4. Tìm batteries trong các slots này (WITH LOCK if in transaction)
+  // 4. Tìm batteries trong các slots này
   // ✅ QUAN TRỌNG: Battery.current_soc là source of truth, không cần check slot status nữa
-  const batteryQueryOptions = {
+  const availableBatteries = await Battery.findAll({
     where: {
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
       current_soc: { [Op.gte]: 90 },  // ✅ SOURCE OF TRUTH: SOC >= 90%
       current_soh: { [Op.gte]: 70 }   // Pin phải có SOH >= 70%
     }
-  };
-
-  // Add transaction and lock if provided
-  if (t) {
-    batteryQueryOptions.lock = t.LOCK.UPDATE;
-    batteryQueryOptions.transaction = t;
-  }
-
-  const availableBatteries = await Battery.findAll(batteryQueryOptions);
+  });
 
   console.log('[findAvailableBatteries] Found batteries matching criteria:', availableBatteries.length);
 
@@ -747,10 +673,9 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
  * @param {string} vehicle_id - UUID của vehicle (dùng để check)
  * @param {Date} scheduledTime - Thời gian booking (không dùng để check trùng nữa)
  * @param {string} excludeBookingId - Booking ID cần exclude (khi update)
- * @param {Transaction} t - Sequelize transaction (optional)
  * @throws {Error} - Nếu vehicle có pending booking khác
  */
-async function checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, excludeBookingId = null, t = null) {
+async function checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, excludeBookingId = null) {
   // CHỈ check vehicle có booking pending nào không
   // KHÔNG check driver vì driver có thể có nhiều xe, mỗi xe 1 booking pending
   const whereClause = {
@@ -763,18 +688,10 @@ async function checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, exclu
     whereClause.booking_id = { [Op.ne]: excludeBookingId };
   }
 
-  const queryOptions = {
+  const existingPendingBooking = await Booking.findOne({
     where: whereClause,
     attributes: ['booking_id', 'driver_id', 'vehicle_id', 'scheduled_time', 'status']
-  };
-
-  // Add transaction and lock if provided
-  if (t) {
-    queryOptions.lock = t.LOCK.UPDATE;
-    queryOptions.transaction = t;
-  }
-
-  const existingPendingBooking = await Booking.findOne(queryOptions);
+  });
 
   if (existingPendingBooking) {
     const err = new Error(
