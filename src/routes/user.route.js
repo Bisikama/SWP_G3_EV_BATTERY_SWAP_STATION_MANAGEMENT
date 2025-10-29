@@ -1,19 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user.controller');
-const { validateRegister, validateResetPassword } = require('../validations/user.validation');
-
-
-router.post('/login', userController.login);
-router.post('/request-verification', userController.requestEmailVerification);
-router.post('/verify-email', userController.verifyEmailCode);
-router.post('/register', validateRegister, userController.register);
-router.post('/logout', userController.logout);
-router.get('/', userController.findAll);
-router.post('/forgot-password', userController.requestPasswordReset);
-router.post('/reset-password', validateResetPassword, userController.resetPassword);
-router.get('/id/:id', userController.findById);
-router.get('/email/:email', userController.findByEmail);
 
 
 /**
