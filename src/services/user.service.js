@@ -5,27 +5,17 @@ const SALT_ROUNDS = 10;
 const paginate = require('../utils/paginate');
 paginate(db.Account);
 
-async function findAll(page = 1, pageSize = 10, query = {}) {
-  return db.Account.paginate(
-    query,
-    {
-      page,
-      pageSize,
-      attributes: { exclude: ['password_hash'] },
-      order: [['account_id', 'ASC']]
-    }
-  );
-}
+async function findAll(page = 1, pageSize = 10, { role, email, fullname } = {}) {
+  const where = {};
+  if (role) where.role = role;
+  if (email) where.email = { [db.Sequelize.Op.iLike]: `%${email}%` };
+  if (fullname) where.fullname = { [db.Sequelize.Op.iLike]: `%${fullname}%` };
 
-async function findAllDriver(page = 1, pageSize = 10) {
-  return findAll(page, pageSize, {
-    role: 'driver'
-  });
-}
-
-async function findAllStaff(page = 1, pageSize = 10) {
-  return findAll(page, pageSize, {
-    role: 'staff'
+  return db.Account.paginate(where, {
+    page,
+    pageSize,
+    attributes: { exclude: ['password_hash'] },
+    order: [['account_id', 'ASC']],
   });
 }
 
@@ -94,4 +84,4 @@ async function updateDriver(user, data) {
   return findById(user.account_id);
 }
 
-module.exports = { findAllDriver, findAllStaff, findById, findByEmail, createStaff, updateDriver, updateDriverPassword };
+module.exports = { findAll, findById, findByEmail, createStaff, updateDriver, updateDriverPassword };

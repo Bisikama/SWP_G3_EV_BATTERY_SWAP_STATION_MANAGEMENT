@@ -685,21 +685,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
           message: `Không tìm thấy slot ${battery.slot_id} cho pin ${battery.battery_id} tại cabinet ${slot.cabinet_id}`,
           data: {
             battery_id: battery.battery_id,
-            battery_serial: battery.battery_serial,
-            slot_id: battery.slot_id,
-            cabinet_id: slot.cabinet_id
-          }
-        });
-      }
-
-      if (slot.cabinet.station_id !== parseInt(station_id)) {
-        return res.status(400).json({
-          success: false,
-          message: `Slot ${slot.slot_id} không thuộc cabinet ${slot.cabinet_id} tại station ${station_id}`,
-          data: {
-            slot_id: slot.slot_id,
-            cabinet_id: slot.cabinet_id,
-            station_id: station_id
+            slot_id: battery.slot_id
           }
         });
       }

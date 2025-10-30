@@ -23,7 +23,8 @@ const invoiceRoutes = require('./src/routes/invoice.route');
 const bookingRoutes = require('./src/routes/booking.route');
 const transferRoutes = require('./src/routes/transfer.route');
 const swapBatteryRoutes = require('./src/routes/swap_battery.route');
-const cabinetRoutes = require('./src/routes/cabinet.route')
+const cabinetRoutes = require('./src/routes/cabinet.route');
+const analysisRoutes = require('./src/routes/analysis.route');
 
 const app = express();
 app.use(express.json());
@@ -48,6 +49,7 @@ app.use('/api/invoice', invoiceRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/swap', swapBatteryRoutes);
 app.use('/api/cabinets', cabinetRoutes);
+app.use('/api/analysis', analysisRoutes);
 
 // catch errors
 app.use(errorHandler);
