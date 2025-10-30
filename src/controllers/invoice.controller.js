@@ -589,7 +589,8 @@ async function getPaymentHistoryByDriver(req, res) {
     // Lấy tất cả vehicle của driver
     const vehicles = await Vehicle.findAll({
       where: {
-        driver_id: driver_id
+        driver_id: driver_id,
+        status: 'active'
       },
       attributes: ['vehicle_id', 'license_plate', 'model_id'],
       include: [
@@ -630,7 +631,8 @@ async function getPaymentHistoryByDriver(req, res) {
     // Lấy tất cả subscription của các vehicles
     const subscriptions = await Subscription.findAll({
       where: {
-        vehicle_id: vehicleIds
+        vehicle_id: vehicleIds,
+        status: 'active'
       },
       include: [
         {
