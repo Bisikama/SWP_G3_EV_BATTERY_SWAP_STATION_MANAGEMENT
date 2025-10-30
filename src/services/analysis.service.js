@@ -140,23 +140,3 @@ module.exports = {
   analyzeSwap,
   analyzeSubscription
 }
-
-analyzeBooking({
-  startDate: '2025-10-25T00:00:00.000+07:00',
-  endDate: '2025-10-31T00:00:00.000+07:00',
-  groupDate: 'day'
-})
-.then(result => console.log(result))
-.catch(err => console.error(err));
-
-analyzeRevenue()
-  .then(result => console.log(result))
-  .catch(err => console.error(err));
-
-analyzeSwap()
-  .then(result => console.log(result))
-  .catch(err => console.error(err));
-
-analyzeSubscription()
-  .then(result => console.log(result))
-  .catch(err => console.error(err));

@@ -3,7 +3,6 @@ const router = express.Router();
 const userController = require('../controllers/user.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 
-
 /**
  * @swagger
  * tags:
