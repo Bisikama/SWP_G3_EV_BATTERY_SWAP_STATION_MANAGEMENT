@@ -25,7 +25,7 @@ async function analyzeModel({
   const attributes = [...(query.attributes || [])];
 
   if (groupDate) {
-    const period = literal(`DATE_TRUNC('${groupDate}', "${dateColumn}" AT TIME ZONE 'UTC+7')`);
+    const period = literal(`DATE_TRUNC('${groupDate}', timezone('Asia/Bangkok', "${dateColumn}"))`);
     attributes.unshift([period, 'period']);
     group.unshift(period);
     order.unshift([period, 'ASC']);
@@ -65,7 +65,6 @@ function analyzeBooking({ startDate, endDate, groupDate } = {}) {
     }
   });
 }
-
 
 function analyzeRevenue({ startDate, endDate, groupDate } = {}) {
   return analyzeModel({
@@ -109,14 +108,49 @@ function analyzeSwap({ startDate, endDate, groupDate } = {}) {
   });
 }
 
-analyzeBooking({ startDate:'2025-10-25', endDate:'2025-10-31', groupDate:'day' })
-  .then(result => console.log(result))
-  .catch(err => console.error(err));
+function analyzeSubscription({ startDate, endDate, groupDate } = {}) {
+  return analyzeModel({
+    model: db.Subscription,
+    dateColumn: 'start_date',
+    startDate,
+    endDate,
+    groupDate,
+    query: {
+      attributes: [
+        [col('plan.plan_id'), 'plan_id'],
+        [col('plan.plan_name'), 'plan_name'],
+        [fn('COUNT', col('subscription_id')), 'totalSubscriptions'],
+        [fn('SUM', col('soh_usage')), 'totalSohUsage'],
+        [fn('AVG', col('soh_usage')), 'avgSohUsage'],
+        [fn('SUM', col('swap_count')), 'totalSwapCount'],
+        [fn('COUNT', literal(`CASE WHEN status = 'active' THEN 1 END`)), 'activeSubscriptions'],
+        [fn('COUNT', literal(`CASE WHEN status = 'inactive' THEN 1 END`)), 'inactiveSubscriptions']
+      ],
+      include: [
+        { model: db.SubscriptionPlan, as: 'plan', attributes: [] }
+      ],
+      group: ['plan.plan_id', 'plan.plan_name']
+    }
+  });
+}
+
+
+analyzeBooking({
+  startDate: '2025-10-25T00:00:00.000+07:00',
+  endDate: '2025-10-31T00:00:00.000+07:00',
+  groupDate: 'day'
+})
+.then(result => console.log(result))
+.catch(err => console.error(err));
 
 analyzeRevenue()
   .then(result => console.log(result))
   .catch(err => console.error(err));
 
 analyzeSwap()
+  .then(result => console.log(result))
+  .catch(err => console.error(err));
+
+analyzeSubscription()
   .then(result => console.log(result))
   .catch(err => console.error(err));
