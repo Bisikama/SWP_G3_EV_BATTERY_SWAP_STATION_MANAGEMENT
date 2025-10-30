@@ -55,7 +55,7 @@ function analyzeBooking({ startDate, endDate, groupDate } = {}) {
     query: {
       attributes: [
         [fn('COUNT', fn('DISTINCT', col('Booking.booking_id'))), 'totalBookings'],
-        [fn('COUNT', col('bookingBatteries.battery_id')), 'totalBatteries'],
+        [fn('COUNT', fn('DISTINCT', col('bookingBatteries.battery_id'))), 'totalBatteries'],
         [fn('COUNT', literal(`CASE WHEN status = 'completed' THEN 1 END`)), 'completedBookings'],
         [fn('COUNT', literal(`CASE WHEN status = 'cancelled' THEN 1 END`)), 'cancelledBookings']
       ],
@@ -134,6 +134,12 @@ function analyzeSubscription({ startDate, endDate, groupDate } = {}) {
   });
 }
 
+module.exports = {
+  analyzeBooking,
+  analyzeRevenue,
+  analyzeSwap,
+  analyzeSubscription
+}
 
 analyzeBooking({
   startDate: '2025-10-25T00:00:00.000+07:00',
