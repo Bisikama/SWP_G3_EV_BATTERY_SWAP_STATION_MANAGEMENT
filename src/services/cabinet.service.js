@@ -60,16 +60,23 @@ async function findEmptySlot(cabinet_id) {
 }
 
 async function chargeFull(cabinet_id) {
-	const batteries = db.Battery.findAll({
+	const batteries = await db.Battery.findAll({
 		include: [
-			{ model: 'CabinetSlot', as: 'slot', 
+			{ model: db.CabinetSlot, as: 'cabinetSlot', 
 				where: {
 					cabinet_id
 				}
 			}
 		]
 	});
-	batteries.current_soc = 90.00;
+
+	await Promise.all(
+    batteries.map(battery => {
+      battery.current_soc = 100.0;
+      return battery.save(); // persist the change
+    })
+  );
+
 	return batteries;
 }
 
