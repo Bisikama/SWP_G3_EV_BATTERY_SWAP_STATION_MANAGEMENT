@@ -84,4 +84,14 @@ async function updateDriver(user, data) {
   return findById(user.account_id);
 }
 
-module.exports = { findAll, findById, findByEmail, createStaff, updateDriver, updateDriverPassword };
+async function updateUserStatus(account_id, status) {
+  const user = await findById(account_id);
+  if (!user) throw new ApiError(404, 'Account not found');
+  if (user.role === 'admin') {
+    throw new ApiError(403, 'Cannot update Admin status');
+  }
+  await user.update({ status });
+  return user;
+}
+
+module.exports = { findAll, findById, findByEmail, createStaff, updateDriver, updateDriverPassword, updateUserStatus};

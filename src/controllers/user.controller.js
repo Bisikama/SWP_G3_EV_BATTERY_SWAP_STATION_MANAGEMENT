@@ -80,6 +80,25 @@ async function updateDriverPassword(req, res) {
   });
 }
 
+async function updateUserStatus(req, res) {
+  const { account_id } = req.params;
+  const { status } = req.body;
+
+  if (!account_id) throw new ApiError(400, 'accountId is required');
+  if (!status) throw new ApiError(400, 'status is required');
+
+  const updated = await userService.updateUserStatus(account_id, status);
+  if (!updated) {
+    throw new ApiError(404, 'User not found or is admin');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'User status updated successfully',
+    payload: { user: updated }
+  });
+}
+
 module.exports = {
   findAll,
   findById,
@@ -87,4 +106,5 @@ module.exports = {
   createStaff,
   updateDriver,
   updateDriverPassword,
+  updateUserStatus
 };

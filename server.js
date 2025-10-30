@@ -35,7 +35,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, swaggerUiOpti
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/vehicles', vehicleRoutes);
-app.use('/api/battery', batteryRoutes);
+app.use('/api/batteries', batteryRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/battery-type', batteryTypeRoutes);
 app.use('/api/vehicle-model', vehicleModelRoutes);
