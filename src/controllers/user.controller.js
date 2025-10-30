@@ -1,6 +1,19 @@
 const userService = require('../services/user.service');
 const ApiError = require('../utils/ApiError');
 
+async function findAll(req, res) {
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const { role, email, fullname } = req.query;
+
+  const result = await userService.findAll(page, pageSize, { role, email, fullname });
+
+  return res.status(200).json({
+    success: true,
+    payload: result,
+  });
+}
+
 async function findById(req, res) {
   const { id } = req.params;
   if (!id) throw new ApiError(400, 'Id is required');
@@ -27,33 +40,51 @@ async function findByEmail(req, res) {
   });
 }
 
-async function findAllDrivers(req, res) {
-  const page = parseInt(req.query.page) || 1;
-  const pageSize = parseInt(req.query.pageSize) || 10;
+async function createStaff(req, res) {
+  const data = req.body;
+  if (!data.email || !data.password) {
+    throw new ApiError(400, 'Email and password are required');
+  }
 
-  const result = await userService.findAllDriver(page, pageSize);
+  const newStaff = await userService.createStaff(data);
 
-  return res.status(200).json({
+  return res.status(201).json({
     success: true,
-    payload: result,
+    message: 'Staff account created successfully',
+    payload: { user: newStaff },
   });
 }
 
-async function findAllStaff(req, res) {
-  const page = parseInt(req.query.page) || 1;
-  const pageSize = parseInt(req.query.pageSize) || 10;
+async function updateDriver(req, res) {
+  const user = req.user; // assuming authenticated user info is in req.user
+  const data = req.body;
 
-  const result = await userService.findAllStaff(page, pageSize);
+  const updatedUser = await userService.updateDriver(user, data);
 
   return res.status(200).json({
     success: true,
-    payload: result,
+    message: 'Driver updated successfully',
+    payload: { user: updatedUser },
+  });
+}
+
+async function updateDriverPassword(req, res) {
+  const user = req.user;
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+
+  const result = await userService.updateDriverPassword(user, oldPassword, newPassword, confirmPassword);
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
   });
 }
 
 module.exports = {
+  findAll,
   findById,
   findByEmail,
-  findAllDrivers,
-  findAllStaff,
+  createStaff,
+  updateDriver,
+  updateDriverPassword,
 };
