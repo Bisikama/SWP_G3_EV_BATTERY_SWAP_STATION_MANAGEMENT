@@ -16,8 +16,8 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *   get:
  *     summary: Get all users (paginated)
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
+ *     #security:
+ *     #  - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -51,7 +51,11 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *       400:
  *         description: Invalid query parameters
  */
-router.get('/', verifyToken, authorizeRole('admin'), userController.findAll);
+router.get('/', 
+    // verifyToken, 
+    // authorizeRole('admin'), 
+    userController.findAll
+);
 
 /**
  * @swagger
@@ -59,8 +63,8 @@ router.get('/', verifyToken, authorizeRole('admin'), userController.findAll);
  *   get:
  *     summary: Get user by ID
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
+ *     #security:
+ *     #  - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -75,7 +79,11 @@ router.get('/', verifyToken, authorizeRole('admin'), userController.findAll);
  *       404:
  *         description: User not found
  */
-router.get('/id/:id', verifyToken, authorizeRole('admin'), userController.findById);
+router.get('/id/:id', 
+    // verifyToken, 
+    // authorizeRole('admin'), 
+    userController.findById
+);
 
 /**
  * @swagger
@@ -83,8 +91,8 @@ router.get('/id/:id', verifyToken, authorizeRole('admin'), userController.findBy
  *   get:
  *     summary: Get user by email
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
+ *     #security:
+ *     #  - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: email
@@ -98,7 +106,11 @@ router.get('/id/:id', verifyToken, authorizeRole('admin'), userController.findBy
  *       404:
  *         description: User not found
  */
-router.get('/email/:email', verifyToken, authorizeRole('admin'), userController.findByEmail);
+router.get('/email/:email', 
+    // verifyToken, 
+    // authorizeRole('admin'), 
+    userController.findByEmail
+);
 
 /**
  * @swagger
@@ -138,7 +150,11 @@ router.get('/email/:email', verifyToken, authorizeRole('admin'), userController.
  *       400:
  *         description: Email or phone number already exists
  */
-router.post('/staff', verifyToken, authorizeRole('admin'), userController.createStaff);
+router.post('/staff', 
+    verifyToken, 
+    authorizeRole('admin'), 
+    userController.createStaff
+);
 
 /**
  * @swagger
@@ -169,7 +185,11 @@ router.post('/staff', verifyToken, authorizeRole('admin'), userController.create
  *       404:
  *         description: Account not found
  */
-router.put('/driver/profile', verifyToken, authorizeRole('driver'), userController.updateDriver);
+router.put('/driver/profile', 
+    verifyToken, 
+    authorizeRole('driver'), 
+    userController.updateDriver
+);
 
 /**
  * @swagger
@@ -204,7 +224,11 @@ router.put('/driver/profile', verifyToken, authorizeRole('driver'), userControll
  *       404:
  *         description: Account not found
  */
-router.put('/driver/password', verifyToken, authorizeRole('driver'), userController.updateDriverPassword);
+router.put('/driver/password', 
+    verifyToken, 
+    authorizeRole('driver'), 
+    userController.updateDriverPassword
+);
 
 /**
  * @swagger
@@ -244,6 +268,10 @@ router.put('/driver/password', verifyToken, authorizeRole('driver'), userControl
  *       401:
  *         description: Unauthorized - Missing or invalid Bearer token
  */
-router.put('/:account_id/status', verifyToken, authorizeRole('admin'), userController.updateUserStatus);
+router.put('/:account_id/status', 
+    verifyToken, 
+    authorizeRole('admin'), 
+    userController.updateUserStatus
+);
 
 module.exports = router;
