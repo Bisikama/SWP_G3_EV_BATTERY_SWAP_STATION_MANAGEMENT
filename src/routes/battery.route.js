@@ -12,7 +12,7 @@ const { verifyToken } = require('../middlewares/verifyTokens');
 
 /**
  * @swagger
- * /api/battery/filterCount:
+ * /api/batteries/filterCount:
  *   get:
  *     tags: [Batteries]
  *     summary: Count batteries by station and battery type
@@ -71,7 +71,7 @@ router.get('/filterCount', verifyToken, batteryController.countByStationAndType)
 
 /**
  * @swagger
- * /api/battery/all:
+ * /api/batteries/all:
  *   get:
  *     tags: [Batteries]
  *     summary: Get all batteries
@@ -141,5 +141,61 @@ router.get('/filterCount', verifyToken, batteryController.countByStationAndType)
  *                   example: Internal server error
  */
 router.get('/all', verifyToken, batteryController.getAll);
+
+/**
+ * @swagger
+ * /api/batteries/vehicle/{vehicle_id}:
+ *   get:
+ *     summary: Get all batteries of a specific vehicle
+ *     tags: [Batteries]
+ *     parameters:
+ *       - in: path
+ *         name: vehicle_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the vehicle
+ *     responses:
+ *       200:
+ *         description: List of batteries belonging to the vehicle
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *       400:
+ *         description: Missing vehicle_id
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/vehicle/:vehicle_id', batteryController.getByVehicle);
+
+/**
+ * @swagger
+ * /api/batteries/vehicle/{vehicle_id}:
+ *   post:
+ *     summary: Create batteries for a specific vehicle
+ *     tags: [Batteries]
+ *     parameters:
+ *       - in: path
+ *         name: vehicle_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the vehicle
+ *     responses:
+ *       200:
+ *         description: Batteries created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *       400:
+ *         description: Missing or invalid vehicle_id
+ *       404:
+ *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/vehicle/:vehicle_id', batteryController.createByVehicle);
 
 module.exports = router;
