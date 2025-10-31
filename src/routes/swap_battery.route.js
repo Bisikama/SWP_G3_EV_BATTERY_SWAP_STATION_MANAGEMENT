@@ -232,9 +232,7 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *   get:
  *     summary: Kiểm tra pin sẵn sàng tại trạm
  *     tags: [Battery Swap]
- *     description: Lấy danh sách pin có SOC >= 90% tại trạm
- *     security:
- *       - bearerAuth: []
+ *     description: Lấy danh sách pin có SOC >= 90% tại trạm cho loại pin và số lượng yêu cầu
  *     parameters:
  *       - in: query
  *         name: station_id
@@ -744,7 +742,7 @@ router.post('/validate-and-prepare', swapBatteryController.validateAndPrepareSwa
 router.post('/validate-with-booking', swapBatteryController.validateAndPrepareSwapWithBooking);
 router.post('/execute', verifyToken, swapBatteryController.executeSwap);
 router.post('/execute-with-booking', verifyToken, swapBatteryController.executeSwapWithBooking);
-router.get('/available-batteries', verifyToken, swapBatteryController.getAvailableBatteries);
+router.get('/available-batteries', swapBatteryController.getAvailableBatteries);
 router.get('/empty-slots', verifyToken, swapBatteryController.getEmptySlots); // ← THÊM MỚI: Lấy slot trống
 router.get('/check-first-time-pickup', verifyToken, swapBatteryController.checkFirstTimePickup); // ← THÊM MỚI: Kiểm tra first-time
 
