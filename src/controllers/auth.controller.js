@@ -4,6 +4,7 @@ const { Account, EmailChallenge } = require('../models');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { generateVerificationCode, sendVerificationEmail, sendPasswordResetEmail, sendPasswordChangeConfirmation } = require('../utils/emailService');
+const SALT_ROUNDS = 10;
 
 async function login(req, res) {
 	const { email, password } = req.body || {};
