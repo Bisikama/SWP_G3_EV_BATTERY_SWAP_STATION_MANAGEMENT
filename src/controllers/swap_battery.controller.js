@@ -1,6 +1,7 @@
 const swapBatteryService = require('../services/swap_battery.service');
 const subscriptionService = require('../services/subscription.service');
 const db = require('../models');
+const { where } = require('sequelize');
 
 /**
  * API 4: Validate và chuẩn bị đổi pin 1-1
@@ -901,23 +902,22 @@ async function executeSwapWithBookingInternal(params, res) {
       const battery_id = batteryOut.battery_id;
 
       // Tìm slot chứa pin này
-      const slot = await db.CabinetSlot.findOne({
-        where: { battery_id: battery_id },
-        include: [{ model: db.Battery, as: 'battery' }],
-        transaction
-      });
+      const battery = await db.Battery.findByPk(battery_id, {
+  attributes: ['battery_id', 'slot_id', 'current_soh', 'current_soc'],
+  transaction
+});
 
-      if (!slot) {
-        await transaction.rollback();
-        return res.status(404).json({
-          success: false,
-          message: `Không tìm thấy slot chứa battery ${battery_id}`
-        });
-      }
+if (!battery || !battery.slot_id) {
+  await transaction.rollback();
+  return res.status(404).json({
+    success: false,
+    message: `Battery ${battery_id} không có slot_id (chưa gắn vào slot)`
+  });
+}
 
-      const slot_id = slot.slot_id;
-      const soh_out = slot.battery.current_soh;
-      const soc_out = slot.battery.current_soc;
+      const slot_id = battery.slot_id;
+      const soh_out = battery.current_soh;
+      const soc_out = battery.current_soc;
 
       console.log(`  📦 Battery ${battery_id} (SOC: ${soc_out}%, SOH: ${soh_out}%) ← Slot ${slot_id}`);
 

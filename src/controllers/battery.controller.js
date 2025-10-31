@@ -67,6 +67,14 @@ async function createByVehicle(req, res) {
       return res.status(400).json({ error: 'vehicle_id is required' });
     }
 
+    // Thêm validation
+    if (await Battery.count({ where: { vehicle_id } }) > 0) {
+  return res.status(409).json({ 
+    error: 'Vehicle already has batteries' 
+  });
+}
+
+
     const vehicle = await Vehicle.findByPk(vehicle_id, {
       include: [{ model: VehicleModel, as: 'model' }],
     });
