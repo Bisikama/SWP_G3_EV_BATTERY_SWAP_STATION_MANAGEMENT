@@ -21,22 +21,26 @@ const approve = [
     .notEmpty().withMessage('transfer_request_id is required')
     .isUUID().withMessage('transfer_request_id must be a valid UUID'),
 
-  body('transfer_details')
-    .isArray({ min: 1 }).withMessage('transfer_details must be a non-empty array'),
+  body('transfer_orders')
+    .isArray({ min: 1 }).withMessage('transfer_orders must be a non-empty array'),
 
-  body('transfer_details.*.station_id')
-    .notEmpty().withMessage('station_id is required for each transfer detail')
-    .isInt({ min: 1 }).withMessage('station_id must be a positive integer'),
+  body('transfer_orders.*.source_station_id')
+    .notEmpty().withMessage('source_station_id is required for each transfer order')
+    .isInt({ min: 1 }).withMessage('source_station_id must be a positive integer'),
 
-  body('transfer_details.*.transfer_quantity')
-    .notEmpty().withMessage('transfer_quantity is required for each transfer detail')
+  body('transfer_orders.*.target_station_id')
+    .notEmpty().withMessage('target_station_id is required for each transfer order')
+    .isInt({ min: 1 }).withMessage('target_station_id must be a positive integer'),
+
+  body('transfer_orders.*.transfer_quantity')
+    .notEmpty().withMessage('transfer_quantity is required for each transfer order')
     .isInt({ min: 1 }).withMessage('transfer_quantity must be a positive integer'),
 ];
 
 const confirm = [
-  param('transfer_detail_id')
-    .notEmpty().withMessage('transfer_detail_id is required')
-    .isUUID().withMessage('transfer_detail_id must be a valid UUID'),
+  param('transfer_order_id')
+    .notEmpty().withMessage('transfer_order_id is required')
+    .isUUID().withMessage('transfer_order_id must be a valid UUID'),
 ];
 
 const reject = [

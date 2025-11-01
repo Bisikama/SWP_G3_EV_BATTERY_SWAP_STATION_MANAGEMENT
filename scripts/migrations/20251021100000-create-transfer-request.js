@@ -52,9 +52,9 @@ module.exports = {
         allowNull: false
       },
       status: {
-        type: Sequelize.ENUM('pending','cancelled','approved','rejected','completed'),
+        type: Sequelize.ENUM('requested','cancelled','approved','rejected','completed'),
         allowNull: false,
-        defaultValue: 'pending'
+        defaultValue: 'requested'
       },
       notes: {
         type: Sequelize.TEXT,

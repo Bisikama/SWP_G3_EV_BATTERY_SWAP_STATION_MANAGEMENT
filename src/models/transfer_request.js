@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-        this.hasMany(models.TransferDetail, { as: 'transferDetails', foreignKey: 'transfer_request_id' })
+        this.hasMany(models.TransferOrder, { as: 'transferOrders', foreignKey: 'transfer_request_id' })
         this.belongsTo(models.Account, { as: 'admin', foreignKey: 'admin_id' });
         this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' });
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
@@ -62,14 +62,14 @@ module.exports = (sequelize, DataTypes) => {
       },
       status: {
         type: DataTypes.ENUM(
-          'pending',
+          'requested',
           'cancelled',
           'approved',
           'rejected',
           'completed'
         ),
         allowNull: false,
-        defaultValue: 'pending'
+        defaultValue: 'requested'
       },
       notes: {
         type: DataTypes.TEXT,
