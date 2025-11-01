@@ -37,7 +37,7 @@ module.exports = {
         }
       },
       status: {
-        type: Sequelize.ENUM('empty', 'locked', 'occupied'),
+        type: Sequelize.ENUM('empty', 'booked', 'locked', 'occupied'),
         allowNull: false
       }
     });
