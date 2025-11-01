@@ -112,10 +112,11 @@ async function validateAndPrepareSwap(req, res) {
     }
 
     console.log(`   ✅ Batteries IN count matches requested quantity (${batteriesIn.length})`);
+    
 
     // Bước 2: Validate pin đưa vào
     console.log('\n🔍 Step 2: Validating batteries IN...');
-    const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, vehicle_id);
+    const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, station_id, vehicle_id);
 
     // Lọc ra các pin hợp lệ và không hợp lệ
     const validBatteries = validation.results.filter(r => r.valid);
@@ -715,7 +716,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
 
     // Bước 5: Validate batteriesIn
     console.log('\n🔍 Step 5: Validating batteries IN...');
-    const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, vehicle_id);
+    const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, station_id, vehicle_id);
     const validBatteries = validation.results.filter(r => r.valid);
     const invalidBatteries = validation.results.filter(r => !r.valid);
 
@@ -932,7 +933,7 @@ if (!battery || !battery.slot_id) {
       });
 
       // Tạo swap record (với booking_id)
-      const swapRecord = await swapBatteryService.createSwapRecordWithBooking({
+      const swapRecord = await swapBatteryService.createSwapRecord({
         driver_id : driverId,
         vehicle_id,
         station_id,
