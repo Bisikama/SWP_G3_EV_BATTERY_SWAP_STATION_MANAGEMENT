@@ -1,5 +1,6 @@
 const swapBatteryService = require('../services/swap_battery.service');
 const subscriptionService = require('../services/subscription.service');
+const vehicleService = require('../services/vehicle.service');
 const db = require('../models');
 const { where } = require('sequelize');
 
@@ -54,14 +55,7 @@ async function validateAndPrepareSwap(req, res) {
 
     // Bước 1: Kiểm tra vehicle có tồn tại và thuộc về driver không
     console.log('\n🔍 Step 1: Validating vehicle ownership and battery type...');
-    const vehicle = await db.Vehicle.findByPk(vehicle_id, {
-      attributes: ['vehicle_id', 'driver_id', 'license_plate', 'model_id'],
-      include: [{
-        model: db.VehicleModel,
-        as: 'model',
-        attributes: ['model_id', 'name', 'battery_type_id', 'battery_slot'],
-      }]
-    });
+    const vehicle = await vehicleService.findVehicleWithModel(vehicle_id);
 
     if (!vehicle) {
       return res.status(404).json({
@@ -273,20 +267,7 @@ async function executeSwapInternal(params, res) {
     
     // Bước 2: Lấy battery_type_id của vehicle
     console.log('\n🔍 Step 2: Getting battery type of vehicle...');
-    const vehicle = await db.Vehicle.findByPk(vehicle_id, {
-      attributes: ['vehicle_id', 'model_id', 'driver_id'],
-      include: [{
-        model: db.VehicleModel,
-        as: 'model',
-        attributes: ['model_id', 'battery_type_id'],
-        include: [{
-          model: db.BatteryType,
-          as: 'batteryType',
-          attributes: ['battery_type_id']
-        }]
-      }],
-      transaction
-    });
+    const vehicle = await vehicleService.findVehicleWithModel(vehicle_id);
 
     if (!vehicle || !vehicle.model) {
       await transaction.rollback();
@@ -371,7 +352,7 @@ async function executeSwapInternal(params, res) {
       }
 
       const soh_in = battery.current_soh;
-      const newSlotStatus = soh_in < 15 ? 'faulty' : 'charging';
+      const newSlotStatus = 'occupied';
 
       console.log(`  📦 Battery ${battery_id} (SOH: ${soh_in}%) → Slot ${slot_id} (status: ${newSlotStatus})`);
 
@@ -692,7 +673,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       }
 
       // Kiểm tra slot status có sẵn sàng không
-      if (!['charging', 'charged', 'locked'].includes(slot.status)) {
+      if (!['occupied', 'locked'].includes(slot.status)) {
         return res.status(400).json({
           success: false,
           message: `Pin ${battery.battery_serial} ở slot ${slot.slot_number} không ở trạng thái sẵn sàng (hiện tại: ${slot.status})`,
@@ -701,7 +682,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
             battery_serial: battery.battery_serial,
             slot_id: slot.slot_id,
             slot_status: slot.status,
-            expected_statuses: ['charging', 'charged', 'locked']
+            expected_statuses: ['occupied', 'locked']
           }
         });
       }
@@ -836,20 +817,7 @@ async function executeSwapWithBookingInternal(params, res) {
     const swapResults = [];
     // Bước 1.5: Lấy battery_type_id của vehicle
     console.log('\n🔍 Step 1.5: Getting battery type of vehicle...');
-    const vehicle = await db.Vehicle.findByPk(vehicle_id, {
-      attributes: ['vehicle_id', 'model_id', 'driver_id'],
-      include: [{
-        model: db.VehicleModel,
-        as: 'model',
-        attributes: ['model_id', 'battery_type_id'],
-        include: [{
-          model: db.BatteryType,
-          as: 'batteryType',
-          attributes: ['battery_type_id']
-        }]
-      }],
-      transaction
-    });
+    const vehicle = await vehicleService.findVehicleWithModel(vehicle_id);
 
     if (!vehicle || !vehicle.model) {
       await transaction.rollback();
@@ -878,7 +846,7 @@ async function executeSwapWithBookingInternal(params, res) {
       }
 
       const soh_in = battery.current_soh;
-      const newSlotStatus = soh_in < 15 ? 'faulty' : 'charging';
+      const newSlotStatus = 'occupied';
 
       console.log(`  📦 Battery ${battery_id} (SOH: ${soh_in}%) → Slot ${slot_id} (status: ${newSlotStatus})`);
 

@@ -463,7 +463,7 @@ async function findVehicleWithModel(vehicle_id) {
       {
         model: VehicleModel,
         as: 'model',
-        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot'],
+        attributes: ['model_id', 'name', 'brand', 'avg_energy_usage', 'battery_slot', 'battery_type_id'],
         include: [{
           model: BatteryType,
           as: 'batteryType',
