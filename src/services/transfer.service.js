@@ -4,7 +4,7 @@ const ApiError = require('../utils/ApiError');
 async function findAll() {
   return db.TransferRequest.findAll({
     include: [
-      { model: db.TransferDetail, as: 'transferDetails' }
+      { model: db.TransferOrder, as: 'transferOrders' }
     ],
   });
 }
@@ -12,7 +12,7 @@ async function findAll() {
 async function findById(id) {
   return db.TransferRequest.findByPk(id, {
     include: [
-      { model: db.TransferDetail, as: 'transferDetails' }
+      { model: db.TransferOrder, as: 'transferOrders' }
     ],
   });
 }
@@ -31,7 +31,7 @@ async function requestTransfer(user, request_quantity, notes) {
   const pendingRequest = await db.TransferRequest.findOne({
     where: {
       staff_id: user.account_id,
-      status: 'pending'
+      status: 'requested'
     }
   });
   if (pendingRequest) throw new ApiError(400, "You have already requested a transfer order");
@@ -45,10 +45,10 @@ async function requestTransfer(user, request_quantity, notes) {
   });
 }
 
-async function approveTransfer(user, transfer_request_id, transfer_details) {
-  // transfer_details = [
-  //   { station_id: 1, transfer_quantity: 4 },
-  //   { station_id: 2, transfer_quantity: 8 }
+async function approveTransfer(user, transfer_request_id, transfer_orders) {
+  // transfer_orders = [
+  //   { source_station_id: 2, target_station_id: 1, transfer_quantity: 4 },
+  //   { source_station_id: 3, target_station_id: 1, transfer_quantity: 8 }
   // ]
 
   // start a transaction
@@ -57,34 +57,34 @@ async function approveTransfer(user, transfer_request_id, transfer_details) {
   try {
     const request = await db.TransferRequest.findByPk(transfer_request_id, { transaction: t });
     if (!request) throw new ApiError(404, 'Transfer request not found.');
-    if (request.status !== 'pending') throw new ApiError(400, `Cannot approve a transfer request with status '${request.status}'`);
+    if (request.status !== 'requested') throw new ApiError(400, `Cannot approve a transfer request with status '${request.status}'`);
 
     request.status = 'approved';
     request.admin_id = user.account_id;
     request.resolve_time = new Date();
     await request.save({ transaction: t });
 
-    const totalTransferQuantity = transfer_details.reduce((sum, d) => sum + d.transfer_quantity, 0);
+    const totalTransferQuantity = transfer_orders.reduce((sum, d) => sum + d.transfer_quantity, 0);
     if (totalTransferQuantity !== request.request_quantity) {
       throw new ApiError(400, `Total transfer quantity (${totalTransferQuantity}) does not match requested quantity (${request.request_quantity}).`);
     }
 
-    const details = [];
+    const orders = [];
 
-    for (const { station_id, transfer_quantity } of transfer_details) {
+    for (const { source_station_id, target_station_id, transfer_quantity } of transfer_orders) {
       const availableBatteries = await db.Battery.findAll({
         include: [
           {
             model: db.CabinetSlot,
             as: 'cabinetSlot',
             required: true,
-            where: { status: { [db.Sequelize.Op.in]: ['charging', 'charged'] } },
+            where: { status: 'occupied' },
             include: [
               {
                 model: db.Cabinet,
                 as: 'cabinet',
                 required: true,
-                where: { station_id },
+                where: { station_id: source_station_id },
               },
             ],
           },
@@ -98,7 +98,7 @@ async function approveTransfer(user, transfer_request_id, transfer_details) {
       });
 
       if (availableBatteries.length < transfer_quantity) {
-        throw new ApiError(400, `Station ${station_id} does not have enough available batteries.`);
+        throw new ApiError(400, `Station ${source_station_id} does not have enough available batteries.`);
       }
 
       await db.Battery.update(
@@ -106,18 +106,19 @@ async function approveTransfer(user, transfer_request_id, transfer_details) {
         { where: { battery_id: availableBatteries.map(b => b.battery_id) }, transaction: t }
       );
 
-      const detail = await db.TransferDetail.create({
+      const order = await db.TransferOrder.create({
         transfer_request_id,
-        station_id,
+        source_station_id,
+        target_station_id,
         staff_id: null,
         transfer_quantity,
         status: 'incompleted',
       }, { transaction: t });
 
-      await detail.addBatteries(availableBatteries, { transaction: t });
+      await order.addBatteries(availableBatteries, { transaction: t });
 
-      details.push({
-        detail,
+      orders.push({
+        order,
         transfer_battery_ids: availableBatteries.map(b => b.battery_id),
       });
     }
@@ -128,7 +129,7 @@ async function approveTransfer(user, transfer_request_id, transfer_details) {
     return {
       message: 'Transfer approved successfully.',
       transfer_request: request,
-      transfer_details: details,
+      transfer_orders: orders,
     };
   } catch (err) {
     await t.rollback();
@@ -139,7 +140,7 @@ async function approveTransfer(user, transfer_request_id, transfer_details) {
 async function rejectTransfer(user, transfer_request_id) {
   const request = await db.TransferRequest.findByPk(transfer_request_id);
   if (!request) throw new ApiError(404, 'Transfer request not found');
-  if (request.status !== 'pending') throw new ApiError(400, `Cannot reject a transfer request with status '${request.status}'`);
+  if (request.status !== 'requested') throw new ApiError(400, `Cannot reject a transfer request with status '${request.status}'`);
 
   request.status = 'rejected';
   request.admin_id = user.account_id;
@@ -148,7 +149,7 @@ async function rejectTransfer(user, transfer_request_id) {
   return request;
 }
 
-async function confirmTransfer(user, transfer_detail_id) {
+async function confirmTransfer(user, transfer_order_id) {
   const now = new Date();
   const activeShift = await db.Shift.findOne({
     where: {
@@ -159,7 +160,7 @@ async function confirmTransfer(user, transfer_detail_id) {
   });
   if (!activeShift) throw new ApiError(400, "You do not have any active shift at this current time");
   
-  const detail = await db.TransferDetail.findByPk(transfer_detail_id, {
+  const order = await db.TransferOrder.findByPk(transfer_order_id, {
     include: [
       {
         model: db.Battery,
@@ -168,24 +169,24 @@ async function confirmTransfer(user, transfer_detail_id) {
     ],
   });
   
-  if (!detail) throw new ApiError(400, "Transfer detail not found");
-  detail.staff_id = user.account_id;
-  detail.confirm_time = now;
-  detail.status = 'completed';
-  await detail.save();
+  if (!order) throw new ApiError(400, "Transfer order not found");
+  order.staff_id = user.account_id;
+  order.confirm_time = now;
+  order.status = 'completed';
+  await order.save();
 
   // check all transfer completed
-  const details = await db.TransferDetail.findAll({
-    where: { transfer_request_id: detail.transfer_request_id },
+  const orders = await db.TransferOrder.findAll({
+    where: { transfer_request_id: order.transfer_request_id },
   });
 
-  if (details.every(d => d.status === 'completed')) {
-    const req = await db.TransferRequest.findByPk(detail.transfer_request_id);
+  if (orders.every(d => d.status === 'completed')) {
+    const req = await db.TransferRequest.findByPk(order.transfer_request_id);
     req.status = 'completed';
     await req.save();
   }
 
-  return detail;
+  return order;
 }
 
 async function cancelTransfer(user, transfer_request_id) {
@@ -206,7 +207,7 @@ async function cancelTransfer(user, transfer_request_id) {
     throw new ApiError(403, 'Access denied: You can only cancel transfer request that you created');
   }
 
-  if (transferReq.status !== 'pending') {
+  if (transferReq.status !== 'requested') {
     throw new ApiError(400, 'Cannot cancel a transfer request unless it is still pending');
   }
 

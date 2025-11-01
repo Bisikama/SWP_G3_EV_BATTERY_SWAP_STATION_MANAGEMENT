@@ -21,8 +21,8 @@ async function request(req, res) {
 
 async function approve(req, res) {
 	const { transfer_request_id } = req.params;
-	const { transfer_details } = req.body;
-	const transfer = await transferService.approveTransfer(req.user, transfer_request_id, transfer_details);
+	const { transfer_orders } = req.body;
+	const transfer = await transferService.approveTransfer(req.user, transfer_request_id, transfer_orders);
 	return res.status(200).json({ success: true, payload: { transfer } });
 }
 
@@ -33,9 +33,9 @@ async function reject(req, res) {
 }
 
 async function confirm(req, res) {
-	const { transfer_detail_id } = req.params;
-	const transferDetail = await transferService.confirmTransfer(req.user, transfer_detail_id);
-	return res.status(200).json({ success: true, payload: { transferDetail } });
+	const { transfer_order_id } = req.params;
+	const transferOrder = await transferService.confirmTransfer(req.user, transfer_order_id);
+	return res.status(200).json({ success: true, payload: { transferOrder } });
 }
 
 async function cancel(req, res) {

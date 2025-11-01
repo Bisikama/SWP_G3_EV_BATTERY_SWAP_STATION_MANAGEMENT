@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
       this.hasMany(models.TransferRequest, { as: 'adminTransferRequests', foreignKey: 'admin_id' });
       // Station Staff
       this.hasMany(models.TransferRequest, { as: 'staffTransferRequests', foreignKey: 'staff_id' });
-      this.hasMany(models.TransferDetail, { as: 'staffTransferDetails', foreignKey: 'staff_id' });
+      this.hasMany(models.TransferOrder, { as: 'staffTransferOrders', foreignKey: 'staff_id' });
       this.hasMany(models.Shift, { as: 'assignedShift', foreignKey: 'staff_id' });
       // EV Driver
       this.hasMany(models.SupportTicket, { as: 'tickets', foreignKey: 'driver_id' });

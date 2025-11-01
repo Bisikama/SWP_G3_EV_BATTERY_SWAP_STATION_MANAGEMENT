@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       this.hasMany(models.SwapRecord, { as: 'retrievedSwapRecords', foreignKey: 'battery_id_out' });
       this.hasMany(models.SwapRecord, { as: 'returnedSwapRecords', foreignKey: 'battery_id_in' });
-      this.belongsToMany(models.TransferDetail, { through: 'TransferBatteryDetails', as: 'transferDetails', foreignKey: 'battery_id', otherKey: 'transfer_detail_id' });
+      this.belongsToMany(models.TransferOrder, { through: 'TransferBatteryOrders', as: 'transferOrders', foreignKey: 'battery_id', otherKey: 'transfer_order_id' });
       
       // Many-to-Many with Booking through BookingBattery
       this.belongsToMany(models.Booking, { 
