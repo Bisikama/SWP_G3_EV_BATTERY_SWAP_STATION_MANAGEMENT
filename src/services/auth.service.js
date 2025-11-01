@@ -17,6 +17,12 @@ async function authenticate({ email, password }) {
     throw err;
   }
 
+  if (account.status !== 'active') {
+    const err = new Error('Account is not active');
+    err.status = 403;
+    throw err;
+  }
+
   let match;
   try {
     match = await bcrypt.compare(password, account.password_hash);

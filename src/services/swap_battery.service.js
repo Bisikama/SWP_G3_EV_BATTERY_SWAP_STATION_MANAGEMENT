@@ -46,7 +46,7 @@ async function getEmptySlots(station_id, cabinet_id = null) {
  * @param {string} vehicle_id - ID của vehicle đang đổi pin (để validate ownership)
  * @returns {Object} - Kết quả validation
  */
-async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
+async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_id = null) {
   try {
     const results = [];
     let allValid = true;
@@ -55,7 +55,14 @@ async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
       const { slot_id, battery_id } = update;
 
       // Kiểm tra slot có tồn tại và đang empty không
-      const slot = await CabinetSlot.findByPk(slot_id);
+      const slot = await CabinetSlot.findByPk(slot_id, {
+      include: [{
+        model: Cabinet,
+        as: 'cabinet',
+        where: { station_id: station_id }
+      }]
+    });
+
       if (!slot) {
         results.push({
           slot_id,
@@ -73,6 +80,17 @@ async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
           battery_id,
           valid: false,
           error: `Slot ${slot_id} không trống (status: ${slot.status})`
+        });
+        allValid = false;
+        continue;
+      }
+
+      if (slot.cabinet.station_id !== station_id) {
+        results.push({
+          slot_id,
+          battery_id,
+          valid: false,
+          error: `Slot ${slot_id} không thuộc về station ${station_id}`
         });
         allValid = false;
         continue;
@@ -104,7 +122,7 @@ async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
       }
 
       // Kiểm tra SOH để xác định status của slot
-      const newSlotStatus = battery.current_soh < 70 ? 'faulty' : 'charging';
+      const newSlotStatus = 'occupied';
 
       results.push({
         slot_id,
@@ -125,6 +143,8 @@ async function validateBatteryInsertion(slotUpdates, vehicle_id = null) {
     throw error;
   }
 }
+
+
 
 /**
  * Service 5: Cập nhật slot status sau khi nhận pin
@@ -248,7 +268,7 @@ async function getAvailableBatteriesForSwap(station_id, battery_type_id, quantit
     const slots = await CabinetSlot.findAll({
       where: {
         status: {
-          [Op.in]: ['charged', 'charging']
+          [Op.in]: ['occupied']
         }
       },
       include: [
@@ -349,52 +369,6 @@ async function createSwapRecord(swapData, transaction = null) {
   }
 }
 
-/**
- * Service: Tạo swap record với booking_id
- * @param {Object} swapData - Dữ liệu swap (bao gồm booking_id)
- * @param {Object} transaction - Transaction (optional)
- * @returns {Object} - SwapRecord đã tạo
- */
-async function createSwapRecordWithBooking(swapData, transaction = null) {
-  try {
-    const {
-      driver_id,
-      vehicle_id,
-      station_id,
-      battery_id_in,
-      battery_id_out,
-      soh_in,
-      soh_out
-    } = swapData;
-
-    const options = transaction ? { transaction } : {};
-
-    const swapRecord = await SwapRecord.create({
-      driver_id,
-      vehicle_id,
-      station_id,
-      battery_id_in,
-      battery_id_out,
-      soh_in,
-      soh_out,
-      swap_time: new Date()
-    }, options);
-
-    // Lấy thông tin đầy đủ
-    const fullRecord = await SwapRecord.findByPk(swapRecord.swap_id, {
-      include: [
-        { model: Battery, as: 'returnedBattery', include: [{ model: BatteryType, as: 'batteryType' }] },
-        { model: Battery, as: 'retrievedBattery', include: [{ model: BatteryType, as: 'batteryType' }] }
-      ],
-      ...options
-    });
-
-    return fullRecord;
-  } catch (error) {
-    console.error('Error in createSwapRecordWithBooking:', error);
-    throw error;
-  }
-}
 
 /**
  * Service: Lấy pin lần đầu cho xe mới
@@ -469,6 +443,5 @@ module.exports = {
   updateNewBatteryToVehicle,
   getAvailableBatteriesForSwap,
   createSwapRecord,
-  createSwapRecordWithBooking,  // ← THÊM MỚI
   getFirstTimeBatteries
 };
