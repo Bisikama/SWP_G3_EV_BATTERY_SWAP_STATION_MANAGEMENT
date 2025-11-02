@@ -356,8 +356,8 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *     summary: Lấy danh sách slot trống tại trạm
  *     tags: [Battery Swap]
  *     description: Lấy tất cả các slot có trạng thái 'empty' tại một trạm cụ thể
- *     security:
- *       - bearerAuth: []
+ *     #security:
+ *     #  - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: station_id
@@ -742,8 +742,8 @@ router.post('/validate-and-prepare', swapBatteryController.validateAndPrepareSwa
 router.post('/validate-with-booking', swapBatteryController.validateAndPrepareSwapWithBooking);
 router.post('/execute', verifyToken, swapBatteryController.executeSwap);
 router.post('/execute-with-booking', verifyToken, swapBatteryController.executeSwapWithBooking);
-router.get('/available-batteries', swapBatteryController.getAvailableBatteries);
-router.get('/empty-slots', verifyToken, swapBatteryController.getEmptySlots); // ← THÊM MỚI: Lấy slot trống
+router.get('/available-batteries', /*verifyToken,*/ swapBatteryController.getAvailableBatteries);
+router.get('/empty-slots', /*verifyToken,*/ swapBatteryController.getEmptySlots); // ← THÊM MỚI: Lấy slot trống
 router.get('/check-first-time-pickup', verifyToken, swapBatteryController.checkFirstTimePickup); // ← THÊM MỚI: Kiểm tra first-time
 
 module.exports = router;
