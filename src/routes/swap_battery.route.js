@@ -1,7 +1,6 @@
 ﻿const express = require('express');
 const router = express.Router();
 const swapBatteryController = require('../controllers/swap_battery.controller');
-const { verifyToken } = require('../middlewares/verifyTokens');
 /**
  * @swagger
  * tags:
@@ -124,8 +123,6 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *     summary: Validate và tự động thực hiện đổi pin
  *     tags: [Battery Swap]
  *     description: API validate pin cũ và tự động execute nếu thành công
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -186,8 +183,6 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *     summary: Thực hiện đổi pin thủ công
  *     tags: [Battery Swap]
  *     description: Execute swap sau khi user confirm
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -442,8 +437,6 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *   post:
  *     summary: Thực hiện đổi pin không có booking (sau khi validate)
  *     tags: [Battery Swap]
- *     security:
- *       - bearerAuth: []
  *     description: Dùng khi đổi pin không có booking
  *     requestBody:
  *       required: true
@@ -483,8 +476,6 @@ const { verifyToken } = require('../middlewares/verifyTokens');
  *   post:
  *     summary: Thực hiện đổi pin có booking (regular swap)
  *     tags: [Battery Swap]
- *     security:
- *       - bearerAuth: []
  *     description: Dùng khi đổi pin định kỳ với booking
  *     requestBody:
  *       required: true

@@ -27,7 +27,7 @@ module.exports = {
         request_time: new Date(),
         resolve_time: null,
         request_quantity: 5,
-        status: 'pending',
+        status: 'requested',
         notes: 'Auto-generated transfer request for seeding'
       });
     }

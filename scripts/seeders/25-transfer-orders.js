@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = {
   async up(queryInterface, Sequelize) {
     const requests = await queryInterface.sequelize.query(
-      `SELECT transfer_request_id, station_id as destination_station_id FROM "TransferRequests" ORDER BY request_time LIMIT 3`,
+      `SELECT transfer_request_id, station_id FROM "TransferRequests" ORDER BY request_time LIMIT 3`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -17,16 +17,17 @@ module.exports = {
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
-    const details = [];
+    const orders = [];
     for (let i = 0; i < requests.length; i++) {
       // pick a source station different from destination
-      const dest = requests[i].destination_station_id;
-      const source = stations.find(s => s.station_id !== dest) || stations[0];
+      const target = requests[i].station_id;
+      const source = stations.find(s => s.station_id !== target) || stations[0];
 
-      details.push({
-        transfer_detail_id: uuidv4(), // UUID primary key
+      orders.push({
+        transfer_order_id: uuidv4(), // UUID primary key
         transfer_request_id: requests[i].transfer_request_id,
-        station_id: source.station_id,
+        source_station_id: source.station_id,
+        target_station_id: target,
         staff_id: null,
         confirm_time: null,
         transfer_quantity: 3,
@@ -34,10 +35,10 @@ module.exports = {
       });
     }
 
-    await queryInterface.bulkInsert('TransferDetails', details, {});
+    await queryInterface.bulkInsert('TransferOrders', orders, {});
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.bulkDelete('TransferDetails', null, {});
+    await queryInterface.bulkDelete('TransferOrders', null, {});
   }
 };

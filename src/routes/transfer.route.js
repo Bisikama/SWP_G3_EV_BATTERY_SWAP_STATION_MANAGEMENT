@@ -39,7 +39,7 @@ router.post('/:transfer_request_id/reject',
     transferController.reject
 );
 
-router.post('/:transfer_detail_id/confirm', 
+router.post('/:transfer_order_id/confirm', 
     verifyToken,
     authorizeRole('staff'), 
     validate(transferValidator.confirm), 
@@ -96,16 +96,18 @@ module.exports = router;
  *         notes:
  *           type: string
  *           nullable: true
- *     TransferDetail:
+ *     TransferOrder:
  *       type: object
  *       properties:
- *         transfer_detail_id:
+ *         transfer_order_id:
  *           type: string
  *           format: uuid
  *         transfer_request_id:
  *           type: string
  *           format: uuid
- *         station_id:
+ *         source_station_id:
+ *           type: integer
+ *         target_station_id:
  *           type: integer
  *         staff_id:
  *           type: string
@@ -115,7 +117,7 @@ module.exports = router;
  *           type: integer
  *         status:
  *           type: string
- *           enum: [incompleted, completed]
+ *           enum: [incomplete, completed]
  *         confirm_time:
  *           type: string
  *           format: date-time
@@ -229,7 +231,7 @@ module.exports = router;
  * /api/transfers/{transfer_request_id}/approve:
  *   post:
  *     tags: [Transfers]
- *     summary: Admin approves a transfer request and assigns transfer details
+ *     summary: Admin approves a transfer request and assigns transfer orders
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -246,17 +248,26 @@ module.exports = router;
  *           schema:
  *             type: object
  *             required:
- *               - transfer_details
+ *               - transfer_orders
  *             properties:
- *               transfer_details:
+ *               transfer_orders:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - source_station_id
+ *                     - target_station_id
+ *                     - transfer_quantity
  *                   properties:
- *                     station_id:
+ *                     source_station_id:
  *                       type: integer
+ *                       description: ID of the station sending batteries
+ *                     target_station_id:
+ *                       type: integer
+ *                       description: ID of the station receiving batteries
  *                     transfer_quantity:
  *                       type: integer
+ *                       description: Number of batteries to transfer
  *     responses:
  *       200:
  *         description: Transfer approved successfully
@@ -270,8 +281,19 @@ module.exports = router;
  *                 payload:
  *                   type: object
  *                   properties:
- *                     transfer:
+ *                     transfer_request:
  *                       $ref: '#/components/schemas/TransferRequest'
+ *                     transfer_orders:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           order:
+ *                             $ref: '#/components/schemas/TransferOrder'
+ *                           transfer_battery_ids:
+ *                             type: array
+ *                             items:
+ *                               type: integer
  *
  * /api/transfers/{transfer_request_id}/reject:
  *   post:
@@ -302,22 +324,22 @@ module.exports = router;
  *                     transferRequest:
  *                       $ref: '#/components/schemas/TransferRequest'
  *
- * /api/transfers/{transfer_detail_id}/confirm:
+ * /api/transfers/{transfer_order_id}/confirm:
  *   post:
  *     tags: [Transfers]
- *     summary: Staff confirms receipt of a transfer
+ *     summary: Staff confirms receipt of a transfer order
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: transfer_detail_id
+ *         name: transfer_order_id
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
  *     responses:
  *       200:
- *         description: Transfer detail confirmed successfully
+ *         description: Transfer order confirmed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -328,8 +350,8 @@ module.exports = router;
  *                 payload:
  *                   type: object
  *                   properties:
- *                     transferDetail:
- *                       $ref: '#/components/schemas/TransferDetail'
+ *                     transferOrder:
+ *                       $ref: '#/components/schemas/TransferOrder'
  *
  * /api/transfers/{transfer_request_id}/cancel:
  *   post:
@@ -360,3 +382,4 @@ module.exports = router;
  *                     transferRequest:
  *                       $ref: '#/components/schemas/TransferRequest'
  */
+

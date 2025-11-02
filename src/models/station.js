@@ -14,8 +14,9 @@ module.exports = (sequelize, DataTypes) => {
       this.hasMany(models.Cabinet, { as: 'cabinets', foreignKey: 'station_id' });
       this.hasMany(models.Shift, { as: 'shifts', foreignKey: 'station_id' });
       this.hasMany(models.SwapRecord, { as: 'swapRecords', foreignKey: 'station_id' });
-      this.hasMany(models.TransferDetail, { as: 'transferDetails', foreignKey: 'station_id' });
       this.hasMany(models.TransferRequest, { as: 'transferRequests', foreignKey: 'station_id' });
+      this.hasMany(models.TransferOrder, { as: 'sourceTransferOrders', foreignKey: 'source_station_id' });
+      this.hasMany(models.TransferOrder, { as: 'targetTransferOrders', foreignKey: 'target_station_id' });
     }
   }
   Station.init(

@@ -11,7 +11,7 @@ module.exports = {
     );
 
     const chargedSlots = await queryInterface.sequelize.query(
-      `SELECT slot_id FROM "CabinetSlots" WHERE status IN ('charged', 'charging')`,
+      `SELECT slot_id FROM "CabinetSlots" WHERE status = 'occupied'`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 

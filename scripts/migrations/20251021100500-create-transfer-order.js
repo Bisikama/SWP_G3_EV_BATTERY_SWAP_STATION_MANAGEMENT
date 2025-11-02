@@ -2,15 +2,15 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('TransferDetails', {
-      transfer_detail_id: {
+    await queryInterface.createTable('TransferOrders', {
+      transfer_order_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true
       },
       transfer_request_id: {
         type: Sequelize.UUID,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'TransferRequests',
           key: 'transfer_request_id'
@@ -18,7 +18,17 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'RESTRICT'
       },
-      station_id: {
+      source_station_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Stations',
+          key: 'station_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
+      },
+      target_station_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
@@ -55,6 +65,6 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('TransferDetails');
+    await queryInterface.dropTable('TransferOrders');
   }
 };
