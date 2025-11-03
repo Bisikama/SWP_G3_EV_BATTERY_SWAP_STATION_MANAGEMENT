@@ -65,10 +65,9 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: DataTypes.NOW
       },
-      scheduled_time: {
+      expired_time: {
         type: DataTypes.DATE,
         allowNull: false,
-        comment: 'Scheduled start time for battery swap'
       },
       status: {
         type: DataTypes.ENUM('pending', 'completed', 'cancelled'),
