@@ -244,7 +244,7 @@ async function executeSwapInternal(params, res) {
 
     // Bước 1: Validate tất cả pin trong batteriesIn
     console.log('\n🔍 Step 1: Validating batteries IN...');
-    const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, vehicle_id);
+    const validation = await swapBatteryService.validateBatteryInsertion(batteriesIn, station_id, vehicle_id);
     
     // Kiểm tra có pin không hợp lệ không
     const invalidBatteries = validation.results.filter(r => !r.valid);
