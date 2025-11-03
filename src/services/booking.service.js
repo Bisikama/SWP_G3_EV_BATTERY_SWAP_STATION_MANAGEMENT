@@ -29,6 +29,7 @@ const {
   Battery,
   CabinetSlot,
   Cabinet,
+  Config,
   Sequelize,
   sequelize 
 } = require('../models');
@@ -76,8 +77,8 @@ function formatBookingResponse(booking) {
   const bookingData = booking.toJSON ? booking.toJSON() : booking;
   
   // Format all datetime fields to Vietnam timezone
-  if (bookingData.scheduled_time) {
-    bookingData.scheduled_time = formatToVietnamTime(bookingData.scheduled_time);
+  if (bookingData.expired_time) {
+    bookingData.expired_time = formatToVietnamTime(bookingData.expired_time);
   }
   if (bookingData.create_time) {
     bookingData.create_time = formatToVietnamTime(bookingData.create_time);
@@ -99,14 +100,14 @@ function formatBookingResponse(booking) {
  * Tạo booking mới với tất cả validations
  * 
  * @param {string} driver_id - ID của driver (từ JWT token)
- * @param {object} bookingData - { vehicle_id, station_id, scheduled_time, battery_quantity }
+ * @param {object} bookingData - { vehicle_id, station_id, battery_quantity }
  * @returns {Promise<Booking>} - Booking vừa tạo (kèm relations)
  * @throws {Error} - Lỗi với status code
  */
-async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time, battery_quantity = 1 }) {
+async function createBooking(driver_id, { vehicle_id, station_id, battery_quantity = 1 }) {
   // 1. Validate required fields
-  if (!vehicle_id || !station_id || !scheduled_time) {
-    const err = new Error('Vehicle ID, Station ID, and Scheduled time are required');
+  if (!vehicle_id || !station_id) {
+    const err = new Error('Vehicle ID and Station ID are required');
     err.status = 400;
     throw err;
   }
@@ -118,16 +119,21 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     throw err;
   }
 
-  // Validate scheduled_time is in the future
-  const scheduledTime = new Date(scheduled_time);
-  const now = new Date();
-  if (scheduledTime <= now) {
-    const err = new Error('Scheduled time must be in the future');
-    err.status = 400;
+  // 2. Get booking expiration interval from config
+  const config = await Config.findOne({
+    attributes: ['booking_expired_interval']
+  });
+  
+  if (!config || !config.booking_expired_interval) {
+    const err = new Error('System configuration not found');
+    err.status = 500;
     throw err;
   }
+  
+  const expirationIntervalMinutes = config.booking_expired_interval;
+  console.log(`[DEBUG] Booking expiration interval: ${expirationIntervalMinutes} minutes`);
 
-  // 2. Check vehicle exists
+  // 3. Check vehicle exists
   const vehicle = await Vehicle.findByPk(vehicle_id, {
     attributes: ['vehicle_id', 'driver_id', 'model_id', 'license_plate']
   });
@@ -155,7 +161,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
   // Attach model to vehicle for consistent object structure
   vehicle.model = vehicleModel;
 
-  // 2b. Validate battery_quantity against vehicle's battery_slot capacity
+  // 4. Validate battery_quantity against vehicle's battery_slot capacity
   if (battery_quantity > vehicleModel.battery_slot) {
     const err = new Error(
       `This vehicle (${vehicleModel.brand} ${vehicleModel.name}) can only swap up to ${vehicleModel.battery_slot} ${vehicleModel.battery_slot === 1 ? 'battery' : 'batteries'} at once. You requested ${battery_quantity}.`
@@ -166,14 +172,14 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
 
   console.log(`[DEBUG] Battery swap request: ${battery_quantity}/${vehicleModel.battery_slot} batteries for ${vehicleModel.brand} ${vehicleModel.name}`);
 
-  // 3. Check vehicle ownership
+  // 5. Check vehicle ownership
   if (vehicle.driver_id !== driver_id) {
     const err = new Error('You do not own this vehicle');
     err.status = 403;
     throw err;
   }
 
-  // 4. Check station exists and operational
+  // 6. Check station exists and operational
   const station = await Station.findOne({
     where: {
       station_id,
@@ -187,23 +193,28 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     throw err;
   }
 
-  // 5. Check vehicle has active subscription
+  // 7. Check vehicle has active subscription
   const activeSubscription = await checkVehicleSubscription(vehicle_id);
 
   // Note: battery_cap đã bị loại bỏ trong database mới
   // Không còn giới hạn số lượng battery per swap theo plan
   // Giới hạn chỉ phụ thuộc vào available batteries tại station
 
-  // 6. Check duplicate booking
-  await checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, null);
+  // 8. Calculate expired_time = create_time + booking_expired_interval
+  const now = new Date();
+  const expiredTime = new Date(now.getTime() + expirationIntervalMinutes * 60000);
+  console.log(`[DEBUG] Booking will expire at: ${expiredTime.toISOString()}`);
 
-  // 7. Find available batteries at station
+  // 9. Check duplicate booking
+  await checkDuplicateBooking(driver_id, vehicle_id, null);
+
+  // 10. Find available batteries at station
   const battery_type_id = vehicle.model.battery_type_id;
   
   let availableBatteries;
   try {
     console.log('[DEBUG] Searching for available batteries...', { station_id, battery_type_id, requested: battery_quantity });
-    availableBatteries = await findAvailableBatteries(station_id, battery_type_id, scheduledTime);
+    availableBatteries = await findAvailableBatteries(station_id, battery_type_id, expiredTime);
     console.log('[DEBUG] Found batteries:', availableBatteries.length);
   } catch (error) {
     console.error('[ERROR] findAvailableBatteries failed:', error.message);
@@ -217,19 +228,19 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     throw err;
   }
 
-  // 8. Create booking
+  // 11. Create booking with expired_time
   const newBooking = await Booking.create({
     driver_id,
     vehicle_id,
     station_id,
-    scheduled_time: scheduledTime,
+    expired_time: expiredTime,
     status: 'pending'
   });
 
-  // 9. Select batteries
+  // 12. Select batteries
   const selectedBatteries = availableBatteries.slice(0, battery_quantity);
 
-  // 10. Associate batteries with booking
+  // 13. Associate batteries with booking
   const bookingBatteryPromises = selectedBatteries.map(battery => 
     BookingBattery.create({
       booking_id: newBooking.booking_id,
@@ -239,7 +250,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
   
   await Promise.all(bookingBatteryPromises);
 
-  // 11. Book cabinet slots for reserved batteries (occupied → booked)
+  // 14. Book cabinet slots for reserved batteries (occupied → booked)
   const slotIds = selectedBatteries
     .map(b => b.slot_id)
     .filter(id => id !== null && id !== undefined);
@@ -256,7 +267,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
     console.log(`[DEBUG] Successfully booked ${slotIds.length} cabinet slot(s) for booking`);
   }
 
-  // 12. Return booking with full details
+  // 15. Return booking with full details
   return getBookingById(newBooking.booking_id, driver_id);
 }
 
@@ -310,7 +321,7 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
         through: { attributes: [] } // Không lấy attributes từ bảng trung gian
       }
     ],
-    order: [['scheduled_time', 'DESC']]
+    order: [['expired_time', 'DESC']]
   });
 
   // Format all bookings to Vietnam timezone
@@ -396,16 +407,17 @@ async function getBookingById(booking_id, driver_id = null) {
  * ========================================
  * UPDATE BOOKING
  * ========================================
- * Cập nhật thời gian booking
+ * NOTE: With auto-expiration, bookings cannot be rescheduled.
+ * This function is deprecated but kept for backward compatibility.
  * 
  * @param {string} booking_id - UUID của booking
  * @param {string} driver_id - ID của driver (để check ownership)
- * @param {object} updateData - { scheduled_time }
+ * @param {object} updateData - Reserved for future use
  * @returns {Promise<Booking>} - Updated booking
  */
-async function updateBooking(booking_id, driver_id, { scheduled_time }) {
-  if (!booking_id || !scheduled_time) {
-    const err = new Error('Booking ID and scheduled time are required');
+async function updateBooking(booking_id, driver_id, updateData = {}) {
+  if (!booking_id) {
+    const err = new Error('Booking ID is required');
     err.status = 400;
     throw err;
   }
@@ -432,31 +444,19 @@ async function updateBooking(booking_id, driver_id, { scheduled_time }) {
     throw err;
   }
 
-  // 4. Check booking hasn't passed
+  // 4. Check booking hasn't expired
   const now = new Date();
-  if (new Date(booking.scheduled_time) < now) {
-    const err = new Error('Cannot update a booking that has already started or passed');
+  if (new Date(booking.expired_time) < now) {
+    const err = new Error('Cannot update a booking that has already expired');
     err.status = 422;
     throw err;
   }
 
-  // 5. Check new time is valid
-  const newScheduledTime = new Date(scheduled_time);
-  
-  // 6. Check duplicate with new time
-  await checkDuplicateBooking(driver_id, booking.vehicle_id, newScheduledTime, booking_id);
-
-  // 7. Calculate new end time
-  const newEndTime = new Date(newScheduledTime);
-  newEndTime.setMinutes(newEndTime.getMinutes() + 15);
-
-  // 8. Update booking
-  await booking.update({
-    scheduled_time: newScheduledTime
-  });
-
-  // 9. Return updated booking
-  return getBookingById(booking_id, driver_id);
+  // 5. Since booking time is now auto-calculated, there's nothing to update
+  // This endpoint is kept for backward compatibility but does not allow rescheduling
+  const err = new Error('Booking times are now automatically managed and cannot be changed. Please cancel and create a new booking if needed.');
+  err.status = 422;
+  throw err;
 }
 
 /**
@@ -672,11 +672,10 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
  * 
  * @param {string} driver_id - UUID của driver (không dùng để check)
  * @param {string} vehicle_id - UUID của vehicle (dùng để check)
- * @param {Date} scheduledTime - Thời gian booking (không dùng để check trùng nữa)
  * @param {string} excludeBookingId - Booking ID cần exclude (khi update)
  * @throws {Error} - Nếu vehicle có pending booking khác
  */
-async function checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, excludeBookingId = null) {
+async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = null) {
   // CHỈ check vehicle có booking pending nào không
   // KHÔNG check driver vì driver có thể có nhiều xe, mỗi xe 1 booking pending
   const whereClause = {
@@ -691,12 +690,12 @@ async function checkDuplicateBooking(driver_id, vehicle_id, scheduledTime, exclu
 
   const existingPendingBooking = await Booking.findOne({
     where: whereClause,
-    attributes: ['booking_id', 'driver_id', 'vehicle_id', 'scheduled_time', 'status']
+    attributes: ['booking_id', 'driver_id', 'vehicle_id', 'expired_time', 'status']
   });
 
   if (existingPendingBooking) {
     const err = new Error(
-      `Cannot create new booking. This vehicle already has a pending booking (ID: ${existingPendingBooking.booking_id}) scheduled at ${existingPendingBooking.scheduled_time}. Please complete or cancel the existing booking first.`
+      `Cannot create new booking. This vehicle already has a pending booking (ID: ${existingPendingBooking.booking_id}) that expires at ${existingPendingBooking.expired_time}. Please complete or cancel the existing booking first.`
     );
     err.status = 409;
     throw err;
@@ -771,8 +770,8 @@ async function checkAvailability(station_id, vehicle_id) {
       where: {
         station_id,
         status: 'pending',  // ✅ Chỉ pending, cancelled/completed KHÔNG tính
-        scheduled_time: {
-          [Op.between]: [now, next30Min]
+        expired_time: {
+          [Op.gte]: now  // Booking chưa expired
         }
       },
       attributes: []
