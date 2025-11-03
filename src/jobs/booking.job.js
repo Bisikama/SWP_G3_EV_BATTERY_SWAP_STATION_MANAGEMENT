@@ -49,24 +49,25 @@ async function cancelExpiredBookings() {
         // 1. Update booking status to cancelled
         await booking.update({ status: 'cancelled' });
 
-        // 2. Unlock cabinet slots based on battery SOC
+        // 2. Unlock cabinet slots: booked → occupied (if SOH > 70%) or locked (if SOH ≤ 70%)
         const bookingBatteries = await BookingBattery.findAll({
           where: { booking_id: booking.booking_id },
           include: [{
             model: Battery,
             as: 'battery',
-            attributes: ['battery_id', 'slot_id', 'current_soc'],
+            attributes: ['battery_id', 'slot_id', 'current_soc', 'current_soh'],
             where: {
               slot_id: { [Op.not]: null } // Only batteries in cabinet slots
             }
           }]
         });
 
-        // Update cabinet slot status based on SOC
+        // Update cabinet slot status based on battery SOH
         for (const bb of bookingBatteries) {
           const battery = bb.battery;
           if (battery && battery.slot_id) {
-            const newStatus = battery.current_soc >= 100 ? 'charged' : 'charging';
+            // Logic: SOH > 70% → 'occupied' (sẵn sàng), SOH ≤ 70% → 'locked' (không cho booking)
+            const newStatus = battery.current_soh > 70 ? 'occupied' : 'locked';
             await CabinetSlot.update(
               { status: newStatus },
               { where: { slot_id: battery.slot_id } }

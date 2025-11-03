@@ -239,21 +239,21 @@ async function createBooking(driver_id, { vehicle_id, station_id, scheduled_time
   
   await Promise.all(bookingBatteryPromises);
 
-  // 11. Lock cabinet slots for reserved batteries
+  // 11. Book cabinet slots for reserved batteries (occupied → booked)
   const slotIds = selectedBatteries
     .map(b => b.slot_id)
     .filter(id => id !== null && id !== undefined);
   
   if (slotIds.length > 0) {
     await CabinetSlot.update(
-      { status: 'locked' },
+      { status: 'booked' },
       {
         where: {
           slot_id: { [Op.in]: slotIds }
         }
       }
     );
-    console.log(`[DEBUG] Successfully locked ${slotIds.length} cabinet slot(s) for booking`);
+    console.log(`[DEBUG] Successfully booked ${slotIds.length} cabinet slot(s) for booking`);
   }
 
   // 12. Return booking with full details
@@ -501,25 +501,26 @@ async function cancelBooking(booking_id, driver_id) {
   // 4. Update status to cancelled
   await booking.update({ status: 'cancelled' });
 
-  // 5. Unlock cabinet slots based on battery SOC
+  // 5. Unlock cabinet slots: booked → occupied (if SOH > 70%) or locked (if SOH ≤ 70%)
   // Find all batteries reserved for this booking
   const bookingBatteries = await BookingBattery.findAll({
     where: { booking_id },
     include: [{
       model: Battery,
       as: 'battery',
-      attributes: ['battery_id', 'slot_id', 'current_soc'],
+      attributes: ['battery_id', 'slot_id', 'current_soc', 'current_soh'],
       where: {
         slot_id: { [Op.not]: null } // Only batteries in cabinet slots
       }
     }]
   });
 
-  // Update cabinet slot status based on SOC
+  // Update cabinet slot status based on battery SOH
   for (const bb of bookingBatteries) {
     const battery = bb.battery;
     if (battery && battery.slot_id) {
-      const newStatus = battery.current_soc >= 100 ? 'charged' : 'charging';
+      // Logic: SOH > 70% → 'occupied' (sẵn sàng), SOH ≤ 70% → 'locked' (không cho booking)
+      const newStatus = battery.current_soh > 70 ? 'occupied' : 'locked';
       await CabinetSlot.update(
         { status: newStatus },
         { where: { slot_id: battery.slot_id } }
@@ -616,17 +617,17 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
   }
 
   // 2. Lấy tất cả slots của các cabinets này
-  // ✅ CHO PHÉP CẢ 'charging' VÀ 'charged' (loại trừ 'locked', 'empty', 'faulty')
+  // ✅ Chỉ lấy slot 'occupied' (có pin sẵn sàng, SOH > 70%), loại trừ 'locked', 'empty', 'booked'
   const cabinetIds = cabinets.map(c => c.cabinet_id);
   const slots = await CabinetSlot.findAll({
     where: {
       cabinet_id: { [Op.in]: cabinetIds },
-      status: { [Op.in]: ['charging', 'charged'] }  // ✅ Cả hai đều OK
+      status: 'occupied'  // Chỉ lấy slot có pin sẵn sàng (SOH > 70%)
     },
     attributes: ['slot_id', 'cabinet_id', 'status']
   });
 
-  console.log('[findAvailableBatteries] Found slots with status charging/charged:', slots.length);
+  console.log('[findAvailableBatteries] Found slots with status occupied:', slots.length);
 
   if (slots.length === 0) {
     return [];
@@ -649,7 +650,7 @@ async function findAvailableBatteries(station_id, battery_type_id, datetime = nu
   console.log('[findAvailableBatteries] Found batteries matching criteria:', availableBatteries.length);
 
   // 5. Trả về tất cả batteries available
-  // Pin có SOC >= 90% + trong slot 'charging' hoặc 'charged' đều OK
+  // Pin có SOC >= 90% và SOH >= 70% trong slot 'occupied' (sẵn sàng cho booking)
   return availableBatteries;
 }
 
