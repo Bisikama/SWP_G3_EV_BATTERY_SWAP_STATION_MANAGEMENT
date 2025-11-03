@@ -23,17 +23,16 @@ const asyncHandler = require('../middlewares/asyncHandler');
  * ========================================
  * POST /api/booking
  * 
- * @description Tạo booking mới cho driver
+ * @description Tạo booking mới cho driver (auto-calculated expiration time)
  * @access Private (driver only)
  */
 const createBooking = asyncHandler(async (req, res) => {
-  const { vehicle_id, station_id, scheduled_time, battery_quantity } = req.body;
+  const { vehicle_id, station_id, battery_quantity } = req.body;
   const driver_id = req.user.account_id;
 
   const booking = await bookingService.createBooking(driver_id, {
     vehicle_id,
     station_id,
-    scheduled_time,
     battery_quantity: battery_quantity || 1 // Default to 1 if not provided
   });
 
@@ -102,17 +101,14 @@ const getBookingById = asyncHandler(async (req, res) => {
  * ========================================
  * PATCH /api/booking/:id
  * 
- * @description Cập nhật thời gian booking
+ * @description DEPRECATED: Booking times are now auto-managed
  * @access Private (driver only - owner)
  */
 const updateBooking = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { scheduled_time } = req.body;
   const driver_id = req.user.account_id;
 
-  const booking = await bookingService.updateBooking(id, driver_id, {
-    scheduled_time
-  });
+  const booking = await bookingService.updateBooking(id, driver_id, {});
 
   return res.status(200).json({
     message: 'Booking updated successfully',
