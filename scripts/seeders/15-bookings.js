@@ -29,7 +29,7 @@ module.exports = {
         vehicle_id: driver.vehicle_id,
         station_id: stations[0].station_id,
         create_time: now,
-        scheduled_time: futureTime,
+        expired_time: futureTime,
         status: 'pending'
       });
 
@@ -41,7 +41,7 @@ module.exports = {
         vehicle_id: driver.vehicle_id,
         station_id: stations[1].station_id,
         create_time: new Date(pastTime.getTime() - 1 * 60 * 60 * 1000),
-        scheduled_time: pastTime,
+        expired_time: pastTime,
         status: 'completed'
       });
 
@@ -53,7 +53,7 @@ module.exports = {
         vehicle_id: driver.vehicle_id,
         station_id: stations[2].station_id,
         create_time: new Date(cancelledTime.getTime() - 30 * 60 * 1000),
-        scheduled_time: cancelledTime,
+        expired_time: cancelledTime,
         status: 'cancelled'
       });
     });
