@@ -26,7 +26,7 @@ const { validate } = require('../middlewares/validateHandler');
  *   post:
  *     tags: [Booking]
  *     summary: Create a new booking
- *     description: Create a battery swap booking at a station for a specific vehicle. Driver can request multiple batteries (up to vehicle's battery_slot capacity). The system will automatically find and reserve suitable batteries.
+ *     description: Create a battery swap booking at a station for a specific vehicle. Driver can request multiple batteries (up to vehicle's battery_slot capacity). The system will automatically find and reserve suitable batteries. Expiration time is auto-calculated based on system configuration (default 30 minutes).
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -38,7 +38,6 @@ const { validate } = require('../middlewares/validateHandler');
  *             required:
  *               - vehicle_id
  *               - station_id
- *               - scheduled_time
  *             properties:
  *               vehicle_id:
  *                 type: string
@@ -49,11 +48,6 @@ const { validate } = require('../middlewares/validateHandler');
  *                 type: integer
  *                 example: 1
  *                 description: ID of the station
- *               scheduled_time:
- *                 type: string
- *                 format: date-time
- *                 example: 2025-10-20T14:00:00
- *                 description: Scheduled time for battery swap (must be in the future, within today) - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *               battery_quantity:
  *                 type: integer
  *                 minimum: 1
@@ -272,8 +266,8 @@ router.get(
  * /api/booking/{id}:
  *   patch:
  *     tags: [Booking]
- *     summary: Update booking time
- *     description: Update the scheduled start time of a pending booking. Can only update bookings with status 'pending' that haven't started yet.
+ *     summary: Update booking (DEPRECATED)
+ *     description: DEPRECATED - Booking times are now automatically managed and cannot be changed. Please cancel and create a new booking if needed. This endpoint is kept for backward compatibility but will reject all requests.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -284,23 +278,9 @@ router.get(
  *           type: string
  *           format: uuid
  *         description: Booking ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - scheduled_time
- *             properties:
- *               scheduled_time:
- *                 type: string
- *                 format: date-time
- *                 example: 2025-10-20T15:00:00
- *                 description: New scheduled time - Vietnam timezone (TZ=Asia/Ho_Chi_Minh)
  *     responses:
- *       200:
- *         description: Booking updated successfully
+ *       422:
+ *         description: Booking times are auto-managed and cannot be changed
  *         content:
  *           application/json:
  *             schema:
@@ -308,22 +288,13 @@ router.get(
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Booking updated successfully
- *                 booking:
- *                   type: object
+ *                   example: Booking times are now automatically managed and cannot be changed. Please cancel and create a new booking if needed.
  *       400:
  *         description: Bad request - validation error
  *       403:
  *         description: Forbidden - not the booking owner
  *       404:
  *         description: Booking not found
- *       409:
- *         description: Duplicate booking in new time slot
- *       422:
- *         description: |
- *           Unprocessable Entity - Cannot update:
- *           - Booking status is not 'pending' (already completed or cancelled)
- *           - Booking has already started or passed
  */
 router.patch(
   '/:id',
