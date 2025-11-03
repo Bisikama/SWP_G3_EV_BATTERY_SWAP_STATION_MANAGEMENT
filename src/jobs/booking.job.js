@@ -5,10 +5,10 @@ const { Op } = require('sequelize');
  * ========================================
  * CRON JOB: AUTO-CANCEL EXPIRED BOOKINGS
  * ========================================
- * Tự động hủy các booking đã quá scheduled_time mà vẫn còn pending
+ * Tự động hủy các booking đã quá expired_time mà vẫn còn pending
  * 
  * Chạy: Mỗi 5 phút
- * Logic: Nếu booking.status = 'pending' && now > scheduled_time → status = 'cancelled'
+ * Logic: Nếu booking.status = 'pending' && now > expired_time → status = 'cancelled'
  */
 async function cancelExpiredBookings() {
   try {
@@ -16,16 +16,16 @@ async function cancelExpiredBookings() {
     
     console.log('\n🔄 ========== CRON JOB: Cancel Expired Bookings ==========');
     console.log(`⏰ Running at: ${now.toLocaleString('vi-VN')}`);
-    console.log(`📅 Checking bookings with scheduled_time < ${now.toISOString()}`);
+    console.log(`📅 Checking bookings with expired_time < ${now.toISOString()}`);
     
     // Tìm tất cả booking có:
     // - status = 'pending'
-    // - scheduled_time < now (đã quá hạn)
+    // - expired_time < now (đã quá hạn)
     const expiredBookings = await Booking.findAll({
       where: {
         status: 'pending',
-        scheduled_time: {
-          [Op.lt]: now // scheduled_time < now
+        expired_time: {
+          [Op.lt]: now // expired_time < now
         }
       }
     });
@@ -78,7 +78,7 @@ async function cancelExpiredBookings() {
         console.log(`   ✅ Booking ID: ${booking.booking_id}`);
         console.log(`      Driver: ${booking.driver_id}`);
         console.log(`      Vehicle: ${booking.vehicle_id}`);
-        console.log(`      Scheduled Time: ${booking.scheduled_time.toLocaleString('vi-VN')}`);
+        console.log(`      Expired Time: ${booking.expired_time.toLocaleString('vi-VN')}`);
         console.log(`      Unlocked ${bookingBatteries.length} cabinet slot(s)`);
 
         successCount++;
