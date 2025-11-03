@@ -37,7 +37,7 @@ function startCronJobs() {
   
   console.log('✅ Cron Job Started: Cancel Expired Bookings');
   console.log('   ⏰ Schedule: Every 5 minutes');
-  console.log('   📝 Description: Auto-cancel bookings with scheduled_time < now and status = pending');
+  console.log('   📝 Description: Auto-cancel bookings with expired_time < now and status = pending');
   
   // ℹ️ Có thể thêm các cron jobs khác ở đây
   // Ví dụ:
