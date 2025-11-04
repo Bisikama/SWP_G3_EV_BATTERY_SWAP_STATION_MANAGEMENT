@@ -33,13 +33,4 @@ async function updateSubscriptionPlanStatus(user, id) {
   return plan;
 }
 
-async function deleteSubscriptionPlan(user, id) {
-  const plan = await db.SubscriptionPlan.findByPk(id);
-  if (!plan) throw new ApiError(404, 'Subscription plan not found');
-	if (plan.admin_id !== user.account_id)
-		throw new ApiError(403, 'Only the creator admin can delete this subscription plan');
-  await plan.destroy();
-  return plan;
-}
-
-module.exports = { findAll, findById, createSubscriptionPlan, updateSubscriptionPlan, updateSubscriptionPlanStatus, deleteSubscriptionPlan };
+module.exports = { findAll, findById, createSubscriptionPlan, updateSubscriptionPlan, updateSubscriptionPlanStatus };

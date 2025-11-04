@@ -3,7 +3,6 @@ const ApiError = require('../utils/ApiError');
 const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
 const paginate = require('../utils/paginate');
-paginate(db.Account);
 
 async function findAll(page = 1, pageSize = 10, { role, email, fullname } = {}) {
   const where = {};
@@ -11,11 +10,11 @@ async function findAll(page = 1, pageSize = 10, { role, email, fullname } = {}) 
   if (email) where.email = { [db.Sequelize.Op.iLike]: `%${email}%` };
   if (fullname) where.fullname = { [db.Sequelize.Op.iLike]: `%${fullname}%` };
 
-  return db.Account.paginate(where, {
+  return paginate(db.Account, where, {
     page,
     pageSize,
     attributes: { exclude: ['password_hash'] },
-    order: [['account_id', 'ASC']],
+    order: [['fullname', 'ASC']],
   });
 }
 
