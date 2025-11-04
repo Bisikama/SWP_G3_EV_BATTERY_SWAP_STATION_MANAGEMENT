@@ -4,6 +4,11 @@ const subscriptionController = require('../controllers/subscription.controller')
 const { authorizeRole, verifyToken } = require('../middlewares/verifyTokens');
 const { validate } = require('../middlewares/validateHandler');
 const subscriptionValidator = require('../validations/subscription.validation');
+const { deactivateExpiredSubscriptions, sendExpiryReminders } = require('../jobs/subscription.job');
+
+
+router.post('/cron/send-expiry-reminders', sendExpiryReminders);
+router.post('/cron/deactivate-expired-subscriptions', deactivateExpiredSubscriptions);
 
 /**
  * @swagger

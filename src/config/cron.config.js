@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { deactivateExpiredSubscriptions } = require('../jobs/subscription.job');
+const { deactivateExpiredSubscriptions, sendExpiryReminders } = require('../jobs/subscription.job');
 const { cancelExpiredBookings } = require('../jobs/booking.job');
 const { autoCharge } = require('../jobs/charging.job');
 const { now } = require('sequelize/lib/utils');
@@ -39,6 +39,20 @@ function startCronJobs() {
   console.log('   ⏰ Schedule: Every 5 minutes');
   console.log('   📝 Description: Auto-cancel bookings with expired_time < now and status = pending');
   
+  // ✅ Cron Job 3: Gửi email nhắc nhở gia hạn gói
+  // Schedule: Chạy mỗi sáng lúc 08:00
+  // Cron format: "0 8 * * *" = 08:00 mỗi ngày
+  const expiryReminderJob = cron.schedule('00 08 * * *', () => {
+    sendExpiryReminders();
+  }, {
+    scheduled: true,
+    timezone: "Asia/Ho_Chi_Minh"
+  });
+  
+  console.log('✅ Cron Job Started: Send Subscription Expiry Reminders');
+  console.log('   ⏰ Schedule: Every day at 08:00 AM (Asia/Ho_Chi_Minh timezone)');
+  console.log('   📝 Description: Send email reminders to drivers with expired subscriptions (end_date = today)');
+  
   // ℹ️ Có thể thêm các cron jobs khác ở đây
   // Ví dụ:
   // const invoiceReminderJob = cron.schedule('0 9 * * *', () => {
@@ -58,6 +72,7 @@ function startCronJobs() {
   return {
     subscriptionJob,
     bookingJob,
+    expiryReminderJob,
     chargingJob
     // invoiceReminderJob, // Thêm jobs khác ở đây
   };

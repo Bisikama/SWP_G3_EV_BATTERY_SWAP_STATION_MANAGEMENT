@@ -84,9 +84,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true
       },
       status: {
-        type: DataTypes.ENUM('active', 'inactive'),
+        type: DataTypes.ENUM('active', 'inactive', 'reminded'),
         allowNull: false,
-        defaultValue: 'inactive'
+        defaultValue: 'inactive',
+        comment: 'active: đang hoạt động, inactive: hết hạn chưa nhắc, reminded: hết hạn đã nhắc'
       },
       swap_count: {
         type: DataTypes.INTEGER,
