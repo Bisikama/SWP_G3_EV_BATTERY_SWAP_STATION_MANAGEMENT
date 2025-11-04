@@ -1,31 +1,44 @@
 const db = require('../models');
 const ApiError = require('../utils/ApiError');
+const paginate = require('../utils/paginate');
 
-async function findAll() {
-  return db.Shift.findAll();
+async function findAll(filters = {}, page = 1, pageSize = 10) {
+  const options = {
+    include: [
+      { model: db.Station, as: 'station' },
+      { model: db.Account, as: 'staff',
+        attributes: { 
+          exclude: ['password_hash', 'citizen_id', 'driving_license'] 
+        },
+      }
+    ],
+    order: [['start_time', 'DESC']]
+  };
+
+  return paginate(db.Shift, filters, { ...options, page, pageSize });
 }
 
 async function findById(id) {
-  return db.Shift.findByPk(id);
-}
-
-async function findByStaff(staff_id) {
-  return db.Shift.findAll({
-    where: {
-      staff_id
-    }
+  return db.Shift.findByPk(id, {
+    include: [
+      { model: db.Station, as: 'station' },
+      { model: db.Account, as: 'staff',
+        attributes: { exclude: ['password_hash', 'citizen_id', 'driving_license'] },
+      }
+    ]
   });
 }
 
-async function findCurrent(staff_id) {
+async function findCurrentShift({ staff_id, station_id } = {}) {
   const now = new Date();
-  return db.Shift.findOne({
-    where: {
-      staff_id,
-      start_time: { [db.Sequelize.Op.lte]: now },
-      end_time: { [db.Sequelize.Op.gte]: now }
-    }
-  });
+  const filters = {
+    start_time: { [db.Sequelize.Op.lte]: now },
+    end_time: { [db.Sequelize.Op.gte]: now }
+  }
+  if (staff_id) filters.staff_id = staff_id;
+  if (station_id) filters.station_id = station_id;
+
+  return findAll(filters);
 }
 
 async function createShift(user, data) {
@@ -125,4 +138,4 @@ async function removeShift(user, id) {
   return shift;
 }
 
-module.exports = { findAll, findById, findByStaff, findCurrent, createShift, updateShift, removeShift };
+module.exports = { findAll, findById, findCurrentShift, createShift, updateShift, removeShift };
