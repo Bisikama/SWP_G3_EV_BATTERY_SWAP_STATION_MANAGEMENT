@@ -87,7 +87,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/support-ticket:
+ * /api/support-tickets:
  *   get:
  *     summary: Get all support tickets
  *     tags: [SupportTickets]
@@ -104,7 +104,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/support-ticket/{id}:
+ * /api/support-tickets/{id}:
  *   get:
  *     summary: Get support ticket by ID
  *     tags: [SupportTickets]
@@ -129,7 +129,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/support-ticket/creator/{id}:
+ * /api/support-tickets/creator/{id}:
  *   get:
  *     summary: Get all support tickets created by a driver
  *     tags: [SupportTickets]
@@ -156,7 +156,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/support-ticket/resolver/{id}:
+ * /api/support-tickets/resolver/{id}:
  *   get:
  *     summary: Get all support tickets assigned to an admin
  *     tags: [SupportTickets]
@@ -183,7 +183,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/support-ticket:
+ * /api/support-tickets:
  *   post:
  *     summary: Create a new support ticket
  *     tags: [SupportTickets]
@@ -221,7 +221,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/support-ticket/{id}/resolve:
+ * /api/support-tickets/{id}/resolve:
  *   put:
  *     summary: Resolve a pending support ticket (admin only)
  *     tags: [SupportTickets]

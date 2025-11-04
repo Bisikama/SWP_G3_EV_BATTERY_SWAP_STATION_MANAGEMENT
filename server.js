@@ -41,7 +41,7 @@ app.use('/api/battery-type', batteryTypeRoutes);
 app.use('/api/vehicle-model', vehicleModelRoutes);
 app.use('/api/subscription-plan', subscriptionPlanRoutes);
 app.use('/api/stations', stationRoutes);
-app.use('/api/support-ticket', supportTicketsRoutes);
+app.use('/api/support-tickets', supportTicketsRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/payment', paymentRoutes);
