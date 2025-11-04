@@ -296,7 +296,7 @@ router.post('/create-from-subscription',verifyToken, invoiceController.createInv
  *                   example: An error occurred while fetching invoices
  */
 // Lấy tất cả invoices (optional - để test)
-router.get('/', verifyToken, invoiceController.getAllInvoices);
+router.get('/', verifyToken, authorizeRole('admin'), invoiceController.getAllInvoices);
 
 /**
  * @swagger
