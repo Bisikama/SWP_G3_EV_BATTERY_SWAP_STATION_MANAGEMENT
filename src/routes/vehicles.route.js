@@ -1,13 +1,23 @@
-// ========================================
-// VEHICLES ROUTES
-// ========================================
-// File: src/routes/vehicles.route.js
-// Mục đích: Định nghĩa routes cho vehicle operations
-// Base path: /api/vehicles
-// ========================================
+/**
+ * Vehicles Routes
+ * 
+ * Route definitions for vehicle management operations.
+ * Base path: /api/vehicles
+ * 
+ * Routes:
+ *   POST   /                      - Register new vehicle (auth required)
+ *   GET    /                      - Get driver's vehicles (auth required)
+ *   GET    /user/:userId          - Get vehicles by user ID (public, for kiosk)
+ *   GET    /vin/:vin              - Get vehicle by VIN (public)
+ *   GET    /without-batteries     - Get vehicles without batteries (auth required)
+ *   GET    /:id                   - Get vehicle by ID (auth required)
+ *   PUT    /:id                   - Update vehicle (auth required)
+ *   DELETE /:id                   - Delete vehicle (auth required)
+ */
 
 const express = require('express');
 const router = express.Router();
+
 const vehicleController = require('../controllers/vehicle.controller');
 const { verifyToken } = require('../middlewares/verifyTokens');
 const vehicleValidation = require('../validations/vehicle.validation');
@@ -210,13 +220,13 @@ router.get('/vin/:vin',
  * /api/vehicles/without-batteries:
  *   get:
  *     tags: [Vehicle]
- *     summary: Lấy danh sách xe chưa có pin
- *     description: Lấy danh sách vehicle_id và account_id của những xe chưa có pin nào trong battery
+ *     summary: Get vehicles without batteries
+ *     description: Returns list of vehicle_id and account_id for vehicles that have no batteries assigned
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lấy dữ liệu thành công
+ *         description: Data retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -405,4 +415,3 @@ router.delete('/:id',
 );
 
 module.exports = router;
-
