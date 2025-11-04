@@ -15,14 +15,25 @@ const { validate } = require('../middlewares/validateHandler');
  * @swagger
  * /api/cabinets:
  *   get:
- *     summary: Get all cabinets
+ *     summary: Get all cabinets (supports pagination)
  *     tags: [Cabinets]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number (default 1)
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page (default 10)
  *     responses:
  *       200:
  *         description: List of cabinets
  */
-router.get(
-  '/',
+router.get('/',
+  validate(cabinetValidator.findAll),
   cabinetController.findAll
 );
 
@@ -44,8 +55,7 @@ router.get(
  *       404:
  *         description: Cabinet not found
  */
-router.get(
-  '/:id',
+router.get('/:id',
   validate(cabinetValidator.findById),
   cabinetController.findById
 );
@@ -54,7 +64,7 @@ router.get(
  * @swagger
  * /api/cabinets/station/{station_id}:
  *   get:
- *     summary: Get all cabinets by station
+ *     summary: Get all cabinets by station (supports pagination)
  *     tags: [Cabinets]
  *     parameters:
  *       - in: path
@@ -62,47 +72,34 @@ router.get(
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number (default 1)
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page (default 10)
  *     responses:
  *       200:
  *         description: List of cabinets
  */
-router.get(
-  '/station/:station_id',
+router.get('/station/:station_id',
   validate(cabinetValidator.findByStation),
   cabinetController.findByStation
 );
 
 /**
  * @swagger
- * /api/cabinets/{cabinet_id}/empty-slots:
- *   get:
- *     summary: Get empty slots in a cabinet
- *     tags: [Cabinets]
- *     parameters:
- *       - in: path
- *         name: cabinet_id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: List of empty slots
- */
-router.get(
-  '/:cabinet_id/empty-slots',
-  validate(cabinetValidator.findEmptySlot),
-  cabinetController.findEmptySlot
-);
-
-/**
- * @swagger
- * /api/cabinets/{cabinet_id}/charge-full:
+ * /api/cabinets/{id}/charge-full:
  *   put:
  *     summary: Charge all batteries in a cabinet to full (simulation)
  *     tags: [Cabinets]
  *     parameters:
  *       - in: path
- *         name: cabinet_id
+ *         name: id
  *         required: true
  *         schema:
  *           type: integer
@@ -110,8 +107,7 @@ router.get(
  *       200:
  *         description: Batteries charged to full
  */
-router.put(
-  '/:cabinet_id/charge-full',
+router.put('/:id/charge-full',
   validate(cabinetValidator.chargeFull),
   cabinetController.chargeFull
 );
