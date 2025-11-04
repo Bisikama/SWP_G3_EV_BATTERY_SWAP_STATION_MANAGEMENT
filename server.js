@@ -39,7 +39,7 @@ app.use('/api/batteries', batteryRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/battery-type', batteryTypeRoutes);
 app.use('/api/vehicle-model', vehicleModelRoutes);
-app.use('/api/subscription-plan', subscriptionPlanRoutes);
+app.use('/api/subscription-plans', subscriptionPlanRoutes);
 app.use('/api/stations', stationRoutes);
 app.use('/api/support-tickets', supportTicketsRoutes);
 app.use('/api/shifts', shiftRoutes);

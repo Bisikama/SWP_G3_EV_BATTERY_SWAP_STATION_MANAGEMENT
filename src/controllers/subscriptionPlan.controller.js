@@ -32,10 +32,4 @@ async function updateStatus(req, res) {
 	return res.status(200).json({ success: true, payload: { subscriptionPlan: updated } });
 }
 
-async function remove(req, res) {
-	const { id } = req.params;
-	await subscriptionPlanService.deleteSubscriptionPlan(req.user, id);
-	return res.status(200).json({ success: true });
-}
-
-module.exports = { findAll, findById, create, update, updateStatus, remove };
+module.exports = { findAll, findById, create, update, updateStatus };

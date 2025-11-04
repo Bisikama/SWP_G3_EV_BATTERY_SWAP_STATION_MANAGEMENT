@@ -35,13 +35,6 @@ router.put('/:id/status',
 	subscriptionPlanController.updateStatus
 );
 
-router.delete('/:id',
-	verifyToken,
-	authorizeRole('admin'),
-	validate(subscriptionPlanValidator.remove),
-	subscriptionPlanController.remove
-);
-
 module.exports = router;
 
 /**
@@ -164,7 +157,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/subscription-plan:
+ * /api/subscription-plans:
  *   get:
  *     tags: [Subscription Plans]
  *     summary: Get all subscription plans
@@ -209,7 +202,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/subscription-plan/{id}:
+ * /api/subscription-plans/{id}:
  *   get:
  *     tags: [Subscription Plans]
  *     summary: Get a subscription plan by ID
@@ -262,30 +255,7 @@ module.exports = router;
  *                   type: boolean
  *                 payload:
  *                   $ref: '#/components/schemas/SubscriptionPlan'
- *   delete:
- *     tags: [Subscription Plans]
- *     summary: Delete a subscription plan
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Subscription plan deleted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 payload:
- *                   $ref: '#/components/schemas/SubscriptionPlan'
- * /api/subscription-plan/{id}/status:
+ * /api/subscription-plans/{id}/status:
  *   put:
  *     tags: [Subscription Plans]
  *     summary: Toggle subscription plan status
