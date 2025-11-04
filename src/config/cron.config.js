@@ -39,19 +39,23 @@ function startCronJobs() {
   console.log('   ⏰ Schedule: Every 5 minutes');
   console.log('   📝 Description: Auto-cancel bookings with scheduled_time < now and status = pending');
   
+  const chargingJob = cron.schedule('*/1 * * * *', () => {
+    const durationMinutes = 1;
+    autoCharge(durationMinutes);
+  }, {
+    scheduled: true,
+    timezone: "Asia/Ho_Chi_Minh"
+  });
+
+  console.log('✅ Cron Job Started: Simulate Battery Charging');
+  console.log('   ⏰ Schedule: Every 1 minutes');
+  console.log('   📝 Description: Auto-charge batteries inside cabinets at all stations');
+
   // ℹ️ Có thể thêm các cron jobs khác ở đây
   // Ví dụ:
   // const invoiceReminderJob = cron.schedule('0 9 * * *', () => {
   //   sendInvoiceReminders();
   // });
-
-  const chargingJob = cron.schedule('*/5 * * * *', () => {
-    const durationHours = 5 / 60;
-    autoCharge(durationHours);
-  }, {
-    scheduled: true,
-    timezone: "Asia/Ho_Chi_Minh"
-  });
   
   console.log('✅ ========== ALL CRON JOBS INITIALIZED ==========\n');
   
