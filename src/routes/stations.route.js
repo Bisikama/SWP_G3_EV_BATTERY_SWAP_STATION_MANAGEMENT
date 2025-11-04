@@ -121,7 +121,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/station:
+ * /api/stations:
  *   get:
  *     tags: [Stations]
  *     summary: Get all stations
@@ -147,7 +147,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/station/{id}:
+ * /api/stations/{id}:
  *   get:
  *     tags: [Stations]
  *     summary: Get a station by ID
@@ -182,7 +182,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/station:
+ * /api/stations:
  *   post:
  *     tags: [Stations]
  *     summary: Create a new station
@@ -220,7 +220,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/station/{id}:
+ * /api/stations/{id}:
  *   put:
  *     tags: [Stations]
  *     summary: Update a station
@@ -267,7 +267,7 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/station/{id}/status:
+ * /api/stations/{id}/status:
  *   put:
  *     tags: [Stations]
  *     summary: Update station status
