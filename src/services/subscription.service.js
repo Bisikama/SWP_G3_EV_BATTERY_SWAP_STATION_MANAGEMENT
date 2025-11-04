@@ -72,8 +72,9 @@ async function cancelSubscription(user, subscription_id) {
   if (!subscription) throw new ApiError(404, 'Subscription not found');
   if (subscription.driver_id !== user.account_id) throw new ApiError(403, 'You are not authorized to cancel this subscription');
 
-  if (subscription.status === 'inactive') 
-    throw new ApiError(400, 'This subscription is already inactive and cannot be cancelled');
+  // Check nếu subscription không còn active (inactive hoặc reminded)
+  if (subscription.status !== 'active') 
+    throw new ApiError(400, 'This subscription is not active and cannot be cancelled');
   if (subscription.cancel_time) 
     throw new ApiError(400, 'Subscription is already cancelled');
   subscription.cancel_time = new Date();
