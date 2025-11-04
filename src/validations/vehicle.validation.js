@@ -1,16 +1,27 @@
-// ========================================
-// VEHICLE VALIDATION
-// ========================================
-// File: src/validations/vehicle.validation.js
-// Mục đích: Validation schemas cho vehicle operations
-// Sử dụng express-validator để validate input
-// ========================================
+/**
+ * Vehicle Validation
+ * 
+ * Request validation schemas for vehicle operations.
+ * Uses express-validator to validate and sanitize input data.
+ * 
+ * Validation rules:
+ *   - register: Validate new vehicle registration data
+ *   - update: Validate vehicle update data
+ *   - findById: Validate vehicle ID parameter
+ *   - findByVin: Validate VIN parameter
+ *   - findByUserId: Validate user ID parameter
+ */
 
 const { body, param } = require('express-validator');
 
 /**
- * Validation cho việc đăng ký xe mới
+ * Register Vehicle Validation
  * POST /api/vehicles
+ * 
+ * Validates:
+ *   - vin: 17 characters, valid VIN format
+ *   - model_id: Positive integer
+ *   - license_plate: Vietnam motorcycle format
  */
 const register = [
   body('vin')
@@ -33,8 +44,14 @@ const register = [
 ];
 
 /**
- * Validation cho việc cập nhật xe
+ * Update Vehicle Validation
  * PUT /api/vehicles/:id
+ * 
+ * Validates:
+ *   - id: Valid UUID
+ *   - license_plate: Optional, Vietnam motorcycle format
+ *   - model_id: Optional, positive integer
+ *   - At least one field must be provided
  */
 const update = [
   param('id')
@@ -53,7 +70,6 @@ const update = [
     .optional()
     .isInt({ gt: 0 }).withMessage('Model ID must be a positive integer'),
 
-  // Đảm bảo ít nhất 1 field được cung cấp
   body().custom((value, { req }) => {
     if (!req.body.license_plate && !req.body.model_id) {
       throw new Error('At least one field (license_plate or model_id) must be provided');
@@ -63,9 +79,12 @@ const update = [
 ];
 
 /**
- * Validation cho tham số ID trong URL
+ * Find By ID Validation
  * DELETE /api/vehicles/:id
  * GET /api/vehicles/:id
+ * 
+ * Validates:
+ *   - id: Valid UUID
  */
 const findById = [
   param('id')
@@ -74,8 +93,11 @@ const findById = [
 ];
 
 /**
- * Validation cho tham số VIN trong URL
+ * Find By VIN Validation
  * GET /api/vehicles/vin/:vin
+ * 
+ * Validates:
+ *   - vin: 17 characters, valid VIN format
  */
 const findByVin = [
   param('vin')
@@ -86,8 +108,11 @@ const findByVin = [
 ];
 
 /**
- * Validation cho tham số User ID trong URL
+ * Find By User ID Validation
  * GET /api/vehicles/user/:userId
+ * 
+ * Validates:
+ *   - userId: Valid UUID
  */
 const findByUserId = [
   param('userId')

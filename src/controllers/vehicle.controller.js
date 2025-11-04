@@ -1,30 +1,28 @@
-// ========================================
-// VEHICLE CONTROLLER
-// ========================================
-// File: src/controllers/vehicle.controller.js
-// Mục đích: HTTP request/response handler cho vehicle operations
-// 
-// Thin controller - chỉ xử lý:
-// 1. Extract data từ request (body, params, user)
-// 2. Call service methods
-// 3. Format và return response
-// 4. Error handling được xử lý tự động bởi asyncHandler
-// 
-// Business logic nằm trong vehicle.service.js
-// ========================================
+/**
+ * Vehicle Controller
+ * 
+ * HTTP request/response handlers for vehicle operations.
+ * This is a thin controller that:
+ *   - Extracts data from request (body, params, query, user)
+ *   - Calls appropriate service methods
+ *   - Formats and returns HTTP responses
+ * 
+ * Business logic is handled in vehicle.service.js
+ * Error handling is automatic via asyncHandler middleware
+ */
 
 'use strict';
+
 const vehicleService = require('../services/vehicle.service');
 const asyncHandler = require('../middlewares/asyncHandler');
 
 /**
- * ========================================
- * REGISTER VEHICLE
- * ========================================
+ * Register Vehicle
  * POST /api/vehicles
  * 
- * @description Đăng ký xe mới cho driver
- * @access Private (driver only)
+ * Registers a new vehicle for the authenticated driver.
+ * 
+ * Access: Private (driver only)
  */
 const registerVehicle = asyncHandler(async (req, res) => {
   const { vin, model_id, license_plate } = req.body;
@@ -42,16 +40,14 @@ const registerVehicle = asyncHandler(async (req, res) => {
   });
 });
 
-
 /**
- * ========================================
- * GET MY VEHICLES
- * ========================================
+ * Get My Vehicles
  * GET /api/vehicles?status=active|inactive|all
  * 
- * @description Lấy danh sách xe của driver đang đăng nhập
- * @query status - Filter by status (default: 'active')
- * @access Private
+ * Retrieves all vehicles owned by the authenticated driver.
+ * Optional status filter via query parameter.
+ * 
+ * Access: Private
  */
 const getMyVehicles = asyncHandler(async (req, res) => {
   const driver_id = req.user.account_id;
@@ -66,15 +62,14 @@ const getMyVehicles = asyncHandler(async (req, res) => {
   });
 });
 
-
 /**
- * ========================================
- * GET VEHICLE BY VIN
- * ========================================
+ * Get Vehicle by VIN
  * GET /api/vehicles/vin/:vin
  * 
- * @description Tra cứu xe theo VIN (public endpoint)
- * @access Public
+ * Looks up a vehicle by its VIN number.
+ * Returns vehicle info including model and owner details.
+ * 
+ * Access: Public
  */
 const getVehicleByVin = asyncHandler(async (req, res) => {
   const { vin } = req.params;
@@ -88,13 +83,12 @@ const getVehicleByVin = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * GET VEHICLE BY ID
- * ========================================
+ * Get Vehicle by ID
  * GET /api/vehicles/:id
  * 
- * @description Lấy thông tin xe theo ID
- * @access Private
+ * Retrieves vehicle information by vehicle ID.
+ * 
+ * Access: Private
  */
 const getVehicleById = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -108,13 +102,13 @@ const getVehicleById = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * UPDATE VEHICLE
- * ========================================
+ * Update Vehicle
  * PUT /api/vehicles/:id
  * 
- * @description Cập nhật thông tin xe
- * @access Private (owner only)
+ * Updates vehicle information (license plate or model).
+ * Only the vehicle owner can update.
+ * 
+ * Access: Private (owner only)
  */
 const updateVehicle = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -133,13 +127,13 @@ const updateVehicle = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * DELETE VEHICLE
- * ========================================
+ * Delete Vehicle
  * DELETE /api/vehicles/:id
  * 
- * @description Xóa xe
- * @access Private (owner only)
+ * Soft deletes a vehicle by setting status to inactive.
+ * Only the vehicle owner can delete.
+ * 
+ * Access: Private (owner only)
  */
 const deleteVehicle = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -154,13 +148,13 @@ const deleteVehicle = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * GET VEHICLES WITHOUT BATTERIES (IDs only)
- * ========================================
+ * Get Vehicles Without Batteries
  * GET /api/vehicles/without-batteries
  * 
- * @description Lấy danh sách vehicle_id và account_id của xe chưa có pin
- * @access Private
+ * Returns list of vehicle IDs and account IDs for vehicles
+ * that don't have any batteries assigned yet.
+ * 
+ * Access: Private
  */
 const getVehiclesWithoutBatteries = asyncHandler(async (req, res) => {
   const vehicles = await vehicleService.getVehiclesWithoutBatteries();
@@ -168,24 +162,25 @@ const getVehiclesWithoutBatteries = asyncHandler(async (req, res) => {
   return res.status(200).json({
     message: 'Vehicles without batteries retrieved successfully',
     count: vehicles.length,
-    vehicles: vehicles
+    vehicles
   });
 });
 
 /**
- * ========================================
- * GET VEHICLES BY USER ID (KIOSK - NO AUTH)
- * ========================================
+ * Get Vehicles by User ID
  * GET /api/vehicles/user/:userId
  * 
- * @description Lấy danh sách xe của user (dành cho kiosk - không cần token)
- * @access Public
+ * Retrieves all active vehicles for a specific user.
+ * Used by kiosk systems - no authentication required.
+ * 
+ * Access: Public
  */
 const getVehiclesByUserId = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  // Gọi service để lấy vehicles (chỉ active)
-  const vehicles = await vehicleService.getVehiclesByDriver(userId, { status: 'active' });
+  const vehicles = await vehicleService.getVehiclesByDriver(userId, { 
+    status: 'active' 
+  });
 
   return res.status(200).json({
     message: vehicles.length > 0 
@@ -196,9 +191,6 @@ const getVehiclesByUserId = asyncHandler(async (req, res) => {
   });
 });
 
-// ========================================
-// EXPORTS
-// ========================================
 module.exports = {
   registerVehicle,
   getMyVehicles,
