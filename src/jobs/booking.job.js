@@ -5,10 +5,10 @@ const { Op } = require('sequelize');
  * ========================================
  * CRON JOB: AUTO-CANCEL EXPIRED BOOKINGS
  * ========================================
- * Tự động hủy các booking đã quá scheduled_time mà vẫn còn pending
+ * Tự động hủy các booking đã quá expired_time mà vẫn còn pending
  * 
  * Chạy: Mỗi 5 phút
- * Logic: Nếu booking.status = 'pending' && now > scheduled_time → status = 'cancelled'
+ * Logic: Nếu booking.status = 'pending' && now > expired_time → status = 'cancelled'
  */
 async function cancelExpiredBookings() {
   try {
@@ -16,16 +16,16 @@ async function cancelExpiredBookings() {
     
     console.log('\n🔄 ========== CRON JOB: Cancel Expired Bookings ==========');
     console.log(`⏰ Running at: ${now.toLocaleString('vi-VN')}`);
-    console.log(`📅 Checking bookings with scheduled_time < ${now.toISOString()}`);
+    console.log(`📅 Checking bookings with expired_time < ${now.toISOString()}`);
     
     // Tìm tất cả booking có:
     // - status = 'pending'
-    // - scheduled_time < now (đã quá hạn)
+    // - expired_time < now (đã quá hạn)
     const expiredBookings = await Booking.findAll({
       where: {
         status: 'pending',
-        scheduled_time: {
-          [Op.lt]: now // scheduled_time < now
+        expired_time: {
+          [Op.lt]: now // expired_time < now
         }
       }
     });
@@ -49,24 +49,25 @@ async function cancelExpiredBookings() {
         // 1. Update booking status to cancelled
         await booking.update({ status: 'cancelled' });
 
-        // 2. Unlock cabinet slots based on battery SOC
+        // 2. Unlock cabinet slots: booked → occupied (if SOH > 70%) or locked (if SOH ≤ 70%)
         const bookingBatteries = await BookingBattery.findAll({
           where: { booking_id: booking.booking_id },
           include: [{
             model: Battery,
             as: 'battery',
-            attributes: ['battery_id', 'slot_id', 'current_soc'],
+            attributes: ['battery_id', 'slot_id', 'current_soc', 'current_soh'],
             where: {
               slot_id: { [Op.not]: null } // Only batteries in cabinet slots
             }
           }]
         });
 
-        // Update cabinet slot status based on SOC
+        // Update cabinet slot status based on battery SOH
         for (const bb of bookingBatteries) {
           const battery = bb.battery;
           if (battery && battery.slot_id) {
-            const newStatus = battery.current_soc >= 100 ? 'charged' : 'charging';
+            // Logic: SOH > 70% → 'occupied' (sẵn sàng), SOH ≤ 70% → 'locked' (không cho booking)
+            const newStatus = battery.current_soh > 70 ? 'occupied' : 'locked';
             await CabinetSlot.update(
               { status: newStatus },
               { where: { slot_id: battery.slot_id } }
@@ -77,7 +78,7 @@ async function cancelExpiredBookings() {
         console.log(`   ✅ Booking ID: ${booking.booking_id}`);
         console.log(`      Driver: ${booking.driver_id}`);
         console.log(`      Vehicle: ${booking.vehicle_id}`);
-        console.log(`      Scheduled Time: ${booking.scheduled_time.toLocaleString('vi-VN')}`);
+        console.log(`      Expired Time: ${booking.expired_time.toLocaleString('vi-VN')}`);
         console.log(`      Unlocked ${bookingBatteries.length} cabinet slot(s)`);
 
         successCount++;

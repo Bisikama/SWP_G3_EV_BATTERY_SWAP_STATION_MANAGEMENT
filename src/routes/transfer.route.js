@@ -32,6 +32,13 @@ router.post('/:transfer_request_id/approve',
     transferController.approve
 );
 
+router.post('/create',
+    verifyToken,
+    authorizeRole('admin'),
+    validate(transferValidator.create),
+    transferController.create
+)
+
 router.post('/:transfer_request_id/reject',
     verifyToken,
     authorizeRole('admin'),
@@ -227,6 +234,71 @@ module.exports = router;
  *                   properties:
  *                     transferRequest:
  *                       $ref: '#/components/schemas/TransferRequest'
+ * 
+ * /api/transfers/create:
+ *   post:
+ *     tags: [Transfers]
+ *     summary: Admin directly creates transfer orders (without a transfer request)
+ *     description: Creates one or multiple transfer orders directly. `transfer_request_id` will be null.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - transfer_orders
+ *             properties:
+ *               transfer_orders:
+ *                 type: array
+ *                 description: List of transfer orders to create
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - source_station_id
+ *                     - target_station_id
+ *                     - transfer_quantity
+ *                   properties:
+ *                     source_station_id:
+ *                       type: integer
+ *                       example: 2
+ *                     target_station_id:
+ *                       type: integer
+ *                       example: 1
+ *                     transfer_quantity:
+ *                       type: integer
+ *                       example: 5
+ *     responses:
+ *       201:
+ *         description: Transfer orders created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Transfer orders created successfully
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     orders:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           order:
+ *                             $ref: '#/components/schemas/TransferOrder'
+ *                           transfer_battery_ids:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                               format: uuid
  *
  * /api/transfers/{transfer_request_id}/approve:
  *   post:

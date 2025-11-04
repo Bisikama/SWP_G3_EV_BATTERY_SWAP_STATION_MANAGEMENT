@@ -37,6 +37,23 @@ const approve = [
     .isInt({ min: 1 }).withMessage('transfer_quantity must be a positive integer'),
 ];
 
+const create = [
+  body('transfer_orders')
+    .isArray({ min: 1 }).withMessage('transfer_orders must be a non-empty array'),
+
+  body('transfer_orders.*.source_station_id')
+    .notEmpty().withMessage('source_station_id is required for each transfer order')
+    .isInt({ min: 1 }).withMessage('source_station_id must be a positive integer'),
+
+  body('transfer_orders.*.target_station_id')
+    .notEmpty().withMessage('target_station_id is required for each transfer order')
+    .isInt({ min: 1 }).withMessage('target_station_id must be a positive integer'),
+
+  body('transfer_orders.*.transfer_quantity')
+    .notEmpty().withMessage('transfer_quantity is required for each transfer order')
+    .isInt({ min: 1 }).withMessage('transfer_quantity must be a positive integer'),
+];
+
 const confirm = [
   param('transfer_order_id')
     .notEmpty().withMessage('transfer_order_id is required')
@@ -59,6 +76,7 @@ module.exports = {
   findById,
   request,
   approve,
+  create,
   confirm,
   reject,
   cancel,

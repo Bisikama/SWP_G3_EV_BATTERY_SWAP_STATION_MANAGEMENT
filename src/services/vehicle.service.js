@@ -64,6 +64,21 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
   }
 
   // ========================================
+  // STEP 2.5: CHECK REQUIRED DOCUMENTS
+  // ========================================
+  // Driver must have citizen_id and driving_license to register vehicle
+  if (!driver.citizen_id || !driver.driving_license) {
+    const missingFields = [];
+    if (!driver.citizen_id) missingFields.push('citizen_id');
+    if (!driver.driving_license) missingFields.push('driving_license');
+    
+    const err = new Error(`Driver must have ${missingFields.join(' and ')} to register vehicle`);
+    err.status = 403;
+    err.missingFields = missingFields;
+    throw err;
+  }
+
+  // ========================================
   // STEP 3: CHECK VIN EXISTENCE
   // ========================================
   const existingVin = await Vehicle.findOne({ 

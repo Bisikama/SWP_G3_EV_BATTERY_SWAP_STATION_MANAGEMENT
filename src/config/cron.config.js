@@ -37,7 +37,7 @@ function startCronJobs() {
   
   console.log('✅ Cron Job Started: Cancel Expired Bookings');
   console.log('   ⏰ Schedule: Every 5 minutes');
-  console.log('   📝 Description: Auto-cancel bookings with scheduled_time < now and status = pending');
+  console.log('   📝 Description: Auto-cancel bookings with expired_time < now and status = pending');
   
   // ✅ Cron Job 3: Gửi email nhắc nhở gia hạn gói
   // Schedule: Chạy mỗi sáng lúc 08:00

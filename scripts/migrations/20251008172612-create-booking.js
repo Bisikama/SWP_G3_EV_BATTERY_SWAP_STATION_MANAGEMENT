@@ -43,7 +43,7 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.NOW
       },
-      scheduled_time: {
+      expired_time: {
         type: Sequelize.DATE,
         allowNull: false
       },

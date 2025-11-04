@@ -98,7 +98,8 @@ function analyzeSwap({ startDate, endDate, groupDate } = {}) {
       attributes: [
         [col('station.station_id'), 'station_id'],
         [col('station.station_name'), 'station_name'],
-        [fn('COUNT', col('SwapRecord.swap_id')), 'totalSwaps']
+        [fn('COUNT', col('SwapRecord.swap_id')), 'totalSwaps'],
+        [fn('COUNT', fn('DISTINCT', col('SwapRecord.driver_id'))), 'totalUsers'],
       ],
       include: [
         { model: db.Station, as: 'station', attributes: [] }
@@ -120,6 +121,7 @@ function analyzeSubscription({ startDate, endDate, groupDate } = {}) {
         [col('plan.plan_id'), 'plan_id'],
         [col('plan.plan_name'), 'plan_name'],
         [fn('COUNT', col('subscription_id')), 'totalSubscriptions'],
+        [fn('SUM', literal('"invoice"."plan_fee" + "invoice"."total_swap_fee" + "invoice"."total_penalty_fee"')), 'totalPaidFee'],
         [fn('SUM', col('soh_usage')), 'totalSohUsage'],
         [fn('AVG', col('soh_usage')), 'avgSohUsage'],
         [fn('SUM', col('swap_count')), 'totalSwapCount'],
@@ -127,7 +129,8 @@ function analyzeSubscription({ startDate, endDate, groupDate } = {}) {
         [fn('COUNT', literal(`CASE WHEN status = 'inactive' THEN 1 END`)), 'inactiveSubscriptions']
       ],
       include: [
-        { model: db.SubscriptionPlan, as: 'plan', attributes: [] }
+        { model: db.SubscriptionPlan, as: 'plan', attributes: [] },
+        { model: db.Invoice, as: 'invoice', attributes: [] }
       ],
       group: ['plan.plan_id', 'plan.plan_name']
     }
