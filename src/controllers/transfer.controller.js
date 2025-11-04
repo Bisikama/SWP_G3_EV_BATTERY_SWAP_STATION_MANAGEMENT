@@ -22,8 +22,14 @@ async function request(req, res) {
 async function approve(req, res) {
 	const { transfer_request_id } = req.params;
 	const { transfer_orders } = req.body;
-	const transfer = await transferService.approveTransfer(req.user, transfer_request_id, transfer_orders);
+	const transfer = await transferService.approveTransfer(req.user, transfer_orders, transfer_request_id);
 	return res.status(200).json({ success: true, payload: { transfer } });
+}
+
+async function create(req, res) {
+  const { transfer_orders } = req.body;
+  const orders = await transferService.createTransfer(transfer_orders);
+  return res.status(201).json({ success: true, payload: { orders } });
 }
 
 async function reject(req, res) {
@@ -44,4 +50,4 @@ async function cancel(req, res) {
 	return res.status(200).json({ success: true, payload: { transferRequest } });
 }
 
-module.exports = { findAll, findById, request, approve, reject, confirm, cancel };
+module.exports = { findAll, findById, request, approve, create, reject, confirm, cancel };

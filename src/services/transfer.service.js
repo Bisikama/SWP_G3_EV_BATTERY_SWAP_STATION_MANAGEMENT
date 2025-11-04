@@ -26,15 +26,19 @@ async function requestTransfer(user, request_quantity, notes) {
       end_time: { [db.Sequelize.Op.gte]: now },
     },
   });
-  if (!activeShift) throw new ApiError(400, "You do not have any active shift at this current time");
-  
+  if (!activeShift) {
+    throw new ApiError(400, "You do not have any active shift at this current time");
+  }
+
   const pendingRequest = await db.TransferRequest.findOne({
     where: {
-      staff_id: user.account_id,
+      station_id: activeShift.station_id,
       status: 'requested'
     }
   });
-  if (pendingRequest) throw new ApiError(400, "You have already requested a transfer order");
+  if (pendingRequest) {
+    throw new ApiError(400, "There is still a pending transfer request at this station");
+  }
 
   return db.TransferRequest.create({
     station_id: activeShift.station_id,
@@ -45,33 +49,54 @@ async function requestTransfer(user, request_quantity, notes) {
   });
 }
 
-async function approveTransfer(user, transfer_request_id, transfer_orders) {
+async function approveTransfer(user, transfer_orders, transfer_request_id) {
+  const request = await db.TransferRequest.findByPk(transfer_request_id);
+  if (!request) throw new ApiError(404, 'Transfer request not found.');
+  if (request.status !== 'requested') throw new ApiError(400, `Cannot approve a transfer request with status '${request.status}'`);
+
+  const totalTransferQuantity = transfer_orders.reduce((sum, d) => sum + d.transfer_quantity, 0);
+  if (totalTransferQuantity !== request.request_quantity) {
+    throw new ApiError(400, `Total transfer quantity (${totalTransferQuantity}) does not match requested quantity (${request.request_quantity}).`);
+  }
+
+  const orders = await createTransfer(transfer_orders, transfer_request_id);    
+
+  request.status = 'approved';
+  request.admin_id = user.account_id;
+  request.resolve_time = new Date();
+  await request.save();
+
+  return {
+    message: 'Transfer approved successfully.',
+    transfer_request: request,
+    transfer_orders: orders,
+  };
+}
+
+async function createTransfer(transfer_orders, transfer_request_id = null) {
   // transfer_orders = [
   //   { source_station_id: 2, target_station_id: 1, transfer_quantity: 4 },
   //   { source_station_id: 3, target_station_id: 1, transfer_quantity: 8 }
   // ]
 
-  // start a transaction
+  // start transaction
   const t = await db.sequelize.transaction();
 
   try {
-    const request = await db.TransferRequest.findByPk(transfer_request_id, { transaction: t });
-    if (!request) throw new ApiError(404, 'Transfer request not found.');
-    if (request.status !== 'requested') throw new ApiError(400, `Cannot approve a transfer request with status '${request.status}'`);
-
-    request.status = 'approved';
-    request.admin_id = user.account_id;
-    request.resolve_time = new Date();
-    await request.save({ transaction: t });
-
-    const totalTransferQuantity = transfer_orders.reduce((sum, d) => sum + d.transfer_quantity, 0);
-    if (totalTransferQuantity !== request.request_quantity) {
-      throw new ApiError(400, `Total transfer quantity (${totalTransferQuantity}) does not match requested quantity (${request.request_quantity}).`);
+    if (transfer_request_id !== null) {
+      const transferRequest = await db.TransferRequest.findByPk(transfer_request_id);
+      if (!transferRequest) {
+        throw new ApiError(404, "Transfer request not found");
+      }
     }
 
     const orders = [];
 
     for (const { source_station_id, target_station_id, transfer_quantity } of transfer_orders) {
+      if (source_station_id == target_station_id) {
+        throw new ApiError(400, `Source station (id:${source_station_id}) cannot be the same as Target station`)
+      }
+
       const availableBatteries = await db.Battery.findAll({
         include: [
           {
@@ -91,6 +116,7 @@ async function approveTransfer(user, transfer_request_id, transfer_orders) {
         ],
         where: {
           vehicle_id: null,
+          current_soc: { [db.Sequelize.Op.gte]: 90.00 }
         },
         order: [['current_soc', 'DESC']],
         limit: transfer_quantity,
@@ -126,14 +152,11 @@ async function approveTransfer(user, transfer_request_id, transfer_orders) {
     // commit a transaction
     await t.commit();
 
-    return {
-      message: 'Transfer approved successfully.',
-      transfer_request: request,
-      transfer_orders: orders,
-    };
+    return orders;
+
   } catch (err) {
     await t.rollback();
-    throw new ApiError(500, `Transfer approval transaction error: ${err.message}`)
+    throw new ApiError(500, `Transfer order transaction error: ${err.message}`)
   }
 }
 
@@ -203,12 +226,12 @@ async function cancelTransfer(user, transfer_request_id) {
   const transferReq = await db.TransferRequest.findByPk(transfer_request_id);
   if (!transferReq) throw new ApiError(404, 'Transfer request not found');
 
-  if (transferReq.staff_id !== user.account_id) {
-    throw new ApiError(403, 'Access denied: You can only cancel transfer request that you created');
+  if (transferReq.station_id != activeShift.station_id) {
+    throw new ApiError(400, 'You are not currently working at this station');
   }
 
   if (transferReq.status !== 'requested') {
-    throw new ApiError(400, 'Cannot cancel a transfer request unless it is still pending');
+    throw new ApiError(400, `Cannot cancel a transfer request with status '${request.status}'`);
   }
 
   transferReq.status = 'cancelled';
@@ -216,4 +239,4 @@ async function cancelTransfer(user, transfer_request_id) {
   return transferReq;
 }
 
-module.exports = { findAll, findById, requestTransfer, approveTransfer, rejectTransfer, confirmTransfer, cancelTransfer };
+module.exports = { findAll, findById, requestTransfer, approveTransfer, createTransfer, rejectTransfer, confirmTransfer, cancelTransfer };
