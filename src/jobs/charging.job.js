@@ -1,86 +1,87 @@
 const db = require('../models');
 const math = require('../utils/chargingMath');
 
-/**
- * Simulate charging for all batteries in all slots.
- * @param {number} durationMinutes - duration of this simulation step in minutes
- */
 async function autoCharge(durationMinutes) {
   try {
     console.log('\n🔄 ========== CRON JOB: Charging Simulation ==========');
     console.log(`⏰ Running at: ${new Date().toLocaleString('vi-VN')}`);
-    console.log(`📅 Simulating cabinet's charging behaviour every ${durationMinutes} minutes`);
+    console.log(`📅 Simulating cabinet charging every ${durationMinutes} minutes`);
 
-    // Convert minutes → hours for SOC calculation
     const durationHours = durationMinutes / 60;
 
-    // Fetch all batteries that are not empty
-    const batterySpecs = await db.Battery.findAll({
+    const cabinetSlots = await db.CabinetSlot.findAll({
       include: [
-        { model: db.BatteryType, as: 'batteryType' },
-        { model: db.CabinetSlot, as: 'cabinetSlot',
+        { model: db.Cabinet, as: 'cabinet' },
+        { model: db.Battery, as: 'battery',
           include: [
-            { model: db.Cabinet, as: 'cabinet' }
+            { model: db.BatteryType, as: 'batteryType' }
           ],
-					where: {
-						status: { [db.Sequelize.Op.notIn]: ['empty', 'locked'] }
-					}
         }
       ],
-			logging: false
+      logging: false
     });
 
-    for (const spec of batterySpecs) {
-      if (!spec.slot || !spec.slot.cabinet) continue; // skip if no slot/cabinet
+    await Promise.all(
+      cabinetSlots.map(async (slot) => {
+        if (!slot.battery || slot.status === 'empty') {
+          slot.current = 0;
+          slot.voltage = 0;
+          return slot.save({ logging: false });
+        }
 
-      const slotPower = math.calculateCabinetSlotPower(
-        spec.slot.cabinet.power_capacity_kw * 1000,
-        spec.slot.cabinet.battery_capacity
-      );
+        const { battery, cabinet } = slot;
+        const { batteryType } = battery;
 
-      const slotChargeCurrent = math.calculateCabinetSlotChargeCurrent(
-        slotPower,
-        spec.batteryType.nominal_voltage
-      );
+        // Power per slot (W)
+        const slotPower = math.calculateCabinetSlotPower(
+          cabinet.power_capacity_kw * 1000,
+          cabinet.battery_capacity
+        );
 
-      const icc = math.calculateICCCurrent(
-        slotChargeCurrent,
-        spec.batteryType.rated_charge_current
-      );
+        // Current if constant-current charging
+        const slotChargeCurrent = math.calculateCabinetSlotChargeCurrent(
+          slotPower,
+          batteryType.nominal_voltage
+        );
 
-      // Update SOC
-      spec.current_soc = math.estimateSOCTarget(
-        spec.current_soc,
-        spec.batteryType.nominal_capacity,
-        icc,
-        durationHours
-      );
+        // Limit current to battery's rated limit (ICC)
+        const icc = math.calculateICCCurrent(
+          slotChargeCurrent,
+          batteryType.rated_charge_current
+        );
 
-      // Update slot voltage & current if slot exists
-      spec.slot.voltage = math.estimateChargingVoltage(
-        spec.current_soc,
-        spec.batteryType.nominal_voltage,
-        spec.batteryType.max_voltage
-      );
+        // New SOC (ratio 0–1)
+        const newSocRatio = math.estimateSOCTarget(
+          battery.current_soc,
+          batteryType.nominal_capacity,
+          icc,
+          durationHours
+        );
 
-      spec.slot.current = math.estimateChargingCurrent(
-        spec.current_soc,
-        icc
-      );
+        // Save battery SOC in percentage
+        battery.current_soc = newSocRatio * 100;
 
-      // Save both asynchronously
-      await Promise.all([spec.save(), spec.slot.save()]);
-    }
+        // Slot voltage + current update
+        slot.voltage = math.estimateChargingVoltage(
+          newSocRatio,
+          batteryType.nominal_voltage,
+          batteryType.max_voltage
+        );
+        slot.current = math.estimateChargingCurrent(newSocRatio, icc);
 
-    console.log(`✅ Charging simulation completed for ${batterySpecs.length} batteries`);
+        return Promise.all([
+          battery.save({ fields: ['current_soc'], logging: false }),
+          slot.save({ fields: ['voltage', 'current'], logging: false })
+        ]);
+      })
+    );
+
+    console.log(`✅ Charging simulation completed for ${cabinetSlots.length} slots`);
   } catch (error) {
     console.error('\n❌ ========== CRON JOB ERROR ==========');
-    console.error('Error charging simulation:', error.message);
-    console.error('Stack:', error.stack);
+    console.error(error);
     console.error('==========================================\n');
   }
 }
 
-module.exports = {
-  autoCharge
-};
+module.exports = { autoCharge };

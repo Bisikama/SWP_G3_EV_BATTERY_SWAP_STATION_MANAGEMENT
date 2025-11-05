@@ -5,17 +5,32 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 const transferValidator = require('../validations/transfer.validation');
 const { validate } = require('../middlewares/validateHandler');
 
-router.get('/', 
+router.get('/request', 
     verifyToken,
     authorizeRole('admin', 'staff'),
-    transferController.findAll
+    validate(transferValidator.findAllRequest),
+    transferController.findAllRequest
 );
 
-router.get('/:id', 
+router.get('/order', 
     verifyToken,
     authorizeRole('admin', 'staff'),
-    validate(transferValidator.findById), 
-    transferController.findById
+    validate(transferValidator.findAllOrder),
+    transferController.findAllOrder
+);
+
+router.get('/request/:id', 
+    verifyToken,
+    authorizeRole('admin', 'staff'),
+    validate(transferValidator.findRequestById), 
+    transferController.findRequestById
+);
+
+router.get('/order/:id', 
+    verifyToken,
+    authorizeRole('admin', 'staff'),
+    validate(transferValidator.findOrderById), 
+    transferController.findOrderById
 );
 
 router.post('/request', 
@@ -66,11 +81,8 @@ module.exports = router;
  * @swagger
  * tags:
  *   - name: Transfers
- *     description: Manage battery transfer requests between stations
- */
-
-/**
- * @swagger
+ *     description: Manage battery transfer requests and orders between stations
+ *
  * components:
  *   schemas:
  *     TransferRequest:
@@ -143,12 +155,27 @@ module.exports = router;
 
 /**
  * @swagger
- * /api/transfers:
+ * /api/transfers/request:
  *   get:
  *     tags: [Transfers]
  *     summary: Get all transfer requests
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *       - in: query
+ *         name: station_id
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: List of all transfer requests
@@ -166,8 +193,57 @@ module.exports = router;
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/TransferRequest'
- *
- * /api/transfers/{id}:
+ */
+
+/**
+ * @swagger
+ * /api/transfers/order:
+ *   get:
+ *     tags: [Transfers]
+ *     summary: Get all transfer orders
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *       - in: query
+ *         name: source_station_id
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: target_station_id
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of all transfer orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     orders:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/TransferOrder'
+ */
+
+/**
+ * @swagger
+ * /api/transfers/request/{id}:
  *   get:
  *     tags: [Transfers]
  *     summary: Get a transfer request by ID
@@ -191,13 +267,44 @@ module.exports = router;
  *                 success:
  *                   type: boolean
  *                 payload:
- *                   type: object
- *                   properties:
- *                     transfer:
- *                       $ref: '#/components/schemas/TransferRequest'
+ *                   $ref: '#/components/schemas/TransferRequest'
  *       404:
  *         description: Transfer request not found
- *
+ */
+
+/**
+ * @swagger
+ * /api/transfers/order/{id}:
+ *   get:
+ *     tags: [Transfers]
+ *     summary: Get a transfer order by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Transfer order details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   $ref: '#/components/schemas/TransferOrder'
+ *       404:
+ *         description: Transfer order not found
+ */
+
+/**
+ * @swagger
  * /api/transfers/request:
  *   post:
  *     tags: [Transfers]
@@ -215,10 +322,8 @@ module.exports = router;
  *             properties:
  *               request_quantity:
  *                 type: integer
- *                 example: 10
  *               notes:
  *                 type: string
- *                 example: "Need 10 batteries for high usage hours"
  *     responses:
  *       200:
  *         description: Transfer request created successfully
@@ -230,16 +335,15 @@ module.exports = router;
  *                 success:
  *                   type: boolean
  *                 payload:
- *                   type: object
- *                   properties:
- *                     transferRequest:
- *                       $ref: '#/components/schemas/TransferRequest'
- * 
+ *                   $ref: '#/components/schemas/TransferRequest'
+ */
+
+/**
+ * @swagger
  * /api/transfers/create:
  *   post:
  *     tags: [Transfers]
- *     summary: Admin directly creates transfer orders (without a transfer request)
- *     description: Creates one or multiple transfer orders directly. `transfer_request_id` will be null.
+ *     summary: Admin creates transfer orders directly
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -253,7 +357,6 @@ module.exports = router;
  *             properties:
  *               transfer_orders:
  *                 type: array
- *                 description: List of transfer orders to create
  *                 items:
  *                   type: object
  *                   required:
@@ -263,47 +366,21 @@ module.exports = router;
  *                   properties:
  *                     source_station_id:
  *                       type: integer
- *                       example: 2
  *                     target_station_id:
  *                       type: integer
- *                       example: 1
  *                     transfer_quantity:
  *                       type: integer
- *                       example: 5
  *     responses:
  *       201:
  *         description: Transfer orders created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Transfer orders created successfully
- *                 payload:
- *                   type: object
- *                   properties:
- *                     orders:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           order:
- *                             $ref: '#/components/schemas/TransferOrder'
- *                           transfer_battery_ids:
- *                             type: array
- *                             items:
- *                               type: string
- *                               format: uuid
- *
+ */
+
+/**
+ * @swagger
  * /api/transfers/{transfer_request_id}/approve:
  *   post:
  *     tags: [Transfers]
- *     summary: Admin approves a transfer request and assigns transfer orders
+ *     summary: Admin approves a transfer request
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -333,40 +410,17 @@ module.exports = router;
  *                   properties:
  *                     source_station_id:
  *                       type: integer
- *                       description: ID of the station sending batteries
  *                     target_station_id:
  *                       type: integer
- *                       description: ID of the station receiving batteries
  *                     transfer_quantity:
  *                       type: integer
- *                       description: Number of batteries to transfer
  *     responses:
  *       200:
- *         description: Transfer approved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 payload:
- *                   type: object
- *                   properties:
- *                     transfer_request:
- *                       $ref: '#/components/schemas/TransferRequest'
- *                     transfer_orders:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           order:
- *                             $ref: '#/components/schemas/TransferOrder'
- *                           transfer_battery_ids:
- *                             type: array
- *                             items:
- *                               type: integer
- *
+ *         description: Transfer request approved successfully
+ */
+
+/**
+ * @swagger
  * /api/transfers/{transfer_request_id}/reject:
  *   post:
  *     tags: [Transfers]
@@ -383,23 +437,14 @@ module.exports = router;
  *     responses:
  *       200:
  *         description: Transfer request rejected successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 payload:
- *                   type: object
- *                   properties:
- *                     transferRequest:
- *                       $ref: '#/components/schemas/TransferRequest'
- *
+ */
+
+/**
+ * @swagger
  * /api/transfers/{transfer_order_id}/confirm:
  *   post:
  *     tags: [Transfers]
- *     summary: Staff confirms receipt of a transfer order
+ *     summary: Staff confirms a transfer order
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -412,23 +457,14 @@ module.exports = router;
  *     responses:
  *       200:
  *         description: Transfer order confirmed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 payload:
- *                   type: object
- *                   properties:
- *                     transferOrder:
- *                       $ref: '#/components/schemas/TransferOrder'
- *
+ */
+
+/**
+ * @swagger
  * /api/transfers/{transfer_request_id}/cancel:
  *   post:
  *     tags: [Transfers]
- *     summary: Staff cancels a pending transfer request
+ *     summary: Staff cancels a transfer request
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -441,17 +477,4 @@ module.exports = router;
  *     responses:
  *       200:
  *         description: Transfer request cancelled successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 payload:
- *                   type: object
- *                   properties:
- *                     transferRequest:
- *                       $ref: '#/components/schemas/TransferRequest'
  */
-
