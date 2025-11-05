@@ -31,11 +31,11 @@ async function autoCharge(durationMinutes) {
     });
 
     for (const spec of batterySpecs) {
-      if (!spec.slot || !spec.slot.cabinet) continue; // skip if no slot/cabinet
+      if (!spec.cabinetSlot || !spec.cabinetSlot.cabinet) continue; // skip if no slot/cabinet
 
       const slotPower = math.calculateCabinetSlotPower(
-        spec.slot.cabinet.power_capacity_kw * 1000,
-        spec.slot.cabinet.battery_capacity
+        spec.cabinetSlot.cabinet.power_capacity_kw * 1000,
+        spec.cabinetSlot.cabinet.battery_capacity
       );
 
       const slotChargeCurrent = math.calculateCabinetSlotChargeCurrent(
@@ -49,27 +49,28 @@ async function autoCharge(durationMinutes) {
       );
 
       // Update SOC
-      spec.current_soc = math.estimateSOCTarget(
+			const new_soc = math.estimateSOCTarget(
         spec.current_soc,
         spec.batteryType.nominal_capacity,
         icc,
         durationHours
       );
+      spec.current_soc = new_soc * 100;
 
       // Update slot voltage & current if slot exists
-      spec.slot.voltage = math.estimateChargingVoltage(
-        spec.current_soc,
+      spec.cabinetSlot.voltage = math.estimateChargingVoltage(
+        new_soc,
         spec.batteryType.nominal_voltage,
         spec.batteryType.max_voltage
       );
 
-      spec.slot.current = math.estimateChargingCurrent(
-        spec.current_soc,
+      spec.cabinetSlot.current = math.estimateChargingCurrent(
+        new_soc,
         icc
       );
 
       // Save both asynchronously
-      await Promise.all([spec.save(), spec.slot.save()]);
+      await Promise.all([spec.save({logging:false}), spec.cabinetSlot.save({logging:false})]);
     }
 
     console.log(`✅ Charging simulation completed for ${batterySpecs.length} batteries`);
