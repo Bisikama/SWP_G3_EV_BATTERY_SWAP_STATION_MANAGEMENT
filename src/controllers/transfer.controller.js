@@ -1,16 +1,40 @@
 const transferService = require('../services/transfer.service');
 const ApiError = require('../utils/ApiError');
 
-async function findAll(req, res) {
-	const transfers = await transferService.findAll();
+async function findAllRequest(req, res) {
+	const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+	const filters = { ...req.query };
+	delete filters.page;
+	delete filters.pageSize;
+	
+	const transfers = await transferService.findAllRequest(filters, page, pageSize);
 	return res.status(200).json({ success: true, payload: { transfers } });
 }
 
-async function findById(req, res) {
-  const { id } = req.params;
-  const transfer = await transferService.findById(id);
-  if (!transfer) throw new ApiError(404, 'Transfer not found');
-  return res.status(200).json({ success: true, payload: { transfer } });
+async function findAllOrder(req, res) {
+	const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+	const filters = { ...req.query };
+	delete filters.page;
+	delete filters.pageSize;
+	
+	const transfers = await transferService.findAllOrder(filters, page, pageSize);
+	return res.status(200).json({ success: true, payload: { transfers } });
+}
+
+async function findRequestById(req, res) {
+	const { id } = req.params;
+	const transfer = await transferService.findRequestById(id);
+	if (!transfer) throw new ApiError(404, 'Transfer request not found');
+	return res.status(200).json({ success: true, payload: { transfer } });
+}
+
+async function findOrderById(req, res) {
+	const { id } = req.params;
+	const transfer = await transferService.findOrderById(id);
+	if (!transfer) throw new ApiError(404, 'Transfer order not found');
+	return res.status(200).json({ success: true, payload: { transfer } });
 }
 
 async function request(req, res) {
@@ -27,9 +51,9 @@ async function approve(req, res) {
 }
 
 async function create(req, res) {
-  const { transfer_orders } = req.body;
-  const orders = await transferService.createTransfer(transfer_orders);
-  return res.status(201).json({ success: true, payload: { orders } });
+	const { transfer_orders } = req.body;
+	const orders = await transferService.createTransfer(transfer_orders);
+	return res.status(201).json({ success: true, payload: { orders } });
 }
 
 async function reject(req, res) {
@@ -50,4 +74,4 @@ async function cancel(req, res) {
 	return res.status(200).json({ success: true, payload: { transferRequest } });
 }
 
-module.exports = { findAll, findById, request, approve, create, reject, confirm, cancel };
+module.exports = { findAllRequest, findAllOrder, findRequestById, findOrderById, request, approve, create, reject, confirm, cancel };
