@@ -8,7 +8,12 @@ const detailData = [
 		attributes: ['slot_number', 'voltage', 'current'],
 		include: [
 			{ model: db.Battery, as: 'battery',
-				attributes: ['battery_id', 'battery_serial', 'current_soc', 'current_soh']
+				attributes: ['battery_id', 'battery_serial', 'current_soc', 'current_soh'],
+        include: [
+          { model: db.BatteryType, as: 'batteryType',
+            attributes: ['battery_type_id', 'cell_chemistry', 'battery_type_code']
+          }
+        ]
 			}
 		]
 	}
