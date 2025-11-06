@@ -1,6 +1,7 @@
 'use strict';
 const { Battery, BatteryType, CabinetSlot, Cabinet, Station, Vehicle, VehicleModel } = require('../models');
 const swapBatteryService = require('../services/swap_battery.service');
+const { Op } = require('sequelize');
 // Get all batteries
 async function getAll(req, res) {
   try {
@@ -110,7 +111,6 @@ async function createByVehicle(req, res) {
 async function getBatteryAtStation(req, res) {
   try {
     const { station_id } = req.params;
-
     if (!station_id) {
       return res.status(400).json({ 
         success: false, 
@@ -119,32 +119,26 @@ async function getBatteryAtStation(req, res) {
     }
 
     // Query all batteries at the station
-    const batteries = await Battery.findAll({
-      include: [
-        {
-          model: CabinetSlot,
-          as: 'cabinetSlot',
+    const batteries = await CabinetSlot.findAll({
+          where: {
+            status: {
+              [Op.in]: ['occupied']
+            }
+          },
           include: [
             {
               model: Cabinet,
               as: 'cabinet',
-              include: [
-                {
-                  model: Station,
-                  as: 'station',
-                  where: { station_id: station_id }
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    });
+              where: { station_id: station_id },
+              attributes: ['cabinet_id', 'station_id']
+            },
+          ],
+        });
 
     // Query available batteries for swap
     const availableBatteries = await swapBatteryService.getAvailableBatteriesForSwapAtStation(station_id);
 
-    const totalCount = batteries.length;
+    const totalCount = batteries ? batteries.length : 0;
     const availableCount = availableBatteries ? availableBatteries.length : 0;
 
     return res.json({
