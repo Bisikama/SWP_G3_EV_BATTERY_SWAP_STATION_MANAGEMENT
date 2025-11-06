@@ -2,8 +2,13 @@ const cabinetService = require('../services/cabinet.service');
 const ApiError = require('../utils/ApiError');
 
 async function findAll(req, res) {
-  const { page, pageSize, ...rest } = req.query;
-  const cabinets = await cabinetService.findAll(rest, page, pageSize);
+  const page = parseInt(req.query.page) || 1;
+	const pageSize = parseInt(req.query.pageSize) || 10;
+	const filters = { ...req.query };
+	delete filters.page;
+	delete filters.pageSize;
+
+  const cabinets = await cabinetService.findAll(filters, page, pageSize);
   return res.status(200).json({ success: true, payload: { cabinets } });
 }
 
@@ -14,11 +19,14 @@ async function findById(req, res) {
   return res.status(200).json({ success: true, payload: { cabinet } });
 }
 
-async function findByStation(req, res) {
-  const { page, pageSize } = req.query;
-  const { station_id } = req.params;
-  const cabinets = await cabinetService.findByStation(station_id, page, pageSize);
-  return res.status(200).json({ success: true, payload: { cabinets } });
+async function create(req, res) {
+  const { station_id, battery_capacity, power_capacity_kw } = req.body;
+  const cabinet = await cabinetService.createCabinet({ station_id, battery_capacity, power_capacity_kw });
+
+  return res.status(201).json({
+    success: true,
+    payload: { cabinet }
+  });
 }
 
 async function chargeFull(req, res) {
@@ -30,4 +38,4 @@ async function chargeFull(req, res) {
   });
 }
 
-module.exports = { findAll, findById, findByStation, chargeFull };
+module.exports = { findAll, findById, create, chargeFull };
