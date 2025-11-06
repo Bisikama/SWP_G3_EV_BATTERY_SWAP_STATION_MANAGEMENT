@@ -142,17 +142,37 @@ async function getBatteryAtStation(req, res) {
           ],
         });
 
+		// Query all batteries at the station
+    const shortageBatteries = await CabinetSlot.findAll({
+          where: {
+            status: {
+              [Op.in]: ['empty']
+            }
+          },
+          include: [
+            {
+              model: Cabinet,
+              as: 'cabinet',
+              where: { station_id: station_id },
+              attributes: ['cabinet_id', 'station_id']
+            },
+          ],
+        });
+
     // Query available batteries for swap
     const availableBatteries = await swapBatteryService.getAvailableBatteriesForSwapAtStation(station_id);
+		const defaultEmptySlotsCount = 3;
 
     const totalCount = batteries ? batteries.length : 0;
     const availableCount = availableBatteries ? availableBatteries.length : 0;
+		const shortageCount = shortageBatteries.length > defaultEmptySlotsCount ? shortageBatteries.length - defaultEmptySlotsCount : 0;
 
     return res.json({
       success: true,
       data: {
         TotalBatteries: totalCount,
         AvailableForSwap: availableCount,
+				BatteryShortage: shortageCount,
         message: `Total batteries at station ${station_id}: ${totalCount}, Available for swap: ${availableCount}`
       }
     });
