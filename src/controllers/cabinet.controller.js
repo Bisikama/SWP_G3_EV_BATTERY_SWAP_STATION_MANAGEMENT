@@ -21,6 +21,16 @@ async function findByStation(req, res) {
   return res.status(200).json({ success: true, payload: { cabinets } });
 }
 
+async function create(req, res) {
+  const { station_id, battery_capacity, power_capacity_kw } = req.body;
+  const cabinet = await cabinetService.createCabinet({ station_id, battery_capacity, power_capacity_kw });
+
+  return res.status(201).json({
+    success: true,
+    payload: { cabinet }
+  });
+}
+
 async function chargeFull(req, res) {
   const { id } = req.params;
   const result = await cabinetService.chargeFull(id);
@@ -30,4 +40,4 @@ async function chargeFull(req, res) {
   });
 }
 
-module.exports = { findAll, findById, findByStation, chargeFull };
+module.exports = { findAll, findById, findByStation, create, chargeFull };
