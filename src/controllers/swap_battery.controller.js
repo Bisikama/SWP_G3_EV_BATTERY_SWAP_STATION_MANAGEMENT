@@ -603,19 +603,19 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     // Kiểm tra booking có còn trong khoảng thời gian hợp lệ không
     const now = new Date();
     const createTime = new Date(booking.create_time);
-    const scheduledTime = new Date(booking.scheduled_time);
+    const expired_time = new Date(booking.expired_time);
 
     console.log(`   - Create time: ${createTime.toISOString()}`);
-    console.log(`   - Scheduled time: ${scheduledTime.toISOString()}`);
+    console.log(`   - Expired time: ${expired_time.toISOString()}`);
     console.log(`   - Current time: ${now.toISOString()}`);
 
-    if (now < createTime || now > scheduledTime) {
+    if (now < createTime || now > expired_time) {
       return res.status(400).json({
         success: false,
         message: 'Booking không còn trong khoảng thời gian hợp lệ. Thời gian đổi pin phải nằm giữa thời gian tạo đơn và thời gian đã đặt lịch.',
         data: {
           create_time: createTime,
-          scheduled_time: scheduledTime,
+          expired_time: expired_time,
           current_time: now
         }
       });
@@ -778,7 +778,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
           booking_id: booking.booking_id,
           status: booking.status,
           create_time: booking.create_time,
-          scheduled_time: booking.scheduled_time
+          expired_time: booking.expired_time
         }
       }
     });
