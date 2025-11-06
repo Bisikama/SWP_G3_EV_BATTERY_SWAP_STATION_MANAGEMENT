@@ -1,6 +1,10 @@
 const { param, query, body } = require('express-validator');
 
 const findAll = [
+  param('station_id')
+    .optional()
+    .isInt().withMessage('station_id must be an integer'),
+
   query('page')
     .optional()
     .isInt({ min: 1 }).withMessage('page must be a positive integer'),
@@ -14,20 +18,6 @@ const findById = [
   param('id')
     .notEmpty().withMessage('id is required')
     .isInt().withMessage('id must be an integer')
-];
-
-const findByStation = [
-  param('station_id')
-    .notEmpty().withMessage('station_id is required')
-    .isInt().withMessage('station_id must be an integer'),
-
-  query('page')
-    .optional()
-    .isInt({ min: 1 }).withMessage('page must be a positive integer'),
-
-  query('pageSize')
-    .optional()
-    .isInt({ min: 1 }).withMessage('pageSize must be a positive integer')
 ];
 
 const create = [
@@ -50,4 +40,4 @@ const chargeFull = [
     .isInt().withMessage('cabinet_id must be an integer')
 ];
 
-module.exports = { findAll, findById, findByStation, create, chargeFull };
+module.exports = { findAll, findById, create, chargeFull };

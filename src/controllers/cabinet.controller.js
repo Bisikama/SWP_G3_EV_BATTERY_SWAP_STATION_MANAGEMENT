@@ -2,8 +2,13 @@ const cabinetService = require('../services/cabinet.service');
 const ApiError = require('../utils/ApiError');
 
 async function findAll(req, res) {
-  const { page, pageSize, ...rest } = req.query;
-  const cabinets = await cabinetService.findAll(rest, page, pageSize);
+  const page = parseInt(req.query.page) || 1;
+	const pageSize = parseInt(req.query.pageSize) || 10;
+	const filters = { ...req.query };
+	delete filters.page;
+	delete filters.pageSize;
+
+  const cabinets = await cabinetService.findAll(filters, page, pageSize);
   return res.status(200).json({ success: true, payload: { cabinets } });
 }
 
@@ -12,13 +17,6 @@ async function findById(req, res) {
   const cabinet = await cabinetService.findById(id);
   if (!cabinet) throw new ApiError(404, 'Cabinet not found');
   return res.status(200).json({ success: true, payload: { cabinet } });
-}
-
-async function findByStation(req, res) {
-  const { page, pageSize } = req.query;
-  const { station_id } = req.params;
-  const cabinets = await cabinetService.findByStation(station_id, page, pageSize);
-  return res.status(200).json({ success: true, payload: { cabinets } });
 }
 
 async function create(req, res) {
@@ -40,4 +38,4 @@ async function chargeFull(req, res) {
   });
 }
 
-module.exports = { findAll, findById, findByStation, create, chargeFull };
+module.exports = { findAll, findById, create, chargeFull };
