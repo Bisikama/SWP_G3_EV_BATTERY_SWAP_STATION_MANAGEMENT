@@ -1,7 +1,6 @@
 const nodemailer = require('nodemailer');
-import { Resend } from 'resend';
-// initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Note: Resend will be loaded dynamically when needed (see sendVerificationEmail function)
 
 // create transporter
 function createTransporter() {
@@ -234,20 +233,14 @@ function generateVerificationCode() {
  */
 async function sendVerificationEmail(toEmail, code) {
   try {
-    // if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) {
-    //   console.error('❌ EMAIL_HOST or EMAIL_USER not configured in .env');
-    //   return false;
-    // }
-
-    // const transporter = createTransporter();
+    // Dynamically import Resend (ES module) in CommonJS context
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
     
-    // verify connection first
-    // await transporter.verify();
-    console.log('✅ SMTP connection verified');
+    console.log('✅ Resend initialized');
     
-    // const mailOptions = {
-    resend.emails.send({
-      from: `"VinStation Support" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    const { data, error } = await resend.emails.send({
+      from: 'VinStation Support <onboarding@resend.dev>',
       to: toEmail,
       subject: '🔐 Mã xác thực đăng ký tài khoản - VinStation',
       text: `Chào mừng bạn đến với VinStation!\n\nMã xác thực của bạn là: ${code}\n\nVui lòng nhập mã này vào trang web để hoàn tất đăng ký.\n\nMã xác thực có hiệu lực trong 10 phút.\n\nNếu bạn không yêu cầu đăng ký, vui lòng bỏ qua email này.`,
@@ -307,9 +300,12 @@ async function sendVerificationEmail(toEmail, code) {
       `
     });
 
-    // const info = await transporter.sendMail(mailOptions);
-    // console.log('✅ Verification email sent:', info.messageId);
-    // console.log('📬 Preview URL:', nodemailer.getTestMessageUrl(info));
+    if (error) {
+      console.error('❌ Resend error:', error);
+      return false;
+    }
+
+    console.log('✅ Verification email sent via Resend:', data.id);
     return true;
   } catch (err) {
     console.error('❌ Error sending verification email:', err);
