@@ -46,7 +46,7 @@ module.exports = {
     const invoices = [];
     
     vehicles.forEach((vehicle, vehicleIndex) => {
-      // Mỗi driver có 3 invoices (1 mỗi tháng)
+      // Mỗi driver có 3 invoices trong 3 tháng
       for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
         // Sử dụng weighted distribution thay vì sequential
         const planName = getRandomPlan();
@@ -59,8 +59,10 @@ module.exports = {
         // 80% paid, 20% unpaid for realistic revenue data
         const paymentStatus = Math.random() < 0.8 ? 'paid' : 'unpaid';
 
-        // Phân bổ create_date: mỗi tháng 1 invoice
-        const daysAgo = 90 - (monthOffset * 30) - Math.floor(Math.random() * 10);
+        // FIXED: Phân bổ đều trong 90 ngày
+        // Mỗi invoice của mỗi driver sẽ random trong toàn bộ 90 ngày
+        // Không còn tập trung vào 3-4 ngày nữa
+        const daysAgo = Math.floor(Math.random() * 90); // Random từ 0-89 ngày trước
         const createDate = new Date(now);
         createDate.setDate(createDate.getDate() - daysAgo);
         const createDateStr = createDate.toISOString().split('T')[0]; // YYYY-MM-DD
