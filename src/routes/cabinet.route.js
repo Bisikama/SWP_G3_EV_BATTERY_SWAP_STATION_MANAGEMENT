@@ -31,6 +31,11 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *         schema:
  *           type: integer
  *         description: Number of items per page (default 10)
+ *       - in: query
+ *         name: station_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by station ID
  *     responses:
  *       200:
  *         description: List of cabinets
@@ -110,41 +115,6 @@ router.get('/:id',
   authorizeRole('admin', 'staff'),
   validate(cabinetValidator.findById),
   cabinetController.findById
-);
-
-/**
- * @swagger
- * /api/cabinets/station/{station_id}:
- *   get:
- *     summary: Get all cabinets by station (supports pagination)
- *     tags: [Cabinets]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: station_id
- *         required: true
- *         schema:
- *           type: integer
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number (default 1)
- *       - in: query
- *         name: pageSize
- *         schema:
- *           type: integer
- *         description: Number of items per page (default 10)
- *     responses:
- *       200:
- *         description: List of cabinets
- */
-router.get('/station/:station_id',
-  verifyToken,
-  authorizeRole('admin', 'staff'),
-  validate(cabinetValidator.findByStation),
-  cabinetController.findByStation
 );
 
 /**

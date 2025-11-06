@@ -3,7 +3,7 @@ const ApiError = require('../utils/ApiError');
 
 async function findAllRequest(req, res) {
 	const page = parseInt(req.query.page) || 1;
-  const pageSize = parseInt(req.query.pageSize) || 10;
+	const pageSize = parseInt(req.query.pageSize) || 10;
 	const filters = { ...req.query };
 	delete filters.page;
 	delete filters.pageSize;
@@ -14,7 +14,7 @@ async function findAllRequest(req, res) {
 
 async function findAllOrder(req, res) {
 	const page = parseInt(req.query.page) || 1;
-  const pageSize = parseInt(req.query.pageSize) || 10;
+	const pageSize = parseInt(req.query.pageSize) || 10;
 	const filters = { ...req.query };
 	delete filters.page;
 	delete filters.pageSize;

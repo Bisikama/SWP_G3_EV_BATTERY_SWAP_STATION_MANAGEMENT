@@ -16,11 +16,8 @@ const detailData = [
 
 async function findAll(filters = {}, page = 1, pageSize = 10) {
 	const options = {
-		include: [
-			{ model: db.Station, as: 'station' }
-		]
+		include: detailData
 	};
-
 	return paginate(db.Cabinet, filters, { ...options, page, pageSize });
 }
 
@@ -28,13 +25,6 @@ async function findById(id) {
 	return db.Cabinet.findByPk(id, {
 		include: detailData
 	});
-}
-
-async function findByStation(station_id, page = 1, pageSize = 10) {
-	return paginate(db.Cabinet, 
-		{ station_id },
-		{ include: detailData, page, pageSize }
-	);
 }
 
 async function createCabinet(data) {
@@ -145,4 +135,4 @@ async function chargeFull(id) {
 	return batteries;
 }
 
-module.exports = { findAll, findById, findByStation, createCabinet, chargeFull };
+module.exports = { findAll, findById, createCabinet, chargeFull };
