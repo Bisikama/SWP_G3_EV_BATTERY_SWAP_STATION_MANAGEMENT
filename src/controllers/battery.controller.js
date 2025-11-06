@@ -6,7 +6,12 @@ const { Op } = require('sequelize');
 async function getAll(req, res) {
   try {
     const batteries = await Battery.findAll();
-    res.json(batteries);
+    const count = batteries ? batteries.length : 0;
+    res.json({
+      message: `Tổng số pin: ${count}`,
+      batteries
+      
+    });
   } catch (err) {
     console.error('Get all batteries error', err);
     res.status(500).json({ error: 'Internal server error' });
