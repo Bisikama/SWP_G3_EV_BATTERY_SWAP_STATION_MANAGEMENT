@@ -140,19 +140,19 @@ async function getSwapRecordById(swap_id) {
       {
         model: Vehicle,
         as: 'vehicle',
-        attributes: ['vehicle_id', 'license_plate', 'model_id'],
+        attributes: ['vehicle_id', 'license_plate'],
         include: [
           {
             model: VehicleModel,
             as: 'model',
-            attributes: ['model_name', 'manufacturer']
+            attributes: ['name', 'model_id']
           }
         ]
       },
       {
         model: Station,
         as: 'station',
-        attributes: ['station_id', 'station_name', 'address', 'city']
+        attributes: ['station_id', 'station_name', 'address']
       },
       {
         model: Battery,
@@ -162,7 +162,7 @@ async function getSwapRecordById(swap_id) {
           {
             model: BatteryType,
             as: 'batteryType',
-            attributes: ['type_name', 'voltage', 'capacity']
+            attributes: ['cell_chemistry', 'battery_type_code']
           }
         ]
       },
@@ -174,7 +174,7 @@ async function getSwapRecordById(swap_id) {
           {
             model: BatteryType,
             as: 'batteryType',
-            attributes: ['type_name', 'voltage', 'capacity']
+            attributes: ['cell_chemistry', 'battery_type_code']
           }
         ]
       }
