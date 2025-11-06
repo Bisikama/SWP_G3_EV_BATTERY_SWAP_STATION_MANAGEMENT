@@ -143,7 +143,7 @@ async function sendExpiryReminders() {
         console.log(`   - End Date: ${subscription.end_date}`);
         
         // Gửi email (bạn cần implement sendSubscriptionExpiryReminder trong emailService)
-        const emailSent = await sendSubscriptionExpiryEmail(
+        const emailSent = await emailService.sendSubscriptionExpiryEmail(
           driver.email,
           driver.fullname,
           plan.plan_name,
@@ -183,94 +183,7 @@ async function sendExpiryReminders() {
   }
 }
 
-/**
- * Helper function: Gửi email nhắc nhở gia hạn gói
- */
-async function sendSubscriptionExpiryEmail(toEmail, driverName, planName, licensePlate, endDate, planPrice) {
-  try {
-    const subject = '⚠️ Gói đăng ký của bạn đã hết hạn - Gia hạn ngay!';
-    
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .info-box { background: white; padding: 20px; margin: 20px 0; border-left: 4px solid #667eea; border-radius: 5px; }
-          .warning-box { background: #fff3cd; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107; border-radius: 5px; }
-          .button { display: inline-block; padding: 15px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>⚠️ Thông Báo Hết Hạn Gói</h1>
-          </div>
-          <div class="content">
-            <p>Xin chào <strong>${driverName}</strong>,</p>
-            
-            <p>Gói đăng ký của bạn đã <strong style="color: #dc3545;">hết hạn</strong>. Vui lòng gia hạn để tiếp tục sử dụng dịch vụ đổi pin.</p>
-            
-            <div class="info-box">
-              <h3>📋 Thông Tin Gói Đã Hết Hạn</h3>
-              <p><strong>Tên gói:</strong> ${planName}</p>
-              <p><strong>Biển số xe:</strong> ${licensePlate}</p>
-              <p><strong>Ngày hết hạn:</strong> ${new Date(endDate).toLocaleDateString('vi-VN')}</p>
-              <p><strong>Giá gia hạn:</strong> ${planPrice?.toLocaleString('vi-VN')} VNĐ</p>
-            </div>
-            
-            <div class="warning-box">
-              <strong>⚠️ Lưu ý:</strong> Bạn sẽ không thể đổi pin khi gói đã hết hạn. Vui lòng gia hạn ngay để tiếp tục sử dụng dịch vụ.
-            </div>
-            
-            <div style="text-align: center;">
-              <a href="http://localhost:5173" class="button">
-                🔄 Gia Hạn Ngay
-              </a>
-            </div>
-            
-            <p>Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email hoặc hotline.</p>
-            
-            <div class="footer">
-              <p>Trân trọng,<br><strong>EV Battery Swap Station Team</strong></p>
-              <p style="font-size: 12px; color: #999;">Email này được gửi tự động, vui lòng không trả lời.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    
-    // Sử dụng emailService để gửi
-    const transporter = emailService.createTransporter ? emailService.createTransporter() : require('nodemailer').createTransport({
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT || '587'),
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-    
-    const mailOptions = {
-      from: `"EV Battery Swap Station" <${process.env.EMAIL_USER}>`,
-      to: toEmail,
-      subject: subject,
-      html: htmlContent
-    };
-    
-    await transporter.sendMail(mailOptions);
-    return true;
-    
-  } catch (error) {
-    console.error('Error sending subscription expiry email:', error);
-    return false;
-  }
-}
+
 
 module.exports = {
   deactivateExpiredSubscriptions,

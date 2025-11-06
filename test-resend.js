@@ -40,7 +40,7 @@ async function testResend() {
     
     const testEmail = {
       from: 'VinStation Support <onboarding@resend.dev>',
-      to:  'nguyenminhbao28032000@gmail.com', // Change this to your test email
+      to:  'minhbao28032005@gmail.com', // Change this to your test email
       subject: '🧪 Test Email from Resend - VinStation',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
