@@ -12,7 +12,7 @@ async function findAll(filters = {}, page = 1, pageSize = 10) {
         },
       }
     ],
-    order: [['start_time', 'DESC']]
+    order: [['start_time', 'ASC']]
   };
 
   return paginate(db.Shift, filters, { ...options, page, pageSize });
@@ -138,4 +138,4 @@ async function removeShift(user, id) {
   return shift;
 }
 
-module.exports = { findAll, findById, findCurrentShift, createShift, updateShift, removeShift };
+module.exports = { findAll, findById, findCurrentShift, findConflictedShift, createShift, updateShift, removeShift };

@@ -10,13 +10,20 @@ module.exports = {
     );
 
     const chargedBatteries = await queryInterface.sequelize.query(
-      `SELECT battery_id FROM "Batteries" WHERE slot_id IS NOT NULL AND current_soc > 80 LIMIT 30`,
+      `SELECT battery_id FROM "Batteries" WHERE slot_id IS NOT NULL AND current_soc > 80`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
-    const bookingBatteries = bookings.map((booking, index) => ({
+    if (chargedBatteries.length === 0) {
+      console.log('No charged batteries found, skipping booking batteries seeder');
+      return;
+    }
+
+    // RANDOM battery cho mỗi booking thay vì sequential
+    // Nhiều bookings có thể dùng chung 1 battery (realistic - battery được swap nhiều lần)
+    const bookingBatteries = bookings.map((booking) => ({
       booking_id: booking.booking_id,
-      battery_id: chargedBatteries[index % chargedBatteries.length].battery_id
+      battery_id: chargedBatteries[Math.floor(Math.random() * chargedBatteries.length)].battery_id
     }));
 
     await queryInterface.bulkInsert('BookingBatteries', bookingBatteries, {});
