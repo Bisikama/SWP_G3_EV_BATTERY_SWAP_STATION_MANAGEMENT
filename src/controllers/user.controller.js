@@ -4,9 +4,11 @@ const ApiError = require('../utils/ApiError');
 async function findAll(req, res) {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 10;
-  const { role, email, fullname } = req.query;
+  const filters = { ...req.query };
+  delete filters.page;
+  delete filters.pageSize;
 
-  const result = await userService.findAll(page, pageSize, { role, email, fullname });
+  const result = await userService.findAll(page, pageSize, filters);
 
   return res.status(200).json({
     success: true,

@@ -4,13 +4,11 @@ const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
 const paginate = require('../utils/paginate');
 
-async function findAll(page = 1, pageSize = 10, { role, email, fullname } = {}) {
-  const where = {};
-  if (role) where.role = role;
-  if (email) where.email = { [db.Sequelize.Op.iLike]: `%${email}%` };
-  if (fullname) where.fullname = { [db.Sequelize.Op.iLike]: `%${fullname}%` };
+async function findAll(page = 1, pageSize = 10, filters = {}) {
+  if (filters.email) filters.email = { [db.Sequelize.Op.iLike]: `%${filters.email}%` };
+  if (filters.fullname) filters.fullname = { [db.Sequelize.Op.iLike]: `%${filters.fullname}%` };
 
-  return paginate(db.Account, where, {
+  return paginate(db.Account, filters, {
     page,
     pageSize,
     attributes: { exclude: ['password_hash'] },
