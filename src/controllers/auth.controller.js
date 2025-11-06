@@ -7,7 +7,10 @@ const { generateVerificationCode, sendVerificationEmail, sendPasswordResetEmail,
 const SALT_ROUNDS = 10;
 
 async function login(req, res) {
-	const { email, password } = req.body || {};
+	let { email, password } = req.body || {};
+	// Normalize email: trim whitespace and convert to lowercase
+	email = email ? email.trim().toLowerCase() : email;
+	
 	const token = await authService.authenticate({ email, password });
 	const account = await userService.findByEmail(email);
 	return res.status(200).json({
@@ -30,7 +33,10 @@ async function logout(req, res) {
 }
 
 async function register(req, res) {
-	const { email, password, fullname, phone_number } = req.body || {};
+	let { email, password, fullname, phone_number } = req.body || {};
+	// Normalize email: trim whitespace and convert to lowercase
+	email = email ? email.trim().toLowerCase() : email;
+	
 	const role = 'driver';
 	if (!email || !password) {
 		return res.status(400).json({ message: 'Email and password are required' });
@@ -117,7 +123,10 @@ async function register(req, res) {
  */
 async function requestPasswordReset(req, res) {
 	try {
-		const { email } = req.body || {};
+		let { email } = req.body || {};
+		// Normalize email: trim whitespace and convert to lowercase
+		email = email ? email.trim().toLowerCase() : email;
+		
 		if (!email) {
 			return res.status(400).json({ message: 'Email is required' });
 		}
@@ -176,7 +185,10 @@ async function requestPasswordReset(req, res) {
  */
 async function resetPassword(req, res) {
   try {
-    const { email, code, newPassword } = req.body || {};
+    let { email, code, newPassword } = req.body || {};
+    // Normalize email: trim whitespace and convert to lowercase
+    email = email ? email.trim().toLowerCase() : email;
+    
     if (!email || !code || !newPassword) {
       return res.status(400).json({ message: 'Email, code and new password are required' });
     }
@@ -243,7 +255,10 @@ async function resetPassword(req, res) {
  */
 async function requestEmailVerification(req, res) {
 	try {
-		const { email } = req.body || {};
+		let { email } = req.body || {};
+		// Normalize email: trim whitespace and convert to lowercase
+		email = email ? email.trim().toLowerCase() : email;
+		
 		if (!email) {
 			return res.status(400).json({ message: 'Email is required' });
 		}
@@ -305,7 +320,10 @@ async function requestEmailVerification(req, res) {
  */
 async function verifyEmailCode(req, res) {
   try {
-    const { email, code } = req.body || {};
+    let { email, code } = req.body || {};
+    // Normalize email: trim whitespace and convert to lowercase
+    email = email ? email.trim().toLowerCase() : email;
+    
     if (!email || !code) {
       return res.status(400).json({ message: 'Email and verification code are required' });
     }

@@ -79,9 +79,4 @@ const updateStatus = [
     .notEmpty().withMessage('id is required')
 ];
 
-const remove = [
-  param('id')
-    .notEmpty().withMessage('id is required')
-];
-
-module.exports = { findById, create, update, updateStatus, remove };
+module.exports = { findById, create, update, updateStatus };

@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+import { Resend } from 'resend';
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // create transporter
 function createTransporter() {
@@ -231,18 +233,19 @@ function generateVerificationCode() {
  */
 async function sendVerificationEmail(toEmail, code) {
   try {
-    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) {
-      console.error('❌ EMAIL_HOST or EMAIL_USER not configured in .env');
-      return false;
-    }
+    // if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) {
+    //   console.error('❌ EMAIL_HOST or EMAIL_USER not configured in .env');
+    //   return false;
+    // }
 
-    const transporter = createTransporter();
+    // const transporter = createTransporter();
     
     // verify connection first
-    await transporter.verify();
+    // await transporter.verify();
     console.log('✅ SMTP connection verified');
     
-    const mailOptions = {
+    // const mailOptions = {
+    resend.emails.send({
       from: `"VinStation Support" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
       to: toEmail,
       subject: '🔐 Mã xác thực đăng ký tài khoản - VinStation',
@@ -301,11 +304,11 @@ async function sendVerificationEmail(toEmail, code) {
           </p>
         </div>
       `
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Verification email sent:', info.messageId);
-    console.log('📬 Preview URL:', nodemailer.getTestMessageUrl(info));
+    // const info = await transporter.sendMail(mailOptions);
+    // console.log('✅ Verification email sent:', info.messageId);
+    // console.log('📬 Preview URL:', nodemailer.getTestMessageUrl(info));
     return true;
   } catch (err) {
     console.error('❌ Error sending verification email:', err);

@@ -1,6 +1,44 @@
-const { body, param } = require('express-validator');
+const { body, param, query } = require('express-validator');
 
-const findById = [
+const findAllRequest = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('page must be a positive integer'),
+
+  query('pageSize')
+    .optional()
+    .isInt({ min: 1 }).withMessage('pageSize must be a positive integer'),
+
+  query('station_id')
+    .optional()
+    .isInt({ min: 1 }).withMessage('station_id must be a positive integer')
+];
+
+const findAllOrder = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('page must be a positive integer'),
+
+  query('pageSize')
+    .optional()
+    .isInt({ min: 1 }).withMessage('pageSize must be a positive integer'),
+
+  query('source_station_id')
+    .optional()
+    .isInt({ min: 1 }).withMessage('source_station_id must be a positive integer'),
+
+  query('target_station_id')
+    .optional()
+    .isInt({ min: 1 }).withMessage('target_station_id must be a positive integer')
+];
+
+const findRequestById = [
+  param('id')
+    .notEmpty().withMessage('id is required')
+    .isUUID().withMessage('id must be a valid UUID'),
+];
+
+const findOrderById = [
   param('id')
     .notEmpty().withMessage('id is required')
     .isUUID().withMessage('id must be a valid UUID'),
@@ -73,7 +111,10 @@ const cancel = [
 ];
 
 module.exports = {
-  findById,
+  findAllRequest,
+  findAllOrder,
+  findRequestById,
+  findOrderById,
   request,
   approve,
   create,

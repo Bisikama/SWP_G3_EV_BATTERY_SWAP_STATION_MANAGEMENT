@@ -5,50 +5,46 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
 const shiftValidator = require('../validations/shift.validation');
 const { validate } = require('../middlewares/validateHandler');
 
-router.get('/', 
-    verifyToken, 
-    authorizeRole('staff', 'admin'), 
-    shiftController.findAll
+router.get('/',
+  verifyToken,
+  authorizeRole('staff', 'admin'),
+  validate(shiftValidator.findAll),
+  shiftController.findAll
 );
 
-router.get('/staff', 
-    verifyToken, 
-    authorizeRole('staff'), 
-    shiftController.findByStaff
+router.get('/current',
+  verifyToken,
+  authorizeRole('staff', 'admin'),
+  validate(shiftValidator.findCurrent),
+  shiftController.findCurrent
 );
 
-router.get('/current', 
-    verifyToken, 
-    authorizeRole('staff'), 
-    shiftController.findCurrent
+router.get('/:id',
+  verifyToken,
+  authorizeRole('staff', 'admin'),
+  validate(shiftValidator.findById),
+  shiftController.findById
 );
 
-router.get('/:id', 
-    verifyToken, 
-    authorizeRole('staff', 'admin'), 
-    validate(shiftValidator.findById), 
-    shiftController.findById
+router.post('/',
+  verifyToken,
+  authorizeRole('admin'),
+  validate(shiftValidator.create),
+  shiftController.create
 );
 
-router.post('/', 
-    verifyToken, 
-    authorizeRole('admin'), 
-    validate(shiftValidator.create), 
-    shiftController.create
+router.put('/:id',
+  verifyToken,
+  authorizeRole('admin'),
+  validate(shiftValidator.update),
+  shiftController.update
 );
 
-router.put('/:id', 
-    verifyToken, 
-    authorizeRole('admin'), 
-    validate(shiftValidator.update), 
-    shiftController.update
-);
-
-router.delete('/:id/', 
-    verifyToken, 
-    authorizeRole('admin'), 
-    validate(shiftValidator.remove), 
-    shiftController.remove
+router.delete('/:id',
+  verifyToken,
+  authorizeRole('admin'),
+  validate(shiftValidator.remove),
+  shiftController.remove
 );
 
 module.exports = router;
@@ -74,7 +70,7 @@ module.exports = router;
  *         admin_id:
  *           type: string
  *           format: uuid
- *           example: "aa7df30b0-1a4f-46ef-bb83-f0223bdf23bb"
+ *           example: "aa7df30b-1a4f-46ef-bb83-f0223bdf23bb"
  *         staff_id:
  *           type: string
  *           format: uuid
@@ -100,26 +96,98 @@ module.exports = router;
  * @swagger
  * /api/shifts:
  *   get:
- *     summary: Get all shifts
+ *     summary: Get all shifts (with optional pagination/filter)
  *     tags: [Shifts]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: Page number
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: staff_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by staff ID
+ *       - in: query
+ *         name: station_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by station ID
  *     responses:
  *       200:
- *         description: List of all shifts
+ *         description: List of shifts
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Shift'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     shifts:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Shift'
  */
+
+/**
+ * @swagger
+ * /api/shifts/current:
+ *   get:
+ *     summary: Get current active shift for a staff or station
+ *     tags: [Shifts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: staff_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Staff ID to filter the current shift (optional)
+ *       - in: query
+ *         name: station_id
+ *         schema:
+ *           type: integer
+ *         description: Station ID to filter the current shift (optional)
+ *     responses:
+ *       200:
+ *         description: Current active shift
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     shift:
+ *                       $ref: '#/components/schemas/Shift'
+ *       404:
+ *         description: No active shift found
+ */
+
 
 /**
  * @swagger
  * /api/shifts/{id}:
  *   get:
- *     summary: Get a shift by ID
+ *     summary: Get shift by ID
  *     tags: [Shifts]
  *     security:
  *       - bearerAuth: []
@@ -137,49 +205,17 @@ module.exports = router;
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Shift'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     shift:
+ *                       $ref: '#/components/schemas/Shift'
  *       404:
  *         description: Shift not found
- */
-
-/**
- * @swagger
- * /api/shifts/staff:
- *   get:
- *     summary: Get all shifts for the logged-in staff
- *     tags: [Shifts]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of shifts for current staff
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Shift'
- *       403:
- *         description: Only staff can access their own shifts
- */
-
-/**
- * @swagger
- * /api/shifts/current:
- *   get:
- *     summary: Get the current active shift for logged-in staff
- *     tags: [Shifts]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Current shift for staff
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Shift'
- *       404:
- *         description: No active shift found
  */
 
 /**
@@ -219,7 +255,15 @@ module.exports = router;
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Shift'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     shift:
+ *                       $ref: '#/components/schemas/Shift'
  *       400:
  *         description: Validation error or related entity not found
  *       403:
@@ -266,7 +310,15 @@ module.exports = router;
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Shift'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     shift:
+ *                       $ref: '#/components/schemas/Shift'
  *       400:
  *         description: Validation error or related entity not found
  *       403:
@@ -292,8 +344,8 @@ module.exports = router;
  *           format: uuid
  *         description: Shift ID
  *     responses:
- *       204:
- *         description: Shift deleted successfully (No Content)
+ *       200:
+ *         description: Shift deleted successfully
  *       400:
  *         description: Cannot delete shift currently in progress
  *       403:

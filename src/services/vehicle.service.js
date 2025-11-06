@@ -1,53 +1,59 @@
-// ========================================
-// VEHICLE SERVICE
-// ========================================
-// File: src/services/vehicle.service.js
-// Mục đích: Business logic layer cho vehicle operations
-// 
-// Chức năng chính:
-// 1. registerVehicle - Đăng ký xe mới
-// 2. getVehiclesByDriver - Lấy danh sách xe của driver
-// 3. getVehicleByVin - Tìm xe theo VIN
-// 4. getVehicleById - Tìm xe theo ID
-// 5. updateVehicle - Cập nhật thông tin xe
-// 6. deleteVehicle - Xóa xe
-// 7. checkVehicleOwnership - Kiểm tra quyền sở hữu
-// 8. findVehicleWithModel - Helper function
-// ========================================
+/**
+ * Vehicle Service
+ * 
+ * Business logic layer for vehicle operations.
+ * 
+ * Main functions:
+ *   - registerVehicle: Register new vehicle for a driver
+ *   - getVehiclesByDriver: Get all vehicles owned by a driver
+ *   - getVehicleByVin: Find vehicle by VIN number
+ *   - getVehicleById: Find vehicle by ID
+ *   - updateVehicle: Update vehicle information
+ *   - deleteVehicle: Soft delete vehicle (set status to inactive)
+ *   - checkVehicleOwnership: Verify if driver owns a vehicle
+ *   - findVehicleWithModel: Helper to fetch vehicle with model details
+ *   - getVehiclesWithoutBatteries: Get vehicles with no batteries assigned
+ */
 
 'use strict';
+
 const { Vehicle, VehicleModel, BatteryType, Account, Subscription, Booking, Sequelize } = require('../models');
 const { Op } = Sequelize;
 
 /**
- * ========================================
- * REGISTER VEHICLE
- * ========================================
- * Đăng ký xe mới cho driver
+ * Register Vehicle
  * 
- * @param {string} driver_id - ID của driver (từ JWT token)
+ * Creates a new vehicle registration for a driver. If the VIN already exists
+ * but is inactive, it will be reactivated with new owner information.
+ * 
+ * Validation checks:
+ *   - All required fields provided
+ *   - Vehicle model exists
+ *   - Driver is valid and has required documents
+ *   - VIN and license plate are unique (or reactivating inactive)
+ * 
+ * @param {string} driver_id - Driver's account ID from JWT token
  * @param {object} vehicleData - { vin, model_id, license_plate }
- * @returns {Promise<Vehicle>} - Thông tin xe vừa tạo (kèm model)
- * @throws {Error} - Lỗi với status code
+ * @returns {Promise<Vehicle>} Created vehicle with model details
+ * @throws {Error} Validation or business logic error with status code
  */
 async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
-  // ========================================
-  // STEP 1: VALIDATE REQUIRED FIELDS
-  // ========================================
+  
+  // Step 1: Validate required fields
   if (!vin || !model_id || !license_plate) {
     const err = new Error('VIN, model_id, and license_plate are required');
     err.status = 400;
     throw err;
   }
 
-  // Chuẩn hóa VIN sang uppercase
   const normalizedVin = vin.toUpperCase();
 
-  // ========================================
-  // STEP 2: VALIDATE MODEL & DRIVER (1 LẦN DUY NHẤT)
-  // ========================================
-  // Validate model exists
-  const vehicleModel = await VehicleModel.findByPk(model_id);
+  // Step 2: Validate model and driver in parallel
+  const [vehicleModel, driver] = await Promise.all([
+    VehicleModel.findByPk(model_id),
+    Account.findByPk(driver_id)
+  ]);
+
   if (!vehicleModel) {
     const err = new Error('Vehicle model not found');
     err.status = 404;
@@ -55,18 +61,13 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     throw err;
   }
 
-  // Check driver role
-  const driver = await Account.findByPk(driver_id);
   if (!driver || driver.role !== 'driver') {
     const err = new Error('Only drivers can register vehicles');
     err.status = 403;
     throw err;
   }
 
-  // ========================================
-  // STEP 2.5: CHECK REQUIRED DOCUMENTS
-  // ========================================
-  // Driver must have citizen_id and driving_license to register vehicle
+  // Step 3: Check driver has required documents
   if (!driver.citizen_id || !driver.driving_license) {
     const missingFields = [];
     if (!driver.citizen_id) missingFields.push('citizen_id');
@@ -78,17 +79,14 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     throw err;
   }
 
-  // ========================================
-  // STEP 3: CHECK VIN EXISTENCE
-  // ========================================
+  // Step 4: Check if VIN already exists
   const existingVin = await Vehicle.findOne({ 
     where: { vin: normalizedVin } 
   });
   
   if (existingVin) {
-    // ────────────────────────────────────
-    // CASE A: VIN ACTIVE → ERROR
-    // ────────────────────────────────────
+    
+    // Case A: VIN is active - cannot register
     if (existingVin.status === 'active') {
       const err = new Error('VIN already registered');
       err.status = 409;
@@ -96,11 +94,10 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
       throw err;
     }
     
-    // ────────────────────────────────────
-    // CASE B: VIN INACTIVE → REACTIVATE
-    // ────────────────────────────────────
+    // Case B: VIN is inactive - reactivate with new information
     if (existingVin.status === 'inactive') {
-      // Check biển số không được trùng bất kỳ xe nào (kể cả chính xe này)
+      
+      // Check license plate is not taken by another vehicle
       const duplicatePlate = await Vehicle.findOne({ 
         where: { license_plate } 
       });
@@ -112,24 +109,21 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
         throw err;
       }
 
-      // Model & driver đã validate ở trên rồi, không cần check lại
-      
-      // UPDATE xe cũ: đổi owner, update fields, reactivate
+      // Update inactive vehicle with new owner and information
       existingVin.driver_id = driver_id;
       existingVin.model_id = model_id;
       existingVin.license_plate = license_plate;
       existingVin.status = 'active';
+      
       await existingVin.save();
 
-      // Return vehicle with model information
       return findVehicleWithModel(existingVin.vehicle_id);
     }
   }
 
-  // ========================================
-  // STEP 4: CREATE NEW VEHICLE
-  // ========================================
-  // Check license plate duplicate
+  // Step 5: Create new vehicle
+  
+  // Check license plate uniqueness
   const existingPlate = await Vehicle.findOne({ 
     where: { license_plate } 
   });
@@ -141,9 +135,6 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     throw err;
   }
 
-  // Model & driver đã validate ở trên rồi, không cần check lại
-
-  // Create vehicle
   const newVehicle = await Vehicle.create({
     driver_id,
     model_id,
@@ -152,21 +143,22 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     status: 'active'
   });
 
-  // Return vehicle with model information
   return findVehicleWithModel(newVehicle.vehicle_id);
 }
 
 /**
- * ========================================
- * GET VEHICLES BY DRIVER
- * ========================================
- * Lấy tất cả xe của driver
+ * Get Vehicles By Driver
  * 
- * @param {string} driver_id - ID của driver
+ * Retrieves all vehicles owned by a specific driver.
+ * Supports optional status filtering.
+ * 
+ * @param {string} driver_id - Driver's account ID
  * @param {object} options - { status?: 'active' | 'inactive' | 'all' }
- * @returns {Promise<Vehicle[]>} - Danh sách xe (kèm model)
+ * @returns {Promise<Vehicle[]>} Array of vehicles with model details
+ * @throws {Error} If driver_id is missing
  */
 async function getVehiclesByDriver(driver_id, options = {}) {
+  
   if (!driver_id) {
     const err = new Error('Driver ID is required');
     err.status = 400;
@@ -178,13 +170,13 @@ async function getVehiclesByDriver(driver_id, options = {}) {
   // Build where clause
   const where = { driver_id };
   
-  // Filter by status
+  // Apply status filter
   if (status === 'active') {
     where.status = 'active';
   } else if (status === 'inactive') {
     where.status = 'inactive';
   }
-  // Nếu status === 'all' thì không filter
+  // If status is 'all', no filter applied
 
   const vehicles = await Vehicle.findAll({
     where,
@@ -206,22 +198,23 @@ async function getVehiclesByDriver(driver_id, options = {}) {
 }
 
 /**
- * ========================================
- * GET VEHICLE BY VIN
- * ========================================
- * Tìm xe theo VIN (public lookup)
+ * Get Vehicle By VIN
  * 
- * @param {string} vin - VIN của xe
- * @returns {Promise<Vehicle|null>} - Thông tin xe (kèm model và driver)
+ * Looks up a vehicle by its VIN number.
+ * Returns vehicle with model and driver information.
+ * 
+ * @param {string} vin - Vehicle Identification Number
+ * @returns {Promise<Vehicle>} Vehicle with model and driver details
+ * @throws {Error} If VIN not provided or vehicle not found
  */
 async function getVehicleByVin(vin) {
+  
   if (!vin) {
     const err = new Error('VIN is required');
     err.status = 400;
     throw err;
   }
 
-  // Chuẩn hóa VIN sang uppercase
   const normalizedVin = vin.toUpperCase();
 
   const vehicle = await Vehicle.findOne({
@@ -255,16 +248,18 @@ async function getVehicleByVin(vin) {
 }
 
 /**
- * ========================================
- * GET VEHICLE BY ID
- * ========================================
- * Tìm xe theo vehicle_id
+ * Get Vehicle By ID
  * 
- * @param {string} vehicle_id - UUID của xe
- * @param {boolean} includeRelations - Có include relations không
- * @returns {Promise<Vehicle|null>} - Thông tin xe
+ * Retrieves vehicle by its unique ID.
+ * Optionally includes related model information.
+ * 
+ * @param {string} vehicle_id - Vehicle's UUID
+ * @param {boolean} includeRelations - Whether to include model details
+ * @returns {Promise<Vehicle>} Vehicle information
+ * @throws {Error} If vehicle_id not provided or vehicle not found
  */
 async function getVehicleById(vehicle_id, includeRelations = true) {
+  
   if (!vehicle_id) {
     const err = new Error('Vehicle ID is required');
     err.status = 400;
@@ -287,18 +282,24 @@ async function getVehicleById(vehicle_id, includeRelations = true) {
 }
 
 /**
- * ========================================
- * UPDATE VEHICLE
- * ========================================
- * Cập nhật thông tin xe
+ * Update Vehicle
  * 
- * @param {string} vehicle_id - UUID của xe
- * @param {string} driver_id - ID của driver (để check ownership)
+ * Updates vehicle information (license plate or model).
+ * Only the vehicle owner can perform updates.
+ * 
+ * Validation:
+ *   - At least one field must be provided
+ *   - Vehicle exists and belongs to driver
+ *   - New values are valid and unique
+ * 
+ * @param {string} vehicle_id - Vehicle's UUID
+ * @param {string} driver_id - Driver's account ID (for ownership check)
  * @param {object} updates - { license_plate?, model_id? }
- * @returns {Promise<Vehicle>} - Thông tin xe đã cập nhật
- * @throws {Error} - Lỗi với status code
+ * @returns {Promise<Vehicle>} Updated vehicle with model details
+ * @throws {Error} Validation or authorization error with status code
  */
 async function updateVehicle(vehicle_id, driver_id, updates) {
+  
   const { license_plate, model_id } = updates;
 
   // Validate at least one field to update
@@ -324,9 +325,9 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
     throw err;
   }
 
-  // Update license_plate if provided
+  // Update license plate if provided and different
   if (license_plate && license_plate !== vehicle.license_plate) {
-    // Check duplicate
+    
     const existingPlate = await Vehicle.findOne({ 
       where: { license_plate } 
     });
@@ -341,9 +342,9 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
     vehicle.license_plate = license_plate;
   }
 
-  // Update model_id if provided
+  // Update model if provided and different
   if (model_id && model_id !== vehicle.model_id) {
-    // Validate model exists
+    
     const vehicleModel = await VehicleModel.findByPk(model_id);
     
     if (!vehicleModel) {
@@ -356,25 +357,29 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
     vehicle.model_id = model_id;
   }
 
-  // Save changes
   await vehicle.save();
 
-  // Return updated vehicle with model
   return findVehicleWithModel(vehicle_id);
 }
 
 /**
- * ========================================
- * DELETE VEHICLE (SOFT DELETE)
- * ========================================
- * Soft delete xe - set status = 'inactive'
+ * Delete Vehicle
  * 
- * @param {string} vehicle_id - UUID của xe
- * @param {string} driver_id - ID của driver (để check ownership)
- * @returns {Promise<object>} - Thông tin xe đã deactivate
- * @throws {Error} - Lỗi với status code
+ * Soft deletes a vehicle by setting status to 'inactive'.
+ * Cannot delete if vehicle has active subscriptions or pending bookings.
+ * 
+ * Pre-conditions:
+ *   - Vehicle must belong to driver
+ *   - No active subscriptions
+ *   - No pending bookings
+ * 
+ * @param {string} vehicle_id - Vehicle's UUID
+ * @param {string} driver_id - Driver's account ID (for ownership check)
+ * @returns {Promise<object>} Basic info of deactivated vehicle
+ * @throws {Error} Validation, authorization, or business rule error
  */
 async function deleteVehicle(vehicle_id, driver_id) {
+  
   // Find vehicle
   const vehicle = await Vehicle.findByPk(vehicle_id);
   
@@ -391,14 +396,14 @@ async function deleteVehicle(vehicle_id, driver_id) {
     throw err;
   }
 
-  // Check nếu xe đã inactive rồi
+  // Check if already inactive
   if (vehicle.status === 'inactive') {
     const err = new Error('Vehicle is already deactivated');
     err.status = 400;
     throw err;
   }
 
-  // Check active subscription và pending bookings (parallel queries)
+  // Check for active subscriptions and pending bookings in parallel
   const [activeSubscription, pendingBooking] = await Promise.all([
     Subscription.findOne({
       where: {
@@ -417,21 +422,19 @@ async function deleteVehicle(vehicle_id, driver_id) {
     })
   ]);
 
-  // Check active subscription
   if (activeSubscription) {
     const err = new Error('Cannot deactivate vehicle. Active subscription exists. Please cancel subscription first');
     err.status = 409;
     throw err;
   }
 
-  // Check pending bookings
   if (pendingBooking) {
     const err = new Error('Cannot deactivate vehicle. Pending bookings exist. Please cancel bookings first');
     err.status = 409;
     throw err;
   }
 
-  // Soft delete - set status = inactive
+  // Soft delete by setting status to inactive
   vehicle.status = 'inactive';
   await vehicle.save();
 
@@ -444,16 +447,16 @@ async function deleteVehicle(vehicle_id, driver_id) {
 }
 
 /**
- * ========================================
- * CHECK VEHICLE OWNERSHIP
- * ========================================
- * Kiểm tra xe có thuộc về driver không
+ * Check Vehicle Ownership
  * 
- * @param {string} vehicle_id - UUID của xe
- * @param {string} driver_id - ID của driver
- * @returns {Promise<boolean>} - true nếu là chủ xe
+ * Verifies if a vehicle belongs to a specific driver.
+ * 
+ * @param {string} vehicle_id - Vehicle's UUID
+ * @param {string} driver_id - Driver's account ID
+ * @returns {Promise<boolean>} True if driver owns the vehicle
  */
 async function checkVehicleOwnership(vehicle_id, driver_id) {
+  
   const vehicle = await Vehicle.findByPk(vehicle_id);
   
   if (!vehicle) {
@@ -464,15 +467,17 @@ async function checkVehicleOwnership(vehicle_id, driver_id) {
 }
 
 /**
- * ========================================
- * FIND VEHICLE WITH MODEL (HELPER)
- * ========================================
- * Helper function để lấy vehicle kèm model info
+ * Find Vehicle With Model
  * 
- * @param {string} vehicle_id - UUID của xe
- * @returns {Promise<Vehicle>} - Thông tin xe kèm model
+ * Helper function to fetch vehicle with full model and battery type details.
+ * Used internally by other service functions.
+ * 
+ * @param {string} vehicle_id - Vehicle's UUID
+ * @returns {Promise<Vehicle>} Vehicle with model and battery type info
+ * @throws {Error} If vehicle not found
  */
 async function findVehicleWithModel(vehicle_id) {
+  
   const vehicle = await Vehicle.findByPk(vehicle_id, {
     include: [
       {
@@ -498,18 +503,17 @@ async function findVehicleWithModel(vehicle_id) {
 }
 
 /**
- * ========================================
- * GET VEHICLES WITHOUT BATTERIES (IDs only)
- * ========================================
- * Lấy danh sách vehicle_id và driver_id của xe chưa có pin
+ * Get Vehicles Without Batteries
  * 
- * @returns {Promise<Array<object>>} - Mảng {vehicle_id, driver_id}
+ * Returns list of vehicles that don't have any batteries assigned.
+ * Returns only vehicle_id and account_id pairs.
+ * 
+ * @returns {Promise<Array<{vehicle_id: string, account_id: string}>>} Vehicle IDs without batteries
  */
 async function getVehiclesWithoutBatteries() {
-  const { Battery, Sequelize } = require('../models');
-  const { Op } = Sequelize;
+  
+  const { Battery } = require('../models');
 
-  // Query tất cả xe và check battery
   const vehicles = await Vehicle.findAll({
     attributes: ['vehicle_id', 'driver_id'],
     include: [
@@ -522,7 +526,7 @@ async function getVehiclesWithoutBatteries() {
     ]
   });
 
-  // Filter ra những xe không có battery nào và map sang object
+  // Filter vehicles with no batteries and map to required format
   const vehiclesWithoutBattery = vehicles
     .filter(vehicle => !vehicle.batteries || vehicle.batteries.length === 0)
     .map(vehicle => ({
@@ -533,9 +537,6 @@ async function getVehiclesWithoutBatteries() {
   return vehiclesWithoutBattery;
 }
 
-// ========================================
-// EXPORTS
-// ========================================
 module.exports = {
   registerVehicle,
   getVehiclesByDriver,

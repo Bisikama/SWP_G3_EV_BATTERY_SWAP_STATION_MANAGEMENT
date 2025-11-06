@@ -1,18 +1,37 @@
 const db = require('../models');
 const ApiError = require('../utils/ApiError');
+const paginate = require('../utils/paginate')
 
-async function findAll() {
-  return db.TransferRequest.findAll({
+async function findAllRequest(filters = {}, page = 1, pageSize = 10) {
+  const options = {
+    include: [
+      { model: db.TransferOrder, as: 'transferOrders' }
+    ]
+  }
+  return paginate(db.TransferRequest, filters, { ...options, page, pageSize });
+}
+
+async function findAllOrder(filters = {}, page = 1, pageSize = 10) {
+  const options = {
+    include: [
+      { model: db.Battery, as: 'batteries' }
+    ]
+  }
+  return paginate(db.TransferOrder, filters, { ...options, page, pageSize });
+}
+
+async function findRequestById(id) {
+  return db.TransferRequest.findByPk(id, {
     include: [
       { model: db.TransferOrder, as: 'transferOrders' }
     ],
   });
 }
 
-async function findById(id) {
-  return db.TransferRequest.findByPk(id, {
+async function findOrderById(id) {
+  return db.TransferOrder.findByPk(id, {
     include: [
-      { model: db.TransferOrder, as: 'transferOrders' }
+      { model: db.Battery, as: 'batteries' }
     ],
   });
 }
@@ -59,7 +78,7 @@ async function approveTransfer(user, transfer_orders, transfer_request_id) {
     throw new ApiError(400, `Total transfer quantity (${totalTransferQuantity}) does not match requested quantity (${request.request_quantity}).`);
   }
 
-  const orders = await createTransfer(transfer_orders, transfer_request_id);    
+  const orders = await createTransfer(transfer_orders, transfer_request_id);
 
   request.status = 'approved';
   request.admin_id = user.account_id;
@@ -182,7 +201,7 @@ async function confirmTransfer(user, transfer_order_id) {
     },
   });
   if (!activeShift) throw new ApiError(400, "You do not have any active shift at this current time");
-  
+
   const order = await db.TransferOrder.findByPk(transfer_order_id, {
     include: [
       {
@@ -191,7 +210,7 @@ async function confirmTransfer(user, transfer_order_id) {
       },
     ],
   });
-  
+
   if (!order) throw new ApiError(400, "Transfer order not found");
   order.staff_id = user.account_id;
   order.confirm_time = now;
@@ -239,4 +258,4 @@ async function cancelTransfer(user, transfer_request_id) {
   return transferReq;
 }
 
-module.exports = { findAll, findById, requestTransfer, approveTransfer, createTransfer, rejectTransfer, confirmTransfer, cancelTransfer };
+module.exports = { findAllRequest, findAllOrder, findRequestById, findOrderById, requestTransfer, approveTransfer, createTransfer, rejectTransfer, confirmTransfer, cancelTransfer };

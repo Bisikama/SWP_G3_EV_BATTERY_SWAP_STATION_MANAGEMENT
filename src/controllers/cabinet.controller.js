@@ -2,7 +2,8 @@ const cabinetService = require('../services/cabinet.service');
 const ApiError = require('../utils/ApiError');
 
 async function findAll(req, res) {
-  const cabinets = await cabinetService.findAll();
+  const { page, pageSize, ...rest } = req.query;
+  const cabinets = await cabinetService.findAll(rest, page, pageSize);
   return res.status(200).json({ success: true, payload: { cabinets } });
 }
 
@@ -14,24 +15,19 @@ async function findById(req, res) {
 }
 
 async function findByStation(req, res) {
+  const { page, pageSize } = req.query;
   const { station_id } = req.params;
-  const cabinets = await cabinetService.findByStation(station_id);
+  const cabinets = await cabinetService.findByStation(station_id, page, pageSize);
   return res.status(200).json({ success: true, payload: { cabinets } });
 }
 
-async function findEmptySlot(req, res) {
-  const { cabinet_id } = req.params;
-  const slots = await cabinetService.findEmptySlot(cabinet_id);
-  return res.status(200).json({ success: true, payload: { slots } });
-}
-
 async function chargeFull(req, res) {
-  const { cabinet_id } = req.params;
-  const result = await cabinetService.chargeFull(cabinet_id);
+  const { id } = req.params;
+  const result = await cabinetService.chargeFull(id);
   return res.status(200).json({
     success: true,
     payload: { message: 'Cabinet batteries charged to full', result }
   });
 }
 
-module.exports = { findAll, findById, findByStation, findEmptySlot, chargeFull };
+module.exports = { findAll, findById, findByStation, chargeFull };

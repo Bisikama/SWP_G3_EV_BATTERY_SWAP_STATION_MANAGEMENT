@@ -116,10 +116,12 @@ async function createByVehicle(req, res) {
 async function getBatteryAtStation(req, res) {
   try {
     const { station_id } = req.params;
-    if (!station_id) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'station_id is required' 
+   
+    const station = await Station.findByPk(station_id);
+    if (!station) {
+      return res.status(404).json({
+        success: false,
+        message: 'Station not found'
       });
     }
 
