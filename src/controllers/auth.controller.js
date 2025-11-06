@@ -36,6 +36,18 @@ async function register(req, res) {
 		return res.status(400).json({ message: 'Email and password are required' });
 	}
 
+	// Validate phone number format (Vietnamese phone numbers)
+	// Accepts:
+	// - 0901234567 (10 digits starting with 0)
+	// - +84901234567 (country code + 9 digits)
+	// - 84901234567 (country code without + prefix)
+	const phoneRegex = /^(\+84|84|0)(3|5|7|8|9)\d{8}$/;
+	if (phone_number && !phoneRegex.test(phone_number)) {
+		return res.status(400).json({ 
+			message: 'Invalid phone number format. Expected format: 0901234567, +84901234567, or 84901234567' 
+		});
+	}
+
 	// Check if email already registered
 	const exists = await Account.findOne({ where: { email } });
 	if (exists) {

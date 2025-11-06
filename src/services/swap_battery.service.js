@@ -305,6 +305,47 @@ async function getAvailableBatteriesForSwap(station_id, battery_type_id, quantit
   }
 }
 
+async function getAvailableBatteriesForSwapAtStation(station_id) {
+  try {
+    // Tìm các slot có pin sẵn sàng
+    const slots = await CabinetSlot.findAll({
+      where: {
+        status: {
+          [Op.in]: ['occupied']
+        }
+      },
+      include: [
+        {
+          model: Cabinet,
+          as: 'cabinet',
+          where: { station_id: station_id },
+          attributes: ['cabinet_id', 'station_id']
+        },
+        {
+          model: Battery,
+          as: 'battery',
+          where: {
+            current_soc: {
+              [Op.gte]: 90 // SOC >= 90% mới cho đổi (đã tăng từ 80% lên 90%)
+            }
+          },
+          include: [
+            { model: BatteryType, as: 'batteryType' }
+          ]
+        }
+      ],
+      order: [
+        [{ model: Battery, as: 'battery' }, 'current_soc', 'DESC'] // Ưu tiên pin có SOC cao nhất
+      ]
+    });
+
+    return slots;
+  } catch (error) {
+    console.error('Error in getAvailableBatteriesForSwap:', error);
+    throw error;
+  }
+}
+
 /**
  * Service 5: Tạo swap record
  * @param {Object} swapData - Dữ liệu swap
@@ -443,5 +484,6 @@ module.exports = {
   updateNewBatteryToVehicle,
   getAvailableBatteriesForSwap,
   createSwapRecord,
-  getFirstTimeBatteries
+  getFirstTimeBatteries,
+  getAvailableBatteriesForSwapAtStation
 };
