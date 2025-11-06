@@ -1,11 +1,11 @@
-// seeders/25-transfer-details.js
 'use strict';
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
     const requests = await queryInterface.sequelize.query(
-      `SELECT transfer_request_id, station_id FROM "TransferRequests" ORDER BY request_time LIMIT 3`,
+      `SELECT transfer_request_id, station_id, request_quantity 
+       FROM "TransferRequests" ORDER BY request_time LIMIT 3`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -18,21 +18,35 @@ module.exports = {
     );
 
     const orders = [];
-    for (let i = 0; i < requests.length; i++) {
-      // pick a source station different from destination
-      const target = requests[i].station_id;
-      const source = stations.find(s => s.station_id !== target) || stations[0];
 
-      orders.push({
-        transfer_order_id: uuidv4(), // UUID primary key
-        transfer_request_id: requests[i].transfer_request_id,
-        source_station_id: source.station_id,
-        target_station_id: target,
-        staff_id: null,
-        confirm_time: null,
-        transfer_quantity: 3,
-        status: 'incompleted'
-      });
+    for (let req of requests) {
+      const targetStation = req.station_id;
+
+      // Pick all source stations except target
+      const sourceStations = stations.filter(s => s.station_id !== targetStation);
+      if (!sourceStations.length) continue;
+
+      // Decide how many transfer orders per request (at least 1)
+      const numOrders = Math.min(sourceStations.length, req.request_quantity);
+      let remainingQty = req.request_quantity;
+
+      for (let i = 0; i < numOrders; i++) {
+        // Ensure last order takes all remaining quantity
+        const qty = (i === numOrders - 1) ? remainingQty : Math.floor(Math.random() * (remainingQty - (numOrders - i - 1)) + 1);
+
+        orders.push({
+          transfer_order_id: uuidv4(),
+          transfer_request_id: req.transfer_request_id,
+          source_station_id: sourceStations[i % sourceStations.length].station_id,
+          target_station_id: targetStation,
+          staff_id: null,
+          confirm_time: null,
+          transfer_quantity: qty,
+          status: 'incompleted'
+        });
+
+        remainingQty -= qty;
+      }
     }
 
     await queryInterface.bulkInsert('TransferOrders', orders, {});
