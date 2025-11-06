@@ -210,9 +210,6 @@ router.post('/vehicle/:vehicle_id', batteryController.createByVehicle);
  *       Retrieve comprehensive battery statistics for a specific station including:
  *       - Total number of batteries at the station
  *       - Number of batteries available for swap (charged and ready)
- *       
- *       This endpoint performs complex queries to gather all batteries located in cabinets at the specified station,
- *       then filters for batteries that are available for swap operations.
  *     parameters:
  *       - in: path
  *         name: station_id
@@ -246,7 +243,7 @@ router.post('/vehicle/:vehicle_id', batteryController.createByVehicle);
  *                       description: Number of batteries available for swap (charged, good health, in charging/charged slots)
  *                     message:
  *                       type: string
- *                       example: "Total batteries at station 550e8400-e29b-41d4-a716-446655440000: 50, Available for swap: 32"
+ *                       example: "Total batteries at station 1: 50, Available for swap: 32"
  *                       description: Human-readable summary message
  *             examples:
  *               success:
@@ -255,7 +252,7 @@ router.post('/vehicle/:vehicle_id', batteryController.createByVehicle);
  *                   data:
  *                     TotalBatteries: 50
  *                     AvailableForSwap: 32
- *                     message: "Total batteries at station 550e8400-e29b-41d4-a716-446655440000: 50, Available for swap: 32"
+ *                     message: "Total batteries at station 1: 50, Available for swap: 32"
  *       400:
  *         description: Missing or invalid station_id parameter
  *         content:
