@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = {
   async up(queryInterface, Sequelize) {
     const drivers = await queryInterface.sequelize.query(
-      `SELECT account_id FROM "Accounts" WHERE role = 'driver'`,
+      `SELECT account_id FROM "Accounts" WHERE role = 'driver' ORDER BY email`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -13,18 +13,41 @@ module.exports = {
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
-    const byName = models.reduce((acc, m) => { acc[m.name] = m.model_id; return acc; }, {});
+    if (drivers.length === 0 || models.length === 0) {
+      console.log('No drivers or models found, skipping vehicles seeder');
+      return;
+    }
 
-    const vehicles = [
-      { vehicle_id: uuidv4(), driver_id: drivers[0].account_id, model_id: byName['Ludo'], license_plate: '51A-12345', vin: 'VF9LUDO00A0000017' },
-      { vehicle_id: uuidv4(), driver_id: drivers[1].account_id, model_id: byName['Impes'], license_plate: '51B-67890', vin: 'VF9IMPE00B0000027' },
-      { vehicle_id: uuidv4(), driver_id: drivers[2].account_id, model_id: byName['Klara S'], license_plate: '51C-11111', vin: 'VF9KLAR00C0000037' },
-      { vehicle_id: uuidv4(), driver_id: drivers[3].account_id, model_id: byName['Theon'], license_plate: '51D-22222', vin: 'VF9THEO00D0000047' },
-      { vehicle_id: uuidv4(), driver_id: drivers[4].account_id, model_id: byName['Vento'], license_plate: '51E-33333', vin: 'VF9VENT00E0000057' },
-      { vehicle_id: uuidv4(), driver_id: drivers[5].account_id, model_id: byName['Theon S'], license_plate: '51F-44444', vin: 'VF9THES00F0000067' },
-      { vehicle_id: uuidv4(), driver_id: drivers[6].account_id, model_id: byName['Vento S'], license_plate: '51G-55555', vin: 'VF9VENS00G0000077' },
-      { vehicle_id: uuidv4(), driver_id: drivers[7].account_id, model_id: byName['Feliz S'], license_plate: '51H-66666', vin: 'VF9FELS00H0000087' }
-    ];
+    const byName = models.reduce((acc, m) => { acc[m.name] = m.model_id; return acc; }, {});
+    
+    // Danh sách các model names
+    const modelNames = Object.keys(byName);
+    
+    // Tạo 50 vehicles cho 50 drivers
+    const vehicles = [];
+    const licensePlateProvinces = ['51', '59', '50', '60', '61', '63', '64', '65', '67', '68'];
+    const licensePlateLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'K', 'L', 'M', 'N', 'P', 'S', 'T', 'V', 'X', 'Y', 'Z'];
+    
+    for (let i = 0; i < drivers.length && i < 50; i++) {
+      const province = licensePlateProvinces[i % licensePlateProvinces.length];
+      const letter = licensePlateLetters[Math.floor(i / licensePlateProvinces.length) % licensePlateLetters.length];
+      const numbers = String(10000 + i).substring(0, 5);
+      
+      const modelName = modelNames[i % modelNames.length];
+      const modelId = byName[modelName];
+      
+      // Generate VIN (Vehicle Identification Number) - max 17 chars
+      const vinPrefix = modelName.substring(0, 3).toUpperCase().padEnd(3, 'X');
+      const vinNumber = String(100000 + i).substring(1); // 5 digits
+      
+      vehicles.push({
+        vehicle_id: uuidv4(),
+        driver_id: drivers[i].account_id,
+        model_id: modelId,
+        license_plate: `${province}${letter}-${numbers}`,
+        vin: `VF9${vinPrefix}${String.fromCharCode(65 + (i % 26))}${vinNumber}` // VF9 + 3 + 1 + 5 = 12 chars
+      });
+    }
 
     await queryInterface.bulkInsert('Vehicles', vehicles, {});
   },

@@ -44,48 +44,18 @@ module.exports = {
     });
 
     // Batteries in cabinet slots - MỖI SLOT CHỈ 1 PIN
-    // Lấy đúng số lượng slots để tránh duplicate
-    const availableSlots = chargedSlots.slice(0, Math.min(chargedSlots.length, 100));
-    
-    availableSlots.forEach((slot, index) => {
+    // Với 10 cabinets * 10 slots = 100 slots, 70% occupied = 70 slots có pin
+    chargedSlots.forEach((slot, index) => {
       batteries.push({
         battery_id: uuidv4(),
         battery_type_id: randomBatteryType(),
         vehicle_id: null,
         slot_id: slot.slot_id,
-        battery_serial: `BAT-SLT-${String(index + 1).padStart(4, '0')}`,
-        current_soc: 80.0 + Math.random() * 20, // 80-100%
-        current_soh: 88.0 + Math.random() * 12 // 88-100%
+        battery_serial: `BAT-SLOT-${String(index + 1).padStart(4, '0')}`,
+        current_soc: 80.0 + Math.random() * 20, // 80-100% (fully charged)
+        current_soh: 88.0 + Math.random() * 12 // 88-100% (good health)
       });
     });
-
-    // Extra batteries
-    const extraCount = 30;
-    for (let i = 0; i < extraCount; i++) {
-      if (chargedSlots.length > 0) {
-        const slot = chargedSlots[i % chargedSlots.length];
-        batteries.push({
-          battery_id: uuidv4(),
-          battery_type_id: randomBatteryType(),
-          vehicle_id: null,
-          slot_id: slot.slot_id,
-          battery_serial: `BAT-SLT-EX-${String(i + 1).padStart(4, '0')}`,
-          current_soc: 70.0 + Math.random() * 30,
-          current_soh: 85.0 + Math.random() * 15
-        });
-      } else if (vehicles.length > 0) {
-        const vehicle = vehicles[i % vehicles.length];
-        batteries.push({
-          battery_id: uuidv4(),
-          battery_type_id: randomBatteryType(),
-          vehicle_id: vehicle.vehicle_id,
-          slot_id: null,
-          battery_serial: `BAT-VEH-EX-${String(i + 1).padStart(4, '0')}`,
-          current_soc: 50.0 + Math.random() * 50,
-          current_soh: 80.0 + Math.random() * 20
-        });
-      }
-    }
 
     await queryInterface.bulkInsert('Batteries', batteries, {});
   },
