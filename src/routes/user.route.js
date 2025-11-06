@@ -36,6 +36,12 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *           enum: [driver, staff, admin]
  *         description: Filter users by role
  *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive]
+ *         description: Filter users by status
+ *       - in: query
  *         name: email
  *         schema:
  *           type: string
