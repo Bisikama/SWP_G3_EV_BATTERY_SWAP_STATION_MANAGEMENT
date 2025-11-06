@@ -27,9 +27,9 @@ function startCronJobs() {
   console.log('   📝 Description: Auto-deactivate subscriptions with end_date < today');
   
   // ✅ Cron Job 2: Tự động cancel booking quá hạn
-  // Schedule: Chạy mỗi 5 phút
-  // Cron format: "*/5 * * * *" = Mỗi 5 phút
-  const bookingJob = cron.schedule('*/5 * * * *', () => {
+  // Schedule: Chạy mỗi 10 phút
+  // Cron format: "*/10 * * * *" = Mỗi 10 phút
+  const bookingJob = cron.schedule('*/10 * * * *', () => {
     cancelExpiredBookings();
   }, {
     scheduled: true,
@@ -37,7 +37,7 @@ function startCronJobs() {
   });
   
   console.log('✅ Cron Job Started: Cancel Expired Bookings');
-  console.log('   ⏰ Schedule: Every 5 minutes');
+  console.log('   ⏰ Schedule: Every 10 minutes');
   console.log('   📝 Description: Auto-cancel bookings with expired_time < now and status = pending');
   
   // ✅ Cron Job 3: Gửi email nhắc nhở gia hạn gói
@@ -53,8 +53,8 @@ function startCronJobs() {
   console.log('✅ Cron Job Started: Send Subscription Expiry Reminders');
   console.log('   ⏰ Schedule: Every day at 08:00 AM (Asia/Ho_Chi_Minh timezone)');
   console.log('   📝 Description: Send email reminders to drivers with expired subscriptions (end_date = today)');
-  
-  const chargingJob = cron.schedule('*/1 * * * *', () => {
+
+  const chargingJob = cron.schedule('*/15 * * * *', () => {
     const durationMinutes = 1;
     autoCharge(durationMinutes);
   }, {
@@ -63,7 +63,7 @@ function startCronJobs() {
   });
 
   console.log('✅ Cron Job Started: Simulate Battery Charging');
-  console.log('   ⏰ Schedule: Every 1 minutes');
+  console.log('   ⏰ Schedule: Every 15 minutes');
   console.log('   📝 Description: Auto-charge batteries inside cabinets at all stations');
 
   const shiftJob = cron.schedule('59 23 * * *', async () => {

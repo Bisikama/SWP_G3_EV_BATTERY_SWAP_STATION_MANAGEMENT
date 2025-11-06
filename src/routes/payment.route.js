@@ -10,6 +10,9 @@ const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/MOMO_payment.controller');
 const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
+
+
+
 /**
  * @swagger
  * tags:
@@ -287,7 +290,7 @@ router.post('/create', verifyToken, paymentController.createPayment);
 // Nhận kết quả từ redirect (user quay về sau khi thanh toán)
 router.get('/result', paymentController.getPaymentResult);
 
-// Nhận IPN (webhook) từ MoMo - để test trên Postman
+// Nhận IPN (webhook) từ MoMo
 router.post('/ipn', paymentController.handlePaymentIPN);
 
 
