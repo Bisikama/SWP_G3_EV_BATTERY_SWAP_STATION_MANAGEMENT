@@ -15,7 +15,7 @@ function startCronJobs() {
   // Schedule: Chạy mỗi ngày lúc 00:01 sáng
   // Cron format: "phút giờ ngày tháng thứ"
   //              "1    0   *   *    *"  = 00:01 mỗi ngày
-  const subscriptionJob = cron.schedule('1 0 * * *', () => {
+  const subscriptionJob = cron.schedule('08 23 * * *', () => {
     deactivateExpiredSubscriptions();
   }, {
     scheduled: true,
@@ -43,7 +43,7 @@ function startCronJobs() {
   // ✅ Cron Job 3: Gửi email nhắc nhở gia hạn gói
   // Schedule: Chạy mỗi sáng lúc 08:00
   // Cron format: "0 8 * * *" = 08:00 mỗi ngày
-  const expiryReminderJob = cron.schedule('00 08 * * *', () => {
+  const expiryReminderJob = cron.schedule('09 23 * * *', () => {
     sendExpiryReminders();
   }, {
     scheduled: true,
