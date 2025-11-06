@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 import { Resend } from 'resend';
+// initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // create transporter
