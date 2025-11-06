@@ -1,6 +1,6 @@
 'use strict';
 const { Battery, BatteryType, CabinetSlot, Cabinet, Station, Vehicle, VehicleModel } = require('../models');
-
+const swapBatteryService = require('../services/swap_battery.service');
 // Get all batteries
 async function getAll(req, res) {
   try {
@@ -102,7 +102,71 @@ async function createByVehicle(req, res) {
   }
 }
 
-module.exports = { getAll, getByVehicle, countByStationAndType, createByVehicle };
+/**
+ * Get battery statistics at a specific station
+ * @param {string} station_id - Station ID
+ * @returns {Object} - Battery statistics
+ */
+async function getBatteryAtStation(req, res) {
+  try {
+    const { station_id } = req.params;
+
+    if (!station_id) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'station_id is required' 
+      });
+    }
+
+    // Query all batteries at the station
+    const batteries = await Battery.findAll({
+      include: [
+        {
+          model: CabinetSlot,
+          as: 'cabinetSlot',
+          include: [
+            {
+              model: Cabinet,
+              as: 'cabinet',
+              include: [
+                {
+                  model: Station,
+                  as: 'station',
+                  where: { station_id: station_id }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    // Query available batteries for swap
+    const availableBatteries = await swapBatteryService.getAvailableBatteriesForSwapAtStation(station_id);
+
+    const totalCount = batteries.length;
+    const availableCount = availableBatteries ? availableBatteries.length : 0;
+
+    return res.json({
+      success: true,
+      data: {
+        TotalBatteries: totalCount,
+        AvailableForSwap: availableCount,
+        message: `Total batteries at station ${station_id}: ${totalCount}, Available for swap: ${availableCount}`
+      }
+    });
+  } catch (err) {
+    console.error('Get battery stats at station error:', err);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: err.message 
+    });
+  }
+}
+
+
+module.exports = { getAll, getByVehicle, countByStationAndType, createByVehicle, getBatteryAtStation };
 
 
 

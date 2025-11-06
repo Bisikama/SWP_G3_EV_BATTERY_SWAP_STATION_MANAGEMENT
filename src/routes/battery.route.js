@@ -198,4 +198,104 @@ router.get('/vehicle/:vehicle_id', batteryController.getByVehicle);
  */
 router.post('/vehicle/:vehicle_id', batteryController.createByVehicle);
 
+/**
+ * @swagger
+ * /api/batteries/station/{station_id}:
+ *   get:
+ *     tags: [Batteries]
+ *     summary: Get battery statistics at a specific station
+ *     security:
+ *       - bearerAuth: []
+ *     description: |
+ *       Retrieve comprehensive battery statistics for a specific station including:
+ *       - Total number of batteries at the station
+ *       - Number of batteries available for swap (charged and ready)
+ *       
+ *       This endpoint performs complex queries to gather all batteries located in cabinets at the specified station,
+ *       then filters for batteries that are available for swap operations.
+ *     parameters:
+ *       - in: path
+ *         name: station_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: integer
+ *           example: 1
+ *         description: The unique identifier of the station
+ *     responses:
+ *       200:
+ *         description: Battery statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     TotalBatteries:
+ *                       type: integer
+ *                       example: 50
+ *                       description: Total number of batteries at the station (in all cabinets)
+ *                     AvailableForSwap:
+ *                       type: integer
+ *                       example: 32
+ *                       description: Number of batteries available for swap (charged, good health, in charging/charged slots)
+ *                     message:
+ *                       type: string
+ *                       example: "Total batteries at station 550e8400-e29b-41d4-a716-446655440000: 50, Available for swap: 32"
+ *                       description: Human-readable summary message
+ *             examples:
+ *               success:
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     TotalBatteries: 50
+ *                     AvailableForSwap: 32
+ *                     message: "Total batteries at station 550e8400-e29b-41d4-a716-446655440000: 50, Available for swap: 32"
+ *       400:
+ *         description: Missing or invalid station_id parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: station_id is required
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid token
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Internal server error
+                 error:
+                   type: string
+                   example: Database connection failed
+ */
+router.get('/station/:station_id', verifyToken, batteryController.getBatteryAtStation);
+
 module.exports = router;
