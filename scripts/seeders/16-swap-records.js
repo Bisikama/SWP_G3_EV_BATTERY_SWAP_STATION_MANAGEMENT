@@ -15,6 +15,13 @@ module.exports = {
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
+    const batteries = await queryInterface.sequelize.query(
+      `SELECT battery_id, vehicle_id, current_soh, battery_type_id
+       FROM "Batteries"
+       WHERE vehicle_id IS NOT NULL`,
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+
     if (drivers.length === 0 || stations.length === 0) {
       console.log('No drivers or stations found, skipping swap records seeder');
       return;
@@ -48,12 +55,30 @@ module.exports = {
       const randomDriver = drivers[Math.floor(Math.random() * drivers.length)];
       const randomStation = stations[Math.floor(Math.random() * stations.length)];
 
+      // Get all batteries for this vehicle
+      const vehicleBatteries = batteries.filter(b => b.vehicle_id === randomDriver.vehicle_id);
+
+      if (vehicleBatteries.length === 0) continue; // skip if no battery
+
+      // Select battery to remove (out)
+      const batteryOut = vehicleBatteries[Math.floor(Math.random() * vehicleBatteries.length)];
+
+      // Select battery to insert (in) — must match battery type
+      const candidateBatteriesIn = batteries.filter(b => b.battery_type_id === batteryOut.battery_type_id && b.battery_id !== batteryOut.battery_id);
+      const batteryIn = candidateBatteriesIn.length > 0 
+        ? candidateBatteriesIn[Math.floor(Math.random() * candidateBatteriesIn.length)]
+        : null; // if no candidate, can be null or leave same
+
       swaps.push({
         swap_id: uuidv4(),
         driver_id: randomDriver.driver_id,
         vehicle_id: randomDriver.vehicle_id,
         station_id: randomStation.station_id,
-        swap_time: swapDate
+        swap_time: swapDate,
+        battery_id_out: batteryOut.battery_id,
+        soh_out: batteryOut.current_soh,
+        battery_id_in: batteryIn ? batteryIn.battery_id : null,
+        soh_in: batteryIn ? batteryIn.current_soh : null
       });
     }
 

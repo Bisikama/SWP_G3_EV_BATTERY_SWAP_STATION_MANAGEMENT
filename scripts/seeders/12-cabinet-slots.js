@@ -35,14 +35,20 @@ module.exports = {
       // Tính tổng slots của station
       const totalSlots = stationCabinets.reduce((sum, cab) => sum + cab.battery_capacity, 0);
       
-      // MỖI TRẠM CÓ ÍT NHẤT 3 SLOTS TRỐNG, nhưng có thể nhiều hơn (3-8 slots)
-      // Đa dạng: một số trạm đông, một số trạm vắng
-      const minEmpty = 3;
-      const maxEmpty = Math.min(8, Math.floor(totalSlots * 0.4)); // Tối đa 40% hoặc 8 slots
-      const emptySlots = minEmpty + Math.floor(Math.random() * (maxEmpty - minEmpty + 1));
+      // MỖI TRẠM CÓ TỪ 3 ĐẾN 8 SLOT TRỐNG (RANDOM)
+      const MIN_EMPTY = 3;
+      const MAX_EMPTY = 8;
+
+      // Nếu tổng slot < 3 thì mặc định để trống 1 thôi để tránh lỗi
+      const emptySlots = totalSlots >= MIN_EMPTY 
+        ? Math.min(
+            Math.floor(Math.random() * (MAX_EMPTY - MIN_EMPTY + 1)) + MIN_EMPTY,
+            totalSlots // không vượt số slot thực tế
+          )
+        : 1;
       const occupiedSlots = totalSlots - emptySlots;
       
-      console.log(`Station ${stationData.station_name}: ${totalSlots} slots total, ${emptySlots} empty (${Math.round(emptySlots/totalSlots*100)}%), ${occupiedSlots} occupied`);
+      console.log(`Station ${stationData.station_name}: ${totalSlots} slots total, ${emptySlots} empty, ${occupiedSlots} occupied`);
       
       // Tạo array status cho toàn bộ station
       const allStatuses = [
