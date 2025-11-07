@@ -55,7 +55,7 @@ function startCronJobs() {
   console.log('   📝 Description: Send email reminders to drivers with expired subscriptions (end_date = today)');
 
   const chargingJob = cron.schedule('*/15 * * * *', () => {
-    const durationMinutes = 1;
+    const durationMinutes = 15;
     autoCharge(durationMinutes);
   }, {
     scheduled: true,
