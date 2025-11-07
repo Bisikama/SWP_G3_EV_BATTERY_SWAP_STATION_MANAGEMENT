@@ -1,7 +1,7 @@
 'use strict';
 
 const swapRecordService = require('../services/swap_record.service');
-
+//Get all SWAP records
 /**
  * Get all swap records with optional filters
  * Query params: driver_id, vehicle_id, station_id, from_date, to_date
