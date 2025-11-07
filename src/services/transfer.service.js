@@ -151,6 +151,11 @@ async function createTransfer(transfer_orders, transfer_request_id = null) {
         { where: { battery_id: availableBatteries.map(b => b.battery_id) }, transaction: t }
       );
 
+      await db.CabinetSlot.update(
+        { status: 'empty' },
+        { where: { slot_id: availableBatteries.map(b => b.cabinetSlot.slot_id) }, transaction: t }
+      );
+
       const order = await db.TransferOrder.create({
         transfer_request_id,
         source_station_id,
@@ -193,42 +198,75 @@ async function rejectTransfer(user, transfer_request_id) {
 
 async function confirmTransfer(user, transfer_order_id) {
   const now = new Date();
-  const activeShift = await db.Shift.findOne({
-    where: {
-      staff_id: user.account_id,
-      start_time: { [db.Sequelize.Op.lte]: now },
-      end_time: { [db.Sequelize.Op.gte]: now },
-    },
-  });
-  if (!activeShift) throw new ApiError(400, "You do not have any active shift at this current time");
+  const t = await db.sequelize.transaction();
 
-  const order = await db.TransferOrder.findByPk(transfer_order_id, {
-    include: [
-      {
-        model: db.Battery,
-        as: 'batteries'
+  try {
+    const activeShift = await db.Shift.findOne({
+      where: {
+        staff_id: user.account_id,
+        start_time: { [db.Sequelize.Op.lte]: now },
+        end_time: { [db.Sequelize.Op.gte]: now },
       },
-    ],
-  });
+      transaction: t,
+    });
+    if (!activeShift) throw new ApiError(400, "You do not have any active shift at this current time");
 
-  if (!order) throw new ApiError(400, "Transfer order not found");
-  order.staff_id = user.account_id;
-  order.confirm_time = now;
-  order.status = 'completed';
-  await order.save();
+    const order = await db.TransferOrder.findByPk(transfer_order_id, {
+      include: [{ model: db.Battery, as: 'batteries' }],
+      transaction: t,
+    });
+    if (!order) throw new ApiError(404, "Transfer order not found");
 
-  // check all transfer completed
-  const orders = await db.TransferOrder.findAll({
-    where: { transfer_request_id: order.transfer_request_id },
-  });
+    let emptySlots = await db.CabinetSlot.findAll({
+      where: { status: 'empty' },
+      include: [{
+        model: db.Cabinet,
+        as: 'cabinet',
+        where: { station_id: order.target_station_id },
+        attributes: ['cabinet_id', 'station_id'],
+      }],
+      transaction: t,
+    });
 
-  if (orders.every(d => d.status === 'completed')) {
-    const req = await db.TransferRequest.findByPk(order.transfer_request_id);
-    req.status = 'completed';
-    await req.save();
+    if (emptySlots.length < order.transfer_quantity) {
+      throw new ApiError(400, "There are not enough empty slots to put transferred batteries in");
+    }
+
+    for (let i = 0; i < order.batteries.length; i++) {
+      const battery = order.batteries[i];
+      const slot = emptySlots[i];
+
+      battery.slot_id = slot.slot_id;
+      slot.status = 'occupied';
+
+      await battery.save({ transaction: t });
+      await slot.save({ transaction: t });
+    }
+
+    order.staff_id = user.account_id;
+    order.confirm_time = now;
+    order.status = 'completed';
+    await order.save({ transaction: t });
+
+    const orders = await db.TransferOrder.findAll({
+      where: { transfer_request_id: order.transfer_request_id },
+      transaction: t,
+    });
+
+    if (orders.every(o => o.status === 'completed')) {
+      const req = await db.TransferRequest.findByPk(order.transfer_request_id, { transaction: t });
+      req.status = 'completed';
+      await req.save({ transaction: t });
+    }
+
+    await t.commit();
+    return order;
+
+  } catch (err) {
+    await t.rollback();
+    console.log(err);
+    throw new ApiError(500, `Confirm transfer order err: ${err.message}`);
   }
-
-  return order;
 }
 
 async function cancelTransfer(user, transfer_request_id) {
