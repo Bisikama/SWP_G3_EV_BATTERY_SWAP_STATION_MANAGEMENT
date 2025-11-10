@@ -129,14 +129,14 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   // Step 1: Validate required fields
   if (!vehicle_id || !station_id) {
     const err = new Error('Vehicle ID and Station ID are required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
   // Validate battery_quantity phải là số nguyên dương
   if (!Number.isInteger(battery_quantity) || battery_quantity < 1) {
     const err = new Error('Battery quantity must be a positive integer');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -147,7 +147,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   
   if (!config || !config.booking_expired_interval) {
     const err = new Error('System configuration not found');
-    err.status = 500;
+    err.statusCode = 500;
     throw err;
   }
   
@@ -161,7 +161,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
 
   if (!vehicle) {
     const err = new Error('Vehicle not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
@@ -175,7 +175,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
 
   if (!vehicleModel || !vehicleModel.batteryType) {
     const err = new Error('Vehicle model or battery type not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
@@ -187,7 +187,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
     const err = new Error(
       `This vehicle (${vehicleModel.brand} ${vehicleModel.name}) can only swap up to ${vehicleModel.battery_slot} ${vehicleModel.battery_slot === 1 ? 'battery' : 'batteries'} at once. You requested ${battery_quantity}.`
     );
-    err.status = 422;
+    err.statusCode = 422;
     throw err;
   }
 
@@ -196,7 +196,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   // Step 5: Kiểm tra quyền sở hữu vehicle
   if (vehicle.driver_id !== driver_id) {
     const err = new Error('You do not own this vehicle');
-    err.status = 403;
+    err.statusCode = 403;
     throw err;
   }
 
@@ -210,7 +210,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   
   if (!station) {
     const err = new Error('Station not found or not operational');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
@@ -244,7 +244,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
 
   if (availableBatteries.length < battery_quantity) {
     const err = new Error(`Not enough available batteries at this station. Available: ${availableBatteries.length}, Requested: ${battery_quantity}`);
-    err.status = 422;
+    err.statusCode = 422;
     throw err;
   }
 
@@ -305,7 +305,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
 async function getBookingsByDriver(driver_id, { status } = {}) {
   if (!driver_id) {
     const err = new Error('Driver ID is required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -373,7 +373,7 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
 async function getBookingById(booking_id, driver_id = null) {
   if (!booking_id) {
     const err = new Error('Booking ID is required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -415,14 +415,14 @@ async function getBookingById(booking_id, driver_id = null) {
 
   if (!booking) {
     const err = new Error('Booking not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
   // Kiểm tra quyền sở hữu nếu driver_id được cung cấp
   if (driver_id && booking.driver_id !== driver_id) {
     const err = new Error('You do not have permission to view this booking');
-    err.status = 403;
+    err.statusCode = 403;
     throw err;
   }
 
@@ -448,7 +448,7 @@ async function getBookingById(booking_id, driver_id = null) {
 async function updateBooking(booking_id, driver_id, updateData = {}) {
   if (!booking_id) {
     const err = new Error('Booking ID is required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -456,21 +456,21 @@ async function updateBooking(booking_id, driver_id, updateData = {}) {
   const booking = await Booking.findByPk(booking_id);
   if (!booking) {
     const err = new Error('Booking not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
   // 2. Check ownership
   if (booking.driver_id !== driver_id) {
     const err = new Error('You do not have permission to update this booking');
-    err.status = 403;
+    err.statusCode = 403;
     throw err;
   }
 
   // Kiểm tra status phải là pending
   if (booking.status !== 'pending') {
     const err = new Error(`Cannot update booking with status '${booking.status}'. Only pending bookings can be updated.`);
-    err.status = 422;
+    err.statusCode = 422;
     throw err;
   }
 
@@ -478,13 +478,13 @@ async function updateBooking(booking_id, driver_id, updateData = {}) {
   const now = new Date();
   if (new Date(booking.expired_time) < now) {
     const err = new Error('Cannot update a booking that has already expired');
-    err.status = 422;
+    err.statusCode = 422;
     throw err;
   }
 
   // Throw error vì function đã deprecated
   const err = new Error('Booking times are now automatically managed and cannot be changed. Please cancel and create a new booking if needed.');
-  err.status = 422;
+  err.statusCode = 422;
   throw err;
 }
 
@@ -508,7 +508,7 @@ async function updateBooking(booking_id, driver_id, updateData = {}) {
 async function cancelBooking(booking_id, driver_id) {
   if (!booking_id) {
     const err = new Error('Booking ID is required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -516,21 +516,21 @@ async function cancelBooking(booking_id, driver_id) {
   const booking = await Booking.findByPk(booking_id);
   if (!booking) {
     const err = new Error('Booking not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
   // 2. Check ownership
   if (booking.driver_id !== driver_id) {
     const err = new Error('You do not have permission to cancel this booking');
-    err.status = 403;
+    err.statusCode = 403;
     throw err;
   }
 
   // Step 3: Kiểm tra status phải là pending
   if (booking.status !== 'pending') {
     const err = new Error(`Cannot cancel booking with status '${booking.status}'. Only pending bookings can be cancelled.`);
-    err.status = 422;
+    err.statusCode = 422;
     throw err;
   }
 
@@ -599,7 +599,7 @@ async function checkVehicleSubscription(vehicle_id) {
 
   if (!activeSubscription) {
     const err = new Error('Vehicle does not have an active subscription. Please subscribe first.');
-    err.status = 422;
+    err.statusCode = 422;
     throw err;
   }
 
@@ -610,7 +610,7 @@ async function checkVehicleSubscription(vehicle_id) {
 
   if (!plan) {
     const err = new Error('Subscription plan not found');
-    err.status = 500;
+    err.statusCode = 500;
     throw err;
   }
 
@@ -749,7 +749,7 @@ async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = n
     const err = new Error(
       `Cannot create new booking. This vehicle already has a pending booking (ID: ${existingPendingBooking.booking_id}) that expires at ${expiresAt}. Please complete or cancel the existing booking first.`
     );
-    err.status = 409;
+    err.statusCode = 409;
     throw err;
   }
 }
@@ -802,7 +802,7 @@ async function checkAvailability(station_id, vehicle_id) {
   
   if (!station) {
     const err = new Error('Station not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
@@ -833,7 +833,7 @@ async function checkAvailability(station_id, vehicle_id) {
 
   if (!vehicle) {
     const err = new Error('Vehicle not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
