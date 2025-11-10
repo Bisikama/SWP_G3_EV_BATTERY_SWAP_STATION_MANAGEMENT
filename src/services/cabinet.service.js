@@ -1,10 +1,11 @@
 const db = require('../models');
 const ApiError = require('../utils/ApiError');
 const paginate = require('../utils/paginate');
+const ruleConfig = require('../config/route.config');
 
 const detailData = [
 	{ model: db.CabinetSlot, as: 'slots',
-		attributes: ['slot_number', 'voltage', 'current'],
+		attributes: ['slot_number', 'voltage', 'current', 'status'],
 		include: [
 			{ model: db.Battery, as: 'battery',
 				attributes: ['battery_id', 'battery_serial', 'current_soc', 'current_soh'],
@@ -63,8 +64,9 @@ async function createCabinet(data) {
       { transaction: t, returning: true }
     );
 
+    const allowed_empty_slot = ruleConfig.getConfigValue('allowed_empty_slot');
     const numberOfBatteries = cabinetCount === 0
-      ? Math.max(battery_capacity - 3, 0)
+      ? Math.max(battery_capacity - allowed_empty_slot, 0)
       : battery_capacity;
 
     const batteryTypes = await db.BatteryType.findAll();

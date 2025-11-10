@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const ApiError = require('../utils/ApiError');
 const paginate = require('../utils/paginate');
 const { v4: uuidv4 } = require('uuid');
+const ruleConfig = require('../config/route.config');
 
 async function findAll(filters = {}, page = 1, pageSize = 10) {
   const cabinetWhere = {};
@@ -98,7 +99,7 @@ async function getBatteryStatsAtStation(station_id) {
   if (!station) throw new ApiError(404, 'Station not found');
 
   const occupiedSlots = await CabinetSlot.findAll({
-    where: { status: { [Op.in]: ['occupied'] } },
+    where: { status: { [Op.notIn]: ['empty'] } },
     include: [{ model: Cabinet, as: 'cabinet', where: { station_id }, attributes: ['cabinet_id', 'station_id'] }]
   });
 
@@ -108,12 +109,12 @@ async function getBatteryStatsAtStation(station_id) {
   });
 
   const availableBatteries = await swapBatteryService.getAvailableBatteriesForSwapAtStation(station_id);
-  const defaultEmptySlotsCount = 3;
+  const allowedEmptySlot = ruleConfig.getConfigValue('allowed_empty_slot');
 
   const totalCount = occupiedSlots.length;
   const availableCount = availableBatteries.length;
-  const shortageCount = emptySlots.length > defaultEmptySlotsCount
-    ? emptySlots.length - defaultEmptySlotsCount
+  const shortageCount = emptySlots.length > allowedEmptySlot
+    ? emptySlots.length - allowedEmptySlot
     : 0;
 
   return {
