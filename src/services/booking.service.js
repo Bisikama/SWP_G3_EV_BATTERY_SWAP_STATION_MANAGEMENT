@@ -703,27 +703,35 @@ async function findAvailableBatteries(station_id, battery_type_id) {
 /**
  * Kiểm tra vehicle có booking pending khác
  * 
- * Business Rule: Mỗi vehicle chỉ được có tối đa 1 booking pending cùng lúc.
- * Phải cancel hoặc complete booking cũ trước khi tạo booking mới.
+ * Business Rule: Mỗi vehicle chỉ được có tối đa 1 booking pending CHƯA EXPIRED cùng lúc.
+ * Phải cancel hoặc complete booking cũ, hoặc đợi booking cũ expired trước khi tạo booking mới.
  * 
- * Lưu ý: Rule áp dụng cho VEHICLE, không phải DRIVER.
- * Một driver có thể có nhiều bookings pending nếu có nhiều vehicles khác nhau.
+ * Lưu ý:
+ * - Rule áp dụng cho VEHICLE, không phải DRIVER
+ * - Chỉ check bookings với expired_time > now (chưa hết hạn)
+ * - Bookings đã expired sẽ được cron job tự động cancel
+ * - Cho phép user tạo booking mới ngay khi booking cũ expired, không cần đợi job
  * 
  * Ví dụ:
  * - Driver A có 3 xe: Xe1, Xe2, Xe3
- * - Xe1 có booking pending -> Xe1 không thể tạo booking mới
+ * - Xe1 có booking pending chưa expired -> Xe1 không thể tạo booking mới
+ * - Xe1 có booking pending đã expired -> Xe1 TẠO ĐƯỢC booking mới
  * - Xe2, Xe3 vẫn tạo được booking (vì khác xe)
  * 
  * @param {string} driver_id - ID của driver (không dùng để validate)
  * @param {string} vehicle_id - ID của vehicle cần kiểm tra
  * @param {string} excludeBookingId - Booking ID cần bỏ qua khi check (dùng cho update)
- * @throws {Error} Throw error nếu vehicle đã có booking pending khác
+ * @throws {Error} Throw error nếu vehicle đã có booking pending chưa expired
  */
 async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = null) {
+  const now = new Date();
+  
   // Chỉ check vehicle_id, không check driver_id
+  // Chỉ check bookings chưa expired (expired_time > now)
   const whereClause = {
     vehicle_id,
-    status: 'pending'
+    status: 'pending',
+    expired_time: { [Op.gt]: now }  // Chỉ check bookings chưa hết hạn
   };
 
   // Loại trừ booking hiện tại (dùng cho update)
@@ -737,8 +745,9 @@ async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = n
   });
 
   if (existingPendingBooking) {
+    const expiresAt = formatToVietnamTime(existingPendingBooking.expired_time);
     const err = new Error(
-      `Cannot create new booking. This vehicle already has a pending booking (ID: ${existingPendingBooking.booking_id}) that expires at ${existingPendingBooking.expired_time}. Please complete or cancel the existing booking first.`
+      `Cannot create new booking. This vehicle already has a pending booking (ID: ${existingPendingBooking.booking_id}) that expires at ${expiresAt}. Please complete or cancel the existing booking first.`
     );
     err.status = 409;
     throw err;
