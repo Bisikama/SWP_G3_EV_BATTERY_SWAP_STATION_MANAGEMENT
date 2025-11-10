@@ -2,142 +2,188 @@
 'use strict';
 
 /**
- * ========================================
  * VIN VALIDATION MIDDLEWARE
- * ========================================
- * Mục đích: Validate Vehicle Identification Number (VIN) theo chuẩn ISO 3779
+ * File: src/middlewares/validateVin.js
  * 
- * VIN là gì?
- * - VIN = Vehicle Identification Number (Số khung xe)
- * - Mỗi xe có 1 VIN duy nhất (như CMND/CCCD của xe)
- * - Độ dài: 17 ký tự (bắt buộc)
- * - Không chứa: I, O, Q (vì dễ nhầm với 1, 0)
+ * Validate Vehicle Identification Number (VIN) theo format custom cho xe điện.
  * 
- * Ví dụ VIN hợp lệ: 1HGBH41JXMN109186
- * ========================================
+ * VIN Structure (17 characters):
+ * - WMI (World Manufacturer Identifier): 3 ký tự đầu - BẮT BUỘC "RL9"
+ * - VDS (Vehicle Descriptor Section): 3 ký tự tiếp - Mã dòng xe (LUD, IMP, KLA, v.v.)
+ * - VIS (Vehicle Identifier Section): 11 ký tự cuối - Năm + Nhà máy + Serial
+ * 
+ * Format: RL9[VDS][VIS]
+ * Example: RL9LUD24HN00001 (Ludo, năm 2024, nhà máy HN, serial 00001)
+ * 
+ * Supported Vehicle Models (VDS):
+ * - LUD: Ludo
+ * - IMP: Impes
+ * - KLA: Klara S
+ * - TES: Theon S
+ * - VEN: Vento
+ * - THE: Theon
+ * - VES: Vento S
+ * - FEL: Feliz S
+ * - EVO: Evo200
  */
 function validateVin(req, res, next) {
-  // Bước 1: Lấy VIN từ request body
-  const { vin } = req.body || {};
+  // Step 1: Lấy VIN từ request body HOẶC params (GET /vin/:vin)
+  const vin = req.body?.vin || req.params?.vin;
 
-  // Bước 2: Kiểm tra VIN có tồn tại không
+  // Step 2: Kiểm tra VIN có tồn tại không
   if (!vin) {
     return res.status(400).json({ 
-      message: 'VIN is required',
-      hint: 'Please provide a Vehicle Identification Number'
+      success: false,
+      error: {
+        code: 'VIN_REQUIRED',
+        message: 'VIN is required',
+        field: 'vin',
+        hint: 'Please provide a Vehicle Identification Number in the request body or URL parameter'
+      }
     });
   }
 
-  // Bước 3: Chuẩn hóa VIN
-  // - Chuyển sang UPPERCASE (VIN luôn viết hoa)
-  // - Trim() để xóa khoảng trắng thừa đầu/cuối
+  // Step 3: Chuẩn hóa VIN (uppercase, trim)
   const normalizedVin = vin.toString().toUpperCase().trim();
 
-  // Bước 4: Kiểm tra độ dài (phải đúng 17 ký tự)
+  // Step 4: Kiểm tra độ dài (phải đúng 17 ký tự)
   if (normalizedVin.length !== 17) {
     return res.status(400).json({ 
-      message: 'VIN must be exactly 17 characters',
-      received: normalizedVin.length,
-      hint: 'A valid VIN has 17 characters (e.g., 1HGBH41JXMN109186)'
+      success: false,
+      error: {
+        code: 'VIN_INVALID_LENGTH',
+        message: 'VIN must be exactly 17 characters',
+        field: 'vin',
+        received: {
+          vin: normalizedVin,
+          length: normalizedVin.length
+        },
+        expected: {
+          length: 17,
+          format: 'RL9[VDS][VIS]',
+          example: 'RL9LUD24HN00001'
+        }
+      }
     });
   }
 
-  // Bước 5: Kiểm tra format VIN
-  // Regex: /^[A-HJ-NPR-Z0-9]{17}$/
-  // - A-H: Chữ cái A đến H (bỏ I)
-  // - J-N: Chữ cái J đến N (bỏ O)
-  // - P-R: Chữ cái P đến R (bỏ Q)
-  // - S-Z: Chữ cái S đến Z
-  // - 0-9: Số từ 0 đến 9
-  const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/;
-  if (!vinRegex.test(normalizedVin)) {
+  // Step 5: Extract components
+  const wmi = normalizedVin.substring(0, 3);   // WMI: 3 ký tự đầu (RL9)
+  const vds = normalizedVin.substring(3, 6);   // VDS: 3 ký tự tiếp (LUD, IMP, ...)
+  const vis = normalizedVin.substring(6, 17);  // VIS: 11 ký tự cuối (năm + plant + serial)
+
+  // Step 6: Validate WMI (phải là "RL9")
+  if (wmi !== 'RL9') {
     return res.status(400).json({ 
-      message: 'Invalid VIN format',
-      detail: 'VIN must contain only A-Z (excluding I, O, Q) and 0-9',
-      hint: 'Characters I, O, Q are not allowed in VIN to avoid confusion with 1 and 0'
+      success: false,
+      error: {
+        code: 'VIN_INVALID_WMI',
+        message: 'Invalid World Manufacturer Identifier (WMI)',
+        field: 'vin',
+        received: {
+          vin: normalizedVin,
+          wmi: wmi,
+          position: 'Characters 1-3'
+        },
+        expected: {
+          wmi: 'RL9',
+          description: 'VIN must start with RL9'
+        }
+      }
     });
   }
 
-  // Bước 6: Validate check digit (ký tự thứ 9 của VIN)
-  // Check digit dùng để phát hiện lỗi gõ nhầm VIN
-  if (!isValidVinCheckDigit(normalizedVin)) {
+  // Step 7: Validate VDS (phải thuộc danh sách dòng xe hợp lệ)
+  const validVdsCodes = ['LUD', 'IMP', 'KLA', 'TES', 'VEN', 'THE', 'VES', 'FEL', 'EVO'];
+  if (!validVdsCodes.includes(vds)) {
     return res.status(400).json({ 
-      message: 'Invalid VIN check digit',
-      detail: 'The 9th character of VIN does not match the calculated check digit',
-      vin: normalizedVin,
-      hint: 'Please verify the VIN number is correct'
+      success: false,
+      error: {
+        code: 'VIN_INVALID_VDS',
+        message: 'Invalid Vehicle Descriptor Section (VDS)',
+        field: 'vin',
+        received: {
+          vin: normalizedVin,
+          vds: vds,
+          position: 'Characters 4-6'
+        },
+        expected: {
+          validCodes: validVdsCodes,
+          description: 'VDS must be one of the supported vehicle model codes'
+        }
+      }
     });
   }
 
-  // Bước 7: Gắn VIN đã chuẩn hóa vào request để controller sử dụng
-  req.body.vin = normalizedVin;
+  // Step 8: Validate VIS (11 ký tự alphanumeric)
+  const visRegex = /^[A-Z0-9]{11}$/;
+  if (!visRegex.test(vis)) {
+    return res.status(400).json({ 
+      success: false,
+      error: {
+        code: 'VIN_INVALID_VIS',
+        message: 'Invalid Vehicle Identifier Section (VIS)',
+        field: 'vin',
+        received: {
+          vin: normalizedVin,
+          vis: vis,
+          position: 'Characters 7-17'
+        },
+        expected: {
+          format: '11 alphanumeric characters (A-Z, 0-9)',
+          example: '24HN00001',
+          description: 'VIS must contain only uppercase letters and numbers'
+        }
+      }
+    });
+  }
+
+  // Step 9: Gắn VIN đã chuẩn hóa vào request (cả body và params)
+  if (req.body) {
+    req.body.vin = normalizedVin;
+  }
+  if (req.params && req.params.vin !== undefined) {
+    req.params.vin = normalizedVin;
+  }
   
-  // Bước 8: Chuyển sang middleware/controller tiếp theo
+  // Step 10: Gắn parsed components vào request (optional, for later use)
+  req.vin_components = {
+    wmi: wmi,                        // "RL9"
+    vds: vds,                        // "LUD", "IMP", "KLA", etc.
+    vis: vis,                        // "24HN00001", "2024A0123", etc.
+    model: getModelName(vds)         // "Ludo", "Impes", "Klara S", etc.
+  };
+
+  // Step 11: Chuyển sang middleware/controller tiếp theo
   next();
 }
 
 /**
- * ========================================
- * VALIDATE VIN CHECK DIGIT
- * ========================================
- * Mục đích: Kiểm tra ký tự thứ 9 của VIN (check digit) có đúng không
+ * Helper function: Map VDS code to vehicle model name
  * 
- * Check digit là gì?
- * - Là ký tự thứ 9 trong VIN
- * - Được tính toán dựa trên 16 ký tự còn lại
- * - Dùng để phát hiện lỗi gõ nhầm VIN
+ * Chuyển đổi mã VDS (3 ký tự) thành tên dòng xe đầy đủ.
  * 
- * Cách tính:
- * 1. Chuyển mỗi ký tự thành số theo bảng transliteration
- * 2. Nhân với trọng số tương ứng
- * 3. Tính tổng và lấy modulo 11
- * 4. So sánh với ký tự thứ 9
+ * @param {string} vdsCode - VDS code (LUD, IMP, KLA, etc.)
+ * @returns {string} Model name (Ludo, Impes, Klara S, etc.)
  * 
- * Ví dụ: VIN = 1HGBH41JXMN109186
- *        Check digit = J (ký tự thứ 9)
- * ========================================
+ * @example
+ * getModelName('LUD') → 'Ludo'
+ * getModelName('IMP') → 'Impes'
+ * getModelName('KLA') → 'Klara S'
  */
-function isValidVinCheckDigit(vin) {
-  // Bảng chuyển đổi ký tự → số (theo chuẩn ISO 3779)
-  // Ví dụ: A=1, B=2, C=3, ..., 0=0, 1=1, 2=2, ...
-  const transliteration = {
-    A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8,
-    J: 1, K: 2, L: 3, M: 4, N: 5, P: 7, R: 9,
-    S: 2, T: 3, U: 4, V: 5, W: 6, X: 7, Y: 8, Z: 9,
-    0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9
+function getModelName(vdsCode) {
+  const modelMap = {
+    'LUD': 'Ludo',
+    'IMP': 'Impes',
+    'KLA': 'Klara S',
+    'TES': 'Theon S',
+    'VEN': 'Vento',
+    'THE': 'Theon',
+    'VES': 'Vento S',
+    'FEL': 'Feliz S',
+    'EVO': 'Evo200'
   };
-
-  // Trọng số cho từng vị trí (theo chuẩn ISO 3779)
-  // Vị trí 1→8: trọng số 8→1
-  // Vị trí 9: check digit (trọng số = 0, không tính)
-  // Vị trí 10→17: trọng số 9→2
-  const weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
-  
-  let sum = 0; // Tổng tích số
-  
-  // Duyệt qua từng ký tự trong VIN
-  for (let i = 0; i < 17; i++) {
-    const char = vin[i]; // Lấy ký tự tại vị trí i
-    const value = transliteration[char]; // Chuyển ký tự → số
-    
-    // Nếu ký tự không hợp lệ (không có trong bảng)
-    if (value === undefined) {
-      return false;
-    }
-    
-    // Nhân giá trị với trọng số và cộng vào tổng
-    sum += value * weights[i];
-  }
-
-  // Tính check digit: sum % 11
-  const checkDigit = sum % 11;
-  
-  // Nếu check digit = 10 → ký tự 'X'
-  // Nếu check digit = 0-9 → ký tự số tương ứng
-  const expectedChar = checkDigit === 10 ? 'X' : checkDigit.toString();
-  
-  // So sánh ký tự thứ 9 của VIN với check digit tính được
-  return vin[8] === expectedChar;
+  return modelMap[vdsCode] || 'Unknown';
 }
 
 module.exports = validateVin;
