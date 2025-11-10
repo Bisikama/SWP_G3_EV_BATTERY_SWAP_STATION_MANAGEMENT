@@ -22,6 +22,7 @@ const vehicleController = require('../controllers/vehicle.controller');
 const { verifyToken } = require('../middlewares/verifyTokens');
 const vehicleValidation = require('../validations/vehicle.validation');
 const { validate } = require('../middlewares/validateHandler');
+const validateVin = require('../middlewares/validateVin');
 
 /**
  * @swagger
@@ -78,7 +79,8 @@ const { validate } = require('../middlewares/validateHandler');
  */
 router.post('/', 
   verifyToken, 
-  validate(vehicleValidation.register), 
+  validate(vehicleValidation.register),
+  validateVin,
   vehicleController.registerVehicle
 );
 
@@ -211,7 +213,8 @@ router.get('/user/:userId',
  *         description: Internal server error
  */
 router.get('/vin/:vin', 
-  validate(vehicleValidation.findByVin), 
+  validate(vehicleValidation.findByVin),
+  validateVin,
   vehicleController.getVehicleByVin
 );
 

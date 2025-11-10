@@ -19,16 +19,16 @@ const { body, param } = require('express-validator');
  * POST /api/vehicles
  * 
  * Validates:
- *   - vin: 17 characters, valid VIN format
+ *   - vin: Will be validated by validateVin middleware (custom format)
  *   - model_id: Positive integer
  *   - license_plate: Vietnam motorcycle format
+ * 
+ * Note: VIN validation is handled by validateVin middleware to support custom format:
+ *       RL9[VDS][VIS] where VDS is vehicle model code (LUD, IMP, etc.)
  */
 const register = [
-  body('vin')
-    .notEmpty().withMessage('VIN is required')
-    .isString().withMessage('VIN must be a string')
-    .isLength({ min: 17, max: 17 }).withMessage('VIN must be exactly 17 characters')
-    .matches(/^[A-HJ-NPR-Z0-9]{17}$/i).withMessage('VIN contains invalid characters'),
+  // VIN validation removed - handled by validateVin middleware
+  // This allows custom validation logic with better error messages
 
   body('model_id')
     .notEmpty().withMessage('Vehicle model ID is required')
@@ -97,14 +97,13 @@ const findById = [
  * GET /api/vehicles/vin/:vin
  * 
  * Validates:
- *   - vin: 17 characters, valid VIN format
+ *   - vin: Basic checks only, detailed validation by validateVin middleware
  */
 const findByVin = [
   param('vin')
     .notEmpty().withMessage('VIN is required')
     .isString().withMessage('VIN must be a string')
-    .isLength({ min: 17, max: 17 }).withMessage('VIN must be exactly 17 characters')
-    .matches(/^[A-HJ-NPR-Z0-9]{17}$/i).withMessage('VIN contains invalid characters')
+  // Detailed VIN format validation is handled by validateVin middleware
 ];
 
 /**
