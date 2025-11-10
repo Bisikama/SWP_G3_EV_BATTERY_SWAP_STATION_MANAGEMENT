@@ -1,3 +1,22 @@
+/**
+ * BOOKING MODEL
+ * File: src/models/booking.js
+ * 
+ * Sequelize model cho bảng Bookings.
+ * Đại diện cho một booking (đặt chỗ swap pin) của driver tại một station.
+ * 
+ * Relationships:
+ * - belongsTo Account (driver) - Booking được tạo bởi driver
+ * - belongsTo Vehicle - Booking cho một vehicle cụ thể
+ * - belongsTo Station - Booking tại một station
+ * - belongsToMany Battery through BookingBattery - Batteries được reserve cho booking này
+ * 
+ * Business Rules:
+ * - Driver chỉ có thể có tối đa 1 booking pending tại một thời điểm
+ * - Booking tự động expired sau khoảng thời gian định trước (system config)
+ * - Expired bookings sẽ tự động cancelled bởi cron job
+ */
+
 'use strict';
 const {
   Model
@@ -5,12 +24,11 @@ const {
 module.exports = (sequelize, DataTypes) => {
   class Booking extends Model {
     /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
+     * Định nghĩa associations với các models khác.
+     * Method này được gọi tự động bởi models/index.js.
      */
     static associate(models) {
-        // Many-to-Many with Battery through BookingBattery
+        // Many-to-Many relationship với Battery thông qua BookingBattery
         this.belongsToMany(models.Battery, { 
           through: models.BookingBattery, 
           as: 'batteries', 
@@ -18,12 +36,13 @@ module.exports = (sequelize, DataTypes) => {
           otherKey: 'battery_id' 
         });
         
-        // Many BookingBattery records
+        // One-to-Many relationship với BookingBattery
         this.hasMany(models.BookingBattery, { 
           as: 'bookingBatteries', 
           foreignKey: 'booking_id' 
         });
         
+        // Many-to-One relationships
         this.belongsTo(models.Station, { as: 'station', foreignKey: 'station_id' });
         this.belongsTo(models.Account, { as: 'driver', foreignKey: 'driver_id' });
         this.belongsTo(models.Vehicle, { as: 'vehicle', foreignKey: 'vehicle_id' });
@@ -83,7 +102,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
-  // hooks
+  /**
+   * Sequelize hooks
+   * 
+   * beforeSave hook: Validate driver_id phải là một account có role driver.
+   * Đảm bảo chỉ drivers mới có thể tạo bookings.
+   */
   Booking.beforeSave(async (booking, options) => {
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(booking.driver_id);
