@@ -1,6 +1,8 @@
 const { CabinetSlot, Battery, SwapRecord, Cabinet, BatteryType } = require('../models');
 const { Op } = require('sequelize');
-
+const routeConfig = require('../config/route.config');
+const sohAvailableThreshole = routeConfig.getConfig()?.soh_available_threshole || 90;
+const sohMaintenanceThreshole = routeConfig.getConfig()?.soh_maintenance_threshole || 70;
 /**
  * Service 4: Lấy danh sách các ô pin đang trống của cabinet tại trạm
  * @param {number} station_id - ID của trạm
@@ -122,7 +124,7 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
       }
 
       // Kiểm tra SOH để xác định status của slot
-      const newSlotStatus = battery.current_soh < 70 ? 'locked' : 'occupied';
+      const newSlotStatus = battery.current_soh < sohMaintenanceThreshole ? 'locked' : 'occupied';
 
       results.push({
         slot_id,
