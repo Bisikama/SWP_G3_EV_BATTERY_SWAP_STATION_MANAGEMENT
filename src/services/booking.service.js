@@ -1,19 +1,25 @@
-// ========================================
-// BOOKING SERVICE
-// ========================================
-// File: src/services/booking.service.js
-// Mục đích: Business logic layer cho booking operations
-// 
-// Chức năng chính:
-// 1. createBooking - Tạo booking mới với battery matching
-// 2. getBookingsByDriver - Lấy danh sách bookings của driver
-// 3. getBookingById - Lấy chi tiết booking
-// 4. updateBooking - Cập nhật thời gian booking
-// 5. checkVehicleOwnership - Kiểm tra quyền sở hữu vehicle
-// 6. checkVehicleSubscription - Kiểm tra subscription active
-// 7. findAvailableBatteries - Tìm battery available
-// 8. checkDuplicateBooking - Kiểm tra trùng booking
-// ========================================
+/**
+ * BOOKING SERVICE
+ * File: src/services/booking.service.js
+ * 
+ * Business logic layer xử lý các thao tác liên quan đến booking pin tại trạm swap.
+ * Service này quản lý toàn bộ quy trình từ tạo booking, kiểm tra availability,
+ * đến việc hủy booking và giải phóng resources.
+ * 
+ * Main Functions:
+ * - createBooking: Tạo booking mới với battery matching
+ * - getBookingsByDriver: Lấy danh sách bookings của driver
+ * - getBookingById: Lấy chi tiết một booking cụ thể
+ * - cancelBooking: Hủy booking và giải phóng slots
+ * - checkAvailability: Kiểm tra số lượng pin available tại station
+ * 
+ * Helper Functions:
+ * - findAvailableBatteries: Tìm pins sẵn sàng cho booking
+ * - checkDuplicateBooking: Kiểm tra vehicle có booking pending khác
+ * - checkVehicleSubscription: Validate subscription còn active
+ * - formatToVietnamTime: Format datetime sang múi giờ Việt Nam
+ * - formatBookingResponse: Format response với Vietnam timezone
+ */
 
 'use strict';
 const { 
@@ -34,15 +40,15 @@ const {
   sequelize 
 } = require('../models');
 const { Op } = Sequelize;
-const routeConfig = require('../config/route.config');
+
 /**
- * ========================================
- * HELPER: FORMAT DATETIME TO VIETNAM TIMEZONE
- * ========================================
- * Convert UTC datetime to Vietnam timezone (GMT+7) format
+ * Format datetime sang múi giờ Việt Nam (UTC+7)
  * 
- * @param {Date|string} date - UTC date to convert
- * @returns {string} - Formatted datetime string (YYYY-MM-DD HH:mm:ss)
+ * Chuyển đổi UTC datetime thành định dạng chuẩn Việt Nam để hiển thị
+ * cho người dùng. Database lưu UTC, nhưng response trả về Vietnam time.
+ * 
+ * @param {Date|string} date - UTC date cần convert
+ * @returns {string} Datetime string định dạng YYYY-MM-DD HH:mm:ss
  */
 function formatToVietnamTime(date) {
   if (!date) return null;
@@ -63,13 +69,14 @@ function formatToVietnamTime(date) {
 }
 
 /**
- * ========================================
- * HELPER: FORMAT BOOKING RESPONSE
- * ========================================
- * Format booking object with Vietnam timezone for all datetime fields
+ * Format booking response với Vietnam timezone
  * 
- * @param {Booking} booking - Booking object from database
- * @returns {object} - Formatted booking object
+ * Convert tất cả datetime fields trong booking object sang múi giờ Việt Nam
+ * trước khi trả về cho client. Đảm bảo người dùng thấy thời gian đúng với
+ * khu vực của họ.
+ * 
+ * @param {Booking} booking - Booking object từ database
+ * @returns {object} Booking object đã format với Vietnam timezone
  */
 function formatBookingResponse(booking) {
   if (!booking) return null;
@@ -94,33 +101,49 @@ function formatBookingResponse(booking) {
 }
 
 /**
- * ========================================
- * CREATE BOOKING
- * ========================================
- * Tạo booking mới với tất cả validations
+ * Tạo booking mới cho driver
  * 
- * @param {string} driver_id - ID của driver (từ JWT token)
- * @param {object} bookingData - { vehicle_id, station_id, battery_quantity }
- * @returns {Promise<Booking>} - Booking vừa tạo (kèm relations)
- * @throws {Error} - Lỗi với status code
+ * Quy trình tạo booking gồm 15 bước:
+ * 1. Validate input data (vehicle_id, station_id, battery_quantity)
+ * 2. Lấy booking expiration interval từ system config
+ * 3. Kiểm tra vehicle tồn tại và lấy thông tin model + battery type
+ * 4. Validate battery_quantity không vượt quá vehicle capacity
+ * 5. Kiểm tra quyền sở hữu vehicle (driver có sở hữu xe không)
+ * 6. Kiểm tra station tồn tại và đang operational
+ * 7. Kiểm tra vehicle có subscription active không
+ * 8. Tính toán thời gian expired (hiện tại + interval từ config)
+ * 9. Kiểm tra vehicle có booking pending nào khác không
+ * 10. Tìm available batteries tại station (đúng loại, SOC >= 90%, SOH >= 70%)
+ * 11. Tạo booking record với status pending
+ * 12. Chọn batteries từ danh sách available
+ * 13. Tạo associations trong bảng BookingBatteries
+ * 14. Update cabinet slots từ occupied sang booked
+ * 15. Return booking với đầy đủ thông tin relations
+ * 
+ * @param {string} driver_id - ID của driver (lấy từ JWT token)
+ * @param {object} bookingData - Object chứa vehicle_id, station_id, battery_quantity
+ * @returns {Promise<Booking>} Booking vừa tạo kèm đầy đủ relations
+ * @throws {Error} Throw error với status code tương ứng nếu validation fail
  */
 async function createBooking(driver_id, { vehicle_id, station_id, battery_quantity = 1 }) {
-  // 1. Validate required fields
+  // Step 1: Validate required fields
   if (!vehicle_id || !station_id) {
     const err = new Error('Vehicle ID and Station ID are required');
     err.status = 400;
     throw err;
   }
 
-  // Validate battery_quantity
+  // Validate battery_quantity phải là số nguyên dương
   if (!Number.isInteger(battery_quantity) || battery_quantity < 1) {
     const err = new Error('Battery quantity must be a positive integer');
     err.status = 400;
     throw err;
   }
 
-  // 2. Get booking expiration interval from config
-  const config = routeConfig.getConfig();
+  // Step 2: Lấy thời gian expiration từ system config
+  const config = await Config.findOne({
+    attributes: ['booking_expired_interval']
+  });
   
   if (!config || !config.booking_expired_interval) {
     const err = new Error('System configuration not found');
@@ -131,7 +154,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   const expirationIntervalMinutes = config.booking_expired_interval;
   console.log(`[DEBUG] Booking expiration interval: ${expirationIntervalMinutes} minutes`);
 
-  // 3. Check vehicle exists
+  // Step 3: Kiểm tra vehicle tồn tại và lấy thông tin cơ bản
   const vehicle = await Vehicle.findByPk(vehicle_id, {
     attributes: ['vehicle_id', 'driver_id', 'model_id', 'license_plate']
   });
@@ -142,7 +165,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
     throw err;
   }
 
-  // Get vehicle model and battery type separately
+  // Lấy thông tin vehicle model và battery type
   const vehicleModel = await VehicleModel.findByPk(vehicle.model_id, {
     include: [{
       model: BatteryType,
@@ -156,10 +179,10 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
     throw err;
   }
 
-  // Attach model to vehicle for consistent object structure
+  // Gắn model vào vehicle object
   vehicle.model = vehicleModel;
 
-  // 4. Validate battery_quantity against vehicle's battery_slot capacity
+  // Step 4: Validate battery_quantity không vượt quá vehicle capacity
   if (battery_quantity > vehicleModel.battery_slot) {
     const err = new Error(
       `This vehicle (${vehicleModel.brand} ${vehicleModel.name}) can only swap up to ${vehicleModel.battery_slot} ${vehicleModel.battery_slot === 1 ? 'battery' : 'batteries'} at once. You requested ${battery_quantity}.`
@@ -170,14 +193,14 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
 
   console.log(`[DEBUG] Battery swap request: ${battery_quantity}/${vehicleModel.battery_slot} batteries for ${vehicleModel.brand} ${vehicleModel.name}`);
 
-  // 5. Check vehicle ownership
+  // Step 5: Kiểm tra quyền sở hữu vehicle
   if (vehicle.driver_id !== driver_id) {
     const err = new Error('You do not own this vehicle');
     err.status = 403;
     throw err;
   }
 
-  // 6. Check station exists and operational
+  // Step 6: Kiểm tra station tồn tại và đang operational
   const station = await Station.findOne({
     where: {
       station_id,
@@ -191,22 +214,21 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
     throw err;
   }
 
-  // 7. Check vehicle has active subscription
+  // Step 7: Kiểm tra vehicle có subscription active không
   const activeSubscription = await checkVehicleSubscription(vehicle_id);
 
-  // Note: battery_cap đã bị loại bỏ trong database mới
-  // Không còn giới hạn số lượng battery per swap theo plan
-  // Giới hạn chỉ phụ thuộc vào available batteries tại station
+  // Note: Giới hạn số lượng pin chỉ phụ thuộc vào vehicle capacity
+  // và số lượng pin available tại station, không giới hạn theo plan
 
-  // 8. Calculate expired_time = create_time + booking_expired_interval
+  // Step 8: Tính toán thời gian expired
   const now = new Date();
   const expiredTime = new Date(now.getTime() + expirationIntervalMinutes * 60000);
   console.log(`[DEBUG] Booking will expire at: ${expiredTime.toISOString()}`);
 
-  // 9. Check duplicate booking
+  // Step 9: Kiểm tra vehicle có booking pending nào khác không
   await checkDuplicateBooking(driver_id, vehicle_id, null);
 
-  // 10. Find available batteries at station
+  // Step 10: Tìm available batteries tại station
   const battery_type_id = vehicle.model.battery_type_id;
   
   let availableBatteries;
@@ -226,7 +248,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
     throw err;
   }
 
-  // 11. Create booking with expired_time
+  // Step 11: Tạo booking record với status pending
   const newBooking = await Booking.create({
     driver_id,
     vehicle_id,
@@ -235,10 +257,10 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
     status: 'pending'
   });
 
-  // 12. Select batteries
+  // Step 12: Chọn batteries từ danh sách available
   const selectedBatteries = availableBatteries.slice(0, battery_quantity);
 
-  // 13. Associate batteries with booking
+  // Step 13: Tạo associations trong BookingBatteries
   const bookingBatteryPromises = selectedBatteries.map(battery => 
     BookingBattery.create({
       booking_id: newBooking.booking_id,
@@ -248,7 +270,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   
   await Promise.all(bookingBatteryPromises);
 
-  // 14. Book cabinet slots for reserved batteries (occupied → booked)
+  // Step 14: Update cabinet slots từ occupied sang booked
   const slotIds = selectedBatteries
     .map(b => b.slot_id)
     .filter(id => id !== null && id !== undefined);
@@ -265,19 +287,20 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
     console.log(`[DEBUG] Successfully booked ${slotIds.length} cabinet slot(s) for booking`);
   }
 
-  // 15. Return booking with full details
+  // Step 15: Return booking với đầy đủ relations
   return getBookingById(newBooking.booking_id, driver_id);
 }
 
 /**
- * ========================================
- * GET BOOKINGS BY DRIVER
- * ========================================
- * Lấy tất cả bookings của driver với filter (KHÔNG PAGINATION)
+ * Lấy danh sách bookings của driver
+ * 
+ * Trả về tất cả bookings của driver với option filter theo status.
+ * Không có pagination, sắp xếp theo expired_time giảm dần (mới nhất trước).
+ * Response đã được format sang múi giờ Việt Nam.
  * 
  * @param {string} driver_id - ID của driver
- * @param {object} options - { status }
- * @returns {Promise<object>} - { bookings }
+ * @param {object} options - Object chứa status filter (pending/completed/cancelled)
+ * @returns {Promise<object>} Object chứa bookings array và total count
  */
 async function getBookingsByDriver(driver_id, { status } = {}) {
   if (!driver_id) {
@@ -286,10 +309,10 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
     throw err;
   }
 
-  // Build where clause
+  // Xây dựng where clause
   const where = { driver_id };
   
-  // Add status filter if provided
+  // Thêm filter status nếu được cung cấp
   if (status && ['pending', 'completed', 'cancelled'].includes(status)) {
     where.status = status;
   }
@@ -316,13 +339,13 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
         model: Battery,
         as: 'batteries',
         attributes: ['battery_id', 'battery_serial', 'current_soc'],
-        through: { attributes: [] } // Không lấy attributes từ bảng trung gian
+        through: { attributes: [] } // Loại bỏ attributes của bảng BookingBatteries
       }
     ],
     order: [['expired_time', 'DESC']]
   });
 
-  // Format all bookings to Vietnam timezone
+  // Format tất cả datetime fields sang múi giờ Việt Nam
   const formattedBookings = bookings.map(booking => formatBookingResponse(booking));
 
   return {
@@ -332,14 +355,20 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
 }
 
 /**
- * ========================================
- * GET BOOKING BY ID
- * ========================================
- * Lấy chi tiết booking theo ID với full relations
+ * Lấy chi tiết booking theo ID
  * 
- * @param {string} booking_id - UUID của booking
- * @param {string} driver_id - ID của driver (để check ownership)
- * @returns {Promise<Booking>} - Booking details
+ * Trả về booking với đầy đủ thông tin relations:
+ * - Driver info (account, fullname, email, phone)
+ * - Vehicle info (model, battery type)
+ * - Station info (name, address, coordinates)
+ * - Batteries info (serial, SOC, SOH)
+ * 
+ * Kiểm tra quyền sở hữu nếu driver_id được cung cấp.
+ * Response đã được format sang múi giờ Việt Nam.
+ * 
+ * @param {string} booking_id - UUID của booking cần lấy
+ * @param {string} driver_id - ID của driver để check ownership (optional)
+ * @returns {Promise<Booking>} Booking object với đầy đủ relations
  */
 async function getBookingById(booking_id, driver_id = null) {
   if (!booking_id) {
@@ -390,7 +419,7 @@ async function getBookingById(booking_id, driver_id = null) {
     throw err;
   }
 
-  // Check ownership nếu driver_id được cung cấp
+  // Kiểm tra quyền sở hữu nếu driver_id được cung cấp
   if (driver_id && booking.driver_id !== driver_id) {
     const err = new Error('You do not have permission to view this booking');
     err.status = 403;
@@ -402,16 +431,19 @@ async function getBookingById(booking_id, driver_id = null) {
 }
 
 /**
- * ========================================
- * UPDATE BOOKING
- * ========================================
- * NOTE: With auto-expiration, bookings cannot be rescheduled.
- * This function is deprecated but kept for backward compatibility.
+ * Update booking (DEPRECATED)
+ * 
+ * Function này không còn được sử dụng vì booking time được tự động quản lý
+ * bởi system config. Giữ lại để backward compatibility với code cũ.
+ * 
+ * Nếu muốn thay đổi thời gian booking, driver cần cancel booking cũ
+ * và tạo booking mới.
  * 
  * @param {string} booking_id - UUID của booking
- * @param {string} driver_id - ID của driver (để check ownership)
- * @param {object} updateData - Reserved for future use
- * @returns {Promise<Booking>} - Updated booking
+ * @param {string} driver_id - ID của driver
+ * @param {object} updateData - Dữ liệu update (không sử dụng)
+ * @returns {Promise<Booking>} Luôn throw error
+ * @throws {Error} Throw error vì function đã deprecated
  */
 async function updateBooking(booking_id, driver_id, updateData = {}) {
   if (!booking_id) {
@@ -435,14 +467,14 @@ async function updateBooking(booking_id, driver_id, updateData = {}) {
     throw err;
   }
 
-  // 3. Check status is pending (không cho update booking đã completed/cancelled)
+  // Kiểm tra status phải là pending
   if (booking.status !== 'pending') {
     const err = new Error(`Cannot update booking with status '${booking.status}'. Only pending bookings can be updated.`);
     err.status = 422;
     throw err;
   }
 
-  // 4. Check booking hasn't expired
+  // Kiểm tra booking chưa expired
   const now = new Date();
   if (new Date(booking.expired_time) < now) {
     const err = new Error('Cannot update a booking that has already expired');
@@ -450,22 +482,28 @@ async function updateBooking(booking_id, driver_id, updateData = {}) {
     throw err;
   }
 
-  // 5. Since booking time is now auto-calculated, there's nothing to update
-  // This endpoint is kept for backward compatibility but does not allow rescheduling
+  // Throw error vì function đã deprecated
   const err = new Error('Booking times are now automatically managed and cannot be changed. Please cancel and create a new booking if needed.');
   err.status = 422;
   throw err;
 }
 
 /**
- * ========================================
- * CANCEL BOOKING (SOFT DELETE)
- * ========================================
- * Hủy booking bằng cách update status = 'cancelled'
+ * Hủy booking
  * 
- * @param {string} booking_id - UUID của booking
- * @param {string} driver_id - ID của driver (để check ownership)
- * @returns {Promise<object>} - { message, booking_id }
+ * Cancel booking bằng cách update status sang cancelled và giải phóng
+ * cabinet slots để pins có thể được book lại.
+ * 
+ * Logic giải phóng slots:
+ * - Nếu battery SOH > 70%: slot chuyển sang occupied (sẵn sàng book lại)
+ * - Nếu battery SOH <= 70%: slot chuyển sang locked (cần bảo trì)
+ * 
+ * Chỉ owner của booking mới có quyền cancel. Chỉ cancel được booking
+ * có status pending.
+ * 
+ * @param {string} booking_id - UUID của booking cần cancel
+ * @param {string} driver_id - ID của driver để check ownership
+ * @returns {Promise<object>} Object chứa success message và booking_id
  */
 async function cancelBooking(booking_id, driver_id) {
   if (!booking_id) {
@@ -474,7 +512,7 @@ async function cancelBooking(booking_id, driver_id) {
     throw err;
   }
 
-  // 1. Find booking
+  // Step 1: Tìm booking
   const booking = await Booking.findByPk(booking_id);
   if (!booking) {
     const err = new Error('Booking not found');
@@ -489,18 +527,18 @@ async function cancelBooking(booking_id, driver_id) {
     throw err;
   }
 
-  // 3. Check status is pending
+  // Step 3: Kiểm tra status phải là pending
   if (booking.status !== 'pending') {
     const err = new Error(`Cannot cancel booking with status '${booking.status}'. Only pending bookings can be cancelled.`);
     err.status = 422;
     throw err;
   }
 
-  // 4. Update status to cancelled
+  // Step 4: Update status sang cancelled
   await booking.update({ status: 'cancelled' });
 
-  // 5. Unlock cabinet slots: booked → occupied (if SOH > 70%) or locked (if SOH ≤ 70%)
-  // Find all batteries reserved for this booking
+  // Step 5: Giải phóng cabinet slots dựa trên SOH của battery
+  // Lấy tất cả batteries được reserve cho booking này
   const bookingBatteries = await BookingBattery.findAll({
     where: { booking_id },
     include: [{
@@ -508,16 +546,16 @@ async function cancelBooking(booking_id, driver_id) {
       as: 'battery',
       attributes: ['battery_id', 'slot_id', 'current_soc', 'current_soh'],
       where: {
-        slot_id: { [Op.not]: null } // Only batteries in cabinet slots
+        slot_id: { [Op.not]: null } // Chỉ lấy batteries trong cabinet
       }
     }]
   });
 
-  // Update cabinet slot status based on battery SOH
+  // Update slot status dựa trên SOH của battery
   for (const bb of bookingBatteries) {
     const battery = bb.battery;
     if (battery && battery.slot_id) {
-      // Logic: SOH > 70% → 'occupied' (sẵn sàng), SOH ≤ 70% → 'locked' (không cho booking)
+      // SOH > 70%: occupied (sẵn sàng), SOH <= 70%: locked (cần bảo trì)
       const newStatus = battery.current_soh > 70 ? 'occupied' : 'locked';
       await CabinetSlot.update(
         { status: newStatus },
@@ -535,18 +573,21 @@ async function cancelBooking(booking_id, driver_id) {
 }
 
 /**
- * ========================================
- * HELPER: CHECK VEHICLE SUBSCRIPTION
- * ========================================
- * Kiểm tra vehicle có subscription active không
+ * Kiểm tra vehicle có subscription active
  * 
- * @param {string} vehicle_id - UUID của vehicle
- * @throws {Error} - Nếu không có subscription active
+ * Validate vehicle có subscription còn hiệu lực không trước khi cho phép booking.
+ * Subscription phải:
+ * - Chưa bị cancel (cancel_time = null)
+ * - Chưa hết hạn (end_date >= hôm nay)
+ * 
+ * @param {string} vehicle_id - UUID của vehicle cần kiểm tra
+ * @returns {Promise<Subscription>} Active subscription với plan details
+ * @throws {Error} Throw error nếu vehicle không có subscription active
  */
 async function checkVehicleSubscription(vehicle_id) {
   const today = new Date().toISOString().split('T')[0];
 
-  // Step 1: Find active subscription
+  // Tìm active subscription
   const activeSubscription = await Subscription.findOne({
     where: {
       vehicle_id,
@@ -562,7 +603,7 @@ async function checkVehicleSubscription(vehicle_id) {
     throw err;
   }
 
-  // Step 2: Get plan details separately
+  // Lấy thông tin subscription plan
   const plan = await SubscriptionPlan.findByPk(activeSubscription.plan_id, {
     attributes: ['plan_id', 'plan_name', 'plan_fee', 'swap_fee', 'soh_cap']
   });
@@ -573,38 +614,35 @@ async function checkVehicleSubscription(vehicle_id) {
     throw err;
   }
 
-  // Step 3: Attach plan to subscription object for consistent return format
+  // Gắn plan vào subscription object
   activeSubscription.plan = plan;
 
   return activeSubscription;
 }
 
 /**
- * ========================================
- * HELPER: FIND AVAILABLE BATTERIES
- * ========================================
- * Tìm batteries available tại station cho battery swap
+ * Tìm available batteries tại station
  * 
- * ĐIỀU KIỆN AVAILABLE:
- * 1. Cabinet status = 'operational'
- * 2. Slot status = 'occupied' (có pin, SOH > 70%, chưa booked)
- * 3. Battery type khớp với vehicle
- * 4. Battery SOC >= 90% (đủ năng lượng)
- * 5. Battery SOH >= 70% (pin còn tốt)
- * 6. Battery trong cabinet (slot_id NOT NULL, vehicle_id = NULL)
+ * Quy trình tìm batteries:
+ * 1. Tìm cabinets operational tại station
+ * 2. Lấy slots có status occupied (có pin sẵn sàng, chưa bị book)
+ * 3. Filter batteries theo điều kiện:
+ *    - Đúng battery_type_id
+ *    - SOC >= 90% (đủ năng lượng)
+ *    - SOH >= 70% (pin còn tốt)
  * 
- * NOTE: Không check booking conflicts (không xử lý race condition)
+ * Slot status giải thích:
+ * - occupied: Có pin sẵn sàng (SOH > 70%), có thể booking
+ * - booked: Có pin nhưng đang bị giữ bởi booking pending khác
+ * - locked: Có pin nhưng SOH <= 70%, cần bảo trì
+ * - empty: Không có pin
  * 
- * @param {number} station_id - ID của station
+ * @param {number} station_id - ID của station cần tìm batteries
  * @param {number} battery_type_id - ID loại pin cần tìm
- * @returns {Promise<Battery[]>} Danh sách batteries available
- * 
- * @example
- * const batteries = await findAvailableBatteries(1, 2);
- * // Returns: [Battery{ battery_id, slot_id, current_soc: 95, current_soh: 85 }, ...]
+ * @returns {Promise<Battery[]>} Array các battery objects thỏa mãn điều kiện
  */
 async function findAvailableBatteries(station_id, battery_type_id) {
-  // 1. Tìm tất cả cabinets tại station
+  // Step 1: Tìm tất cả cabinets operational tại station
   console.log('[findAvailableBatteries] Searching for cabinets at station:', station_id);
   
   let cabinets;
@@ -626,13 +664,13 @@ async function findAvailableBatteries(station_id, battery_type_id) {
     return [];
   }
 
-  // 2. Lấy tất cả slots của các cabinets này
-  // ✅ Chỉ lấy slot 'occupied' (có pin sẵn sàng, SOH > 70%), loại trừ 'locked', 'empty', 'booked'
+  // Step 2: Lấy slots có status occupied (pin sẵn sàng booking)
+  // Loại trừ: empty (không pin), locked (SOH thấp), booked (đang giữ)
   const cabinetIds = cabinets.map(c => c.cabinet_id);
   const slots = await CabinetSlot.findAll({
     where: {
       cabinet_id: { [Op.in]: cabinetIds },
-      status: 'occupied'  // Chỉ lấy slot có pin sẵn sàng (SOH > 70%)
+      status: 'occupied'
     },
     attributes: ['slot_id', 'cabinet_id', 'status']
   });
@@ -643,57 +681,52 @@ async function findAvailableBatteries(station_id, battery_type_id) {
     return [];
   }
 
-  // 3. Lấy tất cả slot_ids
+  // Step 3: Extract slot IDs
   const slotIds = slots.map(s => s.slot_id);
 
-  // 4. Tìm batteries trong các slots này
-  // ✅ QUAN TRỌNG: Battery.current_soc là source of truth, không cần check slot status nữa
+  // Step 4: Tìm batteries thỏa mãn tất cả điều kiện
   const availableBatteries = await Battery.findAll({
     where: {
       slot_id: { [Op.in]: slotIds },
       battery_type_id,
-      current_soc: { [Op.gte]: 90 },  // ✅ SOURCE OF TRUTH: SOC >= 90%
-      current_soh: { [Op.gte]: 70 }   // Pin phải có SOH >= 70%
+      current_soc: { [Op.gte]: 90 },  // Đủ năng lượng
+      current_soh: { [Op.gte]: 70 }   // Pin còn tốt
     }
   });
 
   console.log('[findAvailableBatteries] Found batteries matching criteria:', availableBatteries.length);
 
-  // 5. Trả về tất cả batteries available
-  // Pin có SOC >= 90% và SOH >= 70% trong slot 'occupied' (sẵn sàng cho booking)
+  // Step 5: Return danh sách batteries available
   return availableBatteries;
 }
 
 /**
- * ========================================
- * HELPER: CHECK DUPLICATE BOOKING
- * ========================================
- * Kiểm tra vehicle có booking pending khác không
+ * Kiểm tra vehicle có booking pending khác
  * 
- * BUSINESS RULE:
- * - Một VEHICLE chỉ được có TỐI ĐA 1 booking với status='pending' mỗi lúc
- * - Chỉ khi booking cũ đã completed hoặc cancelled thì vehicle đó mới được đặt booking mới
- * - Driver có thể có nhiều booking pending, NHƯNG mỗi xe chỉ 1 booking pending
+ * Business Rule: Mỗi vehicle chỉ được có tối đa 1 booking pending cùng lúc.
+ * Phải cancel hoặc complete booking cũ trước khi tạo booking mới.
  * 
- * VÍ DỤ:
- * - Driver A có 3 xe (Xe1, Xe2, Xe3)
- * - Xe1 có booking pending → Xe1 KHÔNG đặt được booking khác
- * - Xe1 có booking pending → Xe2, Xe3 VẪN đặt được (vì khác xe)
+ * Lưu ý: Rule áp dụng cho VEHICLE, không phải DRIVER.
+ * Một driver có thể có nhiều bookings pending nếu có nhiều vehicles khác nhau.
  * 
- * @param {string} driver_id - UUID của driver (không dùng để check)
- * @param {string} vehicle_id - UUID của vehicle (dùng để check)
- * @param {string} excludeBookingId - Booking ID cần exclude (khi update)
- * @throws {Error} - Nếu vehicle có pending booking khác
+ * Ví dụ:
+ * - Driver A có 3 xe: Xe1, Xe2, Xe3
+ * - Xe1 có booking pending -> Xe1 không thể tạo booking mới
+ * - Xe2, Xe3 vẫn tạo được booking (vì khác xe)
+ * 
+ * @param {string} driver_id - ID của driver (không dùng để validate)
+ * @param {string} vehicle_id - ID của vehicle cần kiểm tra
+ * @param {string} excludeBookingId - Booking ID cần bỏ qua khi check (dùng cho update)
+ * @throws {Error} Throw error nếu vehicle đã có booking pending khác
  */
 async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = null) {
-  // CHỈ check vehicle có booking pending nào không
-  // KHÔNG check driver vì driver có thể có nhiều xe, mỗi xe 1 booking pending
+  // Chỉ check vehicle_id, không check driver_id
   const whereClause = {
-    vehicle_id,  // ← CHỈ check vehicle_id, không check driver_id
+    vehicle_id,
     status: 'pending'
   };
 
-  // Exclude booking hiện tại khi update
+  // Loại trừ booking hiện tại (dùng cho update)
   if (excludeBookingId) {
     whereClause.booking_id = { [Op.ne]: excludeBookingId };
   }
@@ -713,34 +746,33 @@ async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = n
 }
 
 /**
- * ========================================
- * CHECK AVAILABILITY
- * ========================================
- * Kiểm tra tính khả dụng của pin tại station cho một vehicle cụ thể
+ * Kiểm tra availability của pin tại station
  * 
- * FLOW:
- * 1. Validate station tồn tại và operational
- * 2. Lấy thông tin vehicle và battery_type cần thiết
- * 3. Tìm tất cả batteries available tại station (SOC>=90%, SOH>=70%)
- * 4. Đếm tổng số slots tại station
- * 5. Return availability info
+ * Check xem station có đủ pins sẵn sàng cho vehicle này không.
+ * Trả về số lượng pins available và thông tin chi tiết về station.
  * 
- * NOTE: Không xử lý race condition (2 users đặt cùng lúc)
- *       Backend createBooking sẽ handle first-come-first-served
+ * Flow xử lý:
+ * 1. Validate station tồn tại và đang operational
+ * 2. Lấy thông tin vehicle để xác định battery_type cần thiết
+ * 3. Tìm tất cả batteries thỏa mãn: đúng loại, SOC >= 90%, SOH >= 70%
+ * 4. Đếm tổng capacity của station (total slots)
+ * 5. Return availability info với message thân thiện
  * 
- * @param {number} station_id - ID của station cần check
- * @param {string} vehicle_id - UUID của vehicle (để xác định battery_type_id)
- * @returns {Promise<object>} Availability info với details
- * @throws {Error} 404 nếu station hoặc vehicle không tồn tại
+ * Lưu ý: Không xử lý race condition (2 users book cùng lúc).
+ * Backend createBooking sẽ handle first-come-first-served.
+ * 
+ * @param {number} station_id - ID của station cần kiểm tra
+ * @param {string} vehicle_id - UUID của vehicle (để xác định loại pin cần)
+ * @returns {Promise<object>} Object chứa availability status và details
+ * @throws {Error} Throw 404 nếu station hoặc vehicle không tồn tại
  * 
  * @example
  * const result = await checkAvailability(1, "abc-123");
- * // Returns:
  * // {
  * //   available: true,
  * //   message: "Station has 10 available BT001 batteries",
- * //   station: {...},
- * //   battery_type: {...},
+ * //   station: { station_id, station_name, address, status },
+ * //   battery_type: { battery_type_id, battery_type_code },
  * //   availability_details: {
  * //     available_batteries: 10,
  * //     total_slots: 50,
@@ -749,9 +781,7 @@ async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = n
  * // }
  */
 async function checkAvailability(station_id, vehicle_id) {
-  // ============================================================
-  // STEP 1: Validate station tồn tại và kiểm tra trạng thái
-  // ============================================================
+  // Step 1: Validate station tồn tại và kiểm tra status
   const station = await Station.findByPk(station_id);
   
   if (!station) {
@@ -760,7 +790,7 @@ async function checkAvailability(station_id, vehicle_id) {
     throw err;
   }
 
-  // Early return nếu station không operational
+  // Return sớm nếu station không operational
   if (station.status !== 'operational') {
     return {
       available: false,
@@ -773,9 +803,7 @@ async function checkAvailability(station_id, vehicle_id) {
     };
   }
 
-  // ============================================================
-  // STEP 2: Lấy vehicle info và xác định battery_type cần thiết
-  // ============================================================
+  // Step 2: Lấy vehicle info và xác định battery_type cần thiết
   const vehicle = await Vehicle.findByPk(vehicle_id, {
     include: [{
       model: VehicleModel,
@@ -793,19 +821,15 @@ async function checkAvailability(station_id, vehicle_id) {
     throw err;
   }
 
-  // Extract battery type info cho xe này
+  // Extract battery type info
   const battery_type_id = vehicle.model.battery_type_id;
   const battery_type_code = vehicle.model.batteryType.battery_type_code;
 
-  // ============================================================
-  // STEP 3: Tìm tất cả batteries available tại station
-  // ============================================================
-  // Điều kiện: SOC >= 90%, SOH >= 70%, đúng battery_type, trong slot 'occupied'
+  // Step 3: Tìm available batteries tại station
+  // Điều kiện: đúng loại, SOC >= 90%, SOH >= 70%, slot occupied
   const availableBatteries = await findAvailableBatteries(station_id, battery_type_id);
 
-  // ============================================================
-  // STEP 4: Đếm tổng capacity của station
-  // ============================================================
+  // Step 4: Đếm tổng capacity của station
   const totalSlots = await CabinetSlot.count({
     include: [{
       model: Cabinet,
@@ -814,16 +838,11 @@ async function checkAvailability(station_id, vehicle_id) {
     }]
   });
 
-  // ============================================================
-  // STEP 5: Xác định availability (simple check)
-  // ============================================================
-  // Logic đơn giản: Có >= 1 pin available → TRUE
-  // NOTE: Không trừ đi pins đang bị booking pending giữ (không xử lý race condition)
+  // Step 5: Xác định availability
+  // Logic đơn giản: có ít nhất 1 pin available là OK
   const isAvailable = availableBatteries.length > 0;
 
-  // ============================================================
-  // STEP 6: Format và return response
-  // ============================================================
+  // Step 6: Format response và return
   return {
     available: isAvailable,
     message: isAvailable 
@@ -840,118 +859,9 @@ async function checkAvailability(station_id, vehicle_id) {
       battery_type_code
     },
     availability_details: {
-      available_batteries: availableBatteries.length,  // Số pin thỏa mãn: SOC>=90%, SOH>=70%, đúng loại
+      available_batteries: availableBatteries.length,  // Số pin sẵn sàng (đúng loại, SOC>=90%, SOH>=70%)
       total_slots: totalSlots,                        // Tổng số slots tại station
-      station_status: station.status                   // Trạng thái hiện tại của station
-    }
-  };
-}
-
-/**
- * ========================================
- * GET BOOKINGS BY STATION
- * ========================================
- * Lấy danh sách bookings tại một trạm (station_id)
- * Dùng cho staff/manager để xem bookings tại trạm của mình
- * 
- * @param {string} station_id - UUID của station
- * @param {object} filters - Optional filters { status, date }
- * @returns {Promise<object>} - { bookings: [], total: number }
- */
-async function getBookingsByStation(station_id, { status, date } = {}) {
-  if (!station_id) {
-    const err = new Error('Station ID is required');
-    err.status = 400;
-    throw err;
-  }
-
-  // Verify station exists
-  const station = await Station.findByPk(station_id);
-  if (!station) {
-    const err = new Error('Station not found');
-    err.status = 404;
-    throw err;
-  }
-
-  // Build where clause
-  const where = { station_id };
-  
-  // Add status filter if provided
-  if (status && ['pending', 'completed', 'cancelled'].includes(status)) {
-    where.status = status;
-  }
-
-  // Add date filter if provided (bookings on specific date)
-  if (date) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    where.expired_time = {
-      [Op.between]: [startOfDay, endOfDay]
-    };
-  }
-
-  const bookings = await Booking.findAll({
-    where,
-    include: [
-      {
-        model: Account,
-        as: 'driver',
-        attributes: ['account_id', 'fullname', 'email', 'phone_number']
-      },
-      {
-        model: Vehicle,
-        as: 'vehicle',
-        attributes: ['vehicle_id', 'license_plate', 'vin'],
-        include: [{
-          model: VehicleModel,
-          as: 'model',
-          attributes: ['name', 'brand', 'battery_slot'],
-          include: [{
-            model: BatteryType,
-            as: 'batteryType',
-            attributes: ['battery_type_code', 'nominal_capacity']
-          }]
-        }]
-      },
-      {
-        model: Station,
-        as: 'station',
-        attributes: ['station_id', 'station_name', 'address', 'status']
-      },
-      {
-        model: Battery,
-        as: 'batteries',
-        attributes: ['battery_id', 'battery_serial', 'current_soc', 'current_soh'],
-        through: { attributes: [] },
-        include: [{
-          model: BatteryType,
-          as: 'batteryType',
-          attributes: ['battery_type_code', 'nominal_capacity']
-        }]
-      }
-    ],
-    order: [['expired_time', 'DESC']]
-  });
-
-  // Format all bookings to Vietnam timezone
-  const formattedBookings = bookings.map(booking => formatBookingResponse(booking));
-
-  return {
-    station: {
-      station_id: station.station_id,
-      station_name: station.station_name,
-      address: station.address,
-     
-    },
-    bookings: formattedBookings,
-    total: formattedBookings.length,
-    filters: {
-      status: status || 'all',
-      date: date || 'all'
+      station_status: station.status                   // Status hiện tại của station
     }
   };
 }
@@ -959,7 +869,6 @@ async function getBookingsByStation(station_id, { status, date } = {}) {
 module.exports = {
   createBooking,
   getBookingsByDriver,
-  getBookingsByStation,
   getBookingById,
   updateBooking,
   cancelBooking,
