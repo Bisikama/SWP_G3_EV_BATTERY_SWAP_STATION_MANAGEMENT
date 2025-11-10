@@ -197,7 +197,7 @@ async function updateOldBatteryToSlot(battery_id, slot_id, transaction = null) {
       },
       options
     );
-
+    //check updatedRows
     if (updatedRows === 0) {
       throw new Error(`Không thể cập nhật battery ${battery_id}`);
     }
