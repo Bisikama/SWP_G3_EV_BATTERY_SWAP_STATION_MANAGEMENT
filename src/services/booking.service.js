@@ -763,9 +763,15 @@ async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = n
  * Flow xử lý:
  * 1. Validate station tồn tại và đang operational
  * 2. Lấy thông tin vehicle để xác định battery_type cần thiết
- * 3. Tìm tất cả batteries thỏa mãn: đúng loại, SOC >= 90%, SOH >= 70%
- * 4. Đếm tổng capacity của station (total slots)
- * 5. Return availability info với message thân thiện
+ * 3. Tìm tất cả batteries sẵn sàng: đúng loại, SOC >= 90%, SOH >= 70%, status = occupied
+ * 4. Đếm tổng số pins loại này tại station (tất cả status: occupied/booked/locked)
+ * 5. Đếm tổng capacity của station (total slots)
+ * 6. Return availability info với message thân thiện
+ * 
+ * Response bao gồm:
+ * - available_batteries: Số pins có thể book ngay (SOC>=90%, SOH>=70%, occupied)
+ * - total_batteries_of_type: Tổng số pins loại này tại station (bất kể status)
+ * - total_slots: Tổng số slots tại station
  * 
  * Lưu ý: Không xử lý race condition (2 users book cùng lúc).
  * Backend createBooking sẽ handle first-come-first-served.
@@ -783,8 +789,9 @@ async function checkDuplicateBooking(driver_id, vehicle_id, excludeBookingId = n
  * //   station: { station_id, station_name, address, status },
  * //   battery_type: { battery_type_id, battery_type_code },
  * //   availability_details: {
- * //     available_batteries: 10,
- * //     total_slots: 50,
+ * //     available_batteries: 10,        // Pins sẵn sàng book
+ * //     total_batteries_of_type: 25,    // Tổng pins loại này (kể cả booked/locked)
+ * //     total_slots: 50,                // Tổng slots
  * //     station_status: "operational"
  * //   }
  * // }
@@ -838,7 +845,27 @@ async function checkAvailability(station_id, vehicle_id) {
   // Điều kiện: đúng loại, SOC >= 90%, SOH >= 70%, slot occupied
   const availableBatteries = await findAvailableBatteries(station_id, battery_type_id);
 
-  // Step 4: Đếm tổng capacity của station
+  // Step 4: Đếm tổng số pins loại này tại station (không phân biệt status)
+  // Lấy tất cả batteries đúng loại, bất kể occupied/booked/locked
+  const totalBatteriesOfType = await Battery.count({
+    where: {
+      battery_type_id,
+      slot_id: { [Op.not]: null } // Chỉ đếm batteries đang trong cabinet
+    },
+    include: [{
+      model: CabinetSlot,
+      as: 'slot',
+      required: true,
+      include: [{
+        model: Cabinet,
+        as: 'cabinet',
+        where: { station_id },
+        required: true
+      }]
+    }]
+  });
+
+  // Step 5: Đếm tổng capacity của station (tất cả slots)
   const totalSlots = await CabinetSlot.count({
     include: [{
       model: Cabinet,
@@ -847,11 +874,11 @@ async function checkAvailability(station_id, vehicle_id) {
     }]
   });
 
-  // Step 5: Xác định availability
+  // Step 6: Xác định availability
   // Logic đơn giản: có ít nhất 1 pin available là OK
   const isAvailable = availableBatteries.length > 0;
 
-  // Step 6: Format response và return
+  // Step 7: Format response và return
   return {
     available: isAvailable,
     message: isAvailable 
@@ -868,9 +895,10 @@ async function checkAvailability(station_id, vehicle_id) {
       battery_type_code
     },
     availability_details: {
-      available_batteries: availableBatteries.length,  // Số pin sẵn sàng (đúng loại, SOC>=90%, SOH>=70%)
-      total_slots: totalSlots,                        // Tổng số slots tại station
-      station_status: station.status                   // Status hiện tại của station
+      available_batteries: availableBatteries.length,     // Số pin sẵn sàng book ngay (SOC>=90%, SOH>=70%, status=occupied)
+      total_batteries_of_type: totalBatteriesOfType,      // Tổng số pins loại này tại station (bất kể status: occupied/booked/locked)
+      total_slots: totalSlots,                            // Tổng số slots tại station (kể cả empty)
+      station_status: station.status                      // Status hiện tại của station
     }
   };
 }
