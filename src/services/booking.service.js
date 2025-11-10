@@ -34,7 +34,7 @@ const {
   sequelize 
 } = require('../models');
 const { Op } = Sequelize;
-
+const routeConfig = require('../config/route.config');
 /**
  * ========================================
  * HELPER: FORMAT DATETIME TO VIETNAM TIMEZONE
@@ -120,9 +120,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   }
 
   // 2. Get booking expiration interval from config
-  const config = await Config.findOne({
-    attributes: ['booking_expired_interval']
-  });
+  const config = routeConfig.getConfig();
   
   if (!config || !config.booking_expired_interval) {
     const err = new Error('System configuration not found');
@@ -817,9 +815,119 @@ async function checkAvailability(station_id, vehicle_id) {
   };
 }
 
+/**
+ * ========================================
+ * GET BOOKINGS BY STATION
+ * ========================================
+ * Lấy danh sách bookings tại một trạm (station_id)
+ * Dùng cho staff/manager để xem bookings tại trạm của mình
+ * 
+ * @param {string} station_id - UUID của station
+ * @param {object} filters - Optional filters { status, date }
+ * @returns {Promise<object>} - { bookings: [], total: number }
+ */
+async function getBookingsByStation(station_id, { status, date } = {}) {
+  if (!station_id) {
+    const err = new Error('Station ID is required');
+    err.status = 400;
+    throw err;
+  }
+
+  // Verify station exists
+  const station = await Station.findByPk(station_id);
+  if (!station) {
+    const err = new Error('Station not found');
+    err.status = 404;
+    throw err;
+  }
+
+  // Build where clause
+  const where = { station_id };
+  
+  // Add status filter if provided
+  if (status && ['pending', 'completed', 'cancelled'].includes(status)) {
+    where.status = status;
+  }
+
+  // Add date filter if provided (bookings on specific date)
+  if (date) {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    where.expired_time = {
+      [Op.between]: [startOfDay, endOfDay]
+    };
+  }
+
+  const bookings = await Booking.findAll({
+    where,
+    include: [
+      {
+        model: Account,
+        as: 'driver',
+        attributes: ['account_id', 'fullname', 'email', 'phone_number']
+      },
+      {
+        model: Vehicle,
+        as: 'vehicle',
+        attributes: ['vehicle_id', 'license_plate', 'vin'],
+        include: [{
+          model: VehicleModel,
+          as: 'model',
+          attributes: ['name', 'brand', 'battery_slot'],
+          include: [{
+            model: BatteryType,
+            as: 'batteryType',
+            attributes: ['battery_type_code', 'nominal_capacity']
+          }]
+        }]
+      },
+      {
+        model: Station,
+        as: 'station',
+        attributes: ['station_id', 'station_name', 'address', 'status']
+      },
+      {
+        model: Battery,
+        as: 'batteries',
+        attributes: ['battery_id', 'battery_serial', 'current_soc', 'current_soh'],
+        through: { attributes: [] },
+        include: [{
+          model: BatteryType,
+          as: 'batteryType',
+          attributes: ['battery_type_code', 'nominal_capacity']
+        }]
+      }
+    ],
+    order: [['expired_time', 'DESC']]
+  });
+
+  // Format all bookings to Vietnam timezone
+  const formattedBookings = bookings.map(booking => formatBookingResponse(booking));
+
+  return {
+    station: {
+      station_id: station.station_id,
+      station_name: station.station_name,
+      address: station.address,
+     
+    },
+    bookings: formattedBookings,
+    total: formattedBookings.length,
+    filters: {
+      status: status || 'all',
+      date: date || 'all'
+    }
+  };
+}
+
 module.exports = {
   createBooking,
   getBookingsByDriver,
+  getBookingsByStation,
   getBookingById,
   updateBooking,
   cancelBooking,

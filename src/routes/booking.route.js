@@ -356,4 +356,149 @@ router.patch(
   bookingController.cancelBooking
 );
 
+/**
+ * @swagger
+ * /api/booking/station/{station_id}:
+ *   get:
+ *     tags: [Booking]
+ *     summary: Get bookings by station
+ *     description: Retrieve all bookings at a specific station. Useful for staff/manager to view bookings at their station. Can filter by status and date.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: station_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: integer
+ *         description: Station ID
+ *         example: 1
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [pending, completed, cancelled]
+ *         description: Filter by booking status
+ *         example: pending
+ *       - in: query
+ *         name: date
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by booking date (YYYY-MM-DD)
+ *         example: 2025-11-07
+ *     responses:
+ *       200:
+ *         description: Bookings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Bookings retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     station:
+ *                       type: object
+ *                       properties:
+ *                         station_id:
+ *                           type: string
+ *                           format: uuid
+ *                         station_name:
+ *                           type: string
+ *                         address:
+ *                           type: string
+ *                         city:
+ *                           type: string
+ *                     bookings:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           booking_id:
+ *                             type: string
+ *                             format: uuid
+ *                           driver:
+ *                             type: object
+ *                             properties:
+ *                               account_id:
+ *                                 type: string
+ *                               fullname:
+ *                                 type: string
+ *                               email:
+ *                                 type: string
+ *                               phone_number:
+ *                                 type: string
+ *                           vehicle:
+ *                             type: object
+ *                             properties:
+ *                               vehicle_id:
+ *                                 type: string
+ *                               license_plate:
+ *                                 type: string
+ *                               model:
+ *                                 type: object
+ *                                 properties:
+ *                                   name:
+ *                                     type: string
+ *                                   brand:
+ *                                     type: string
+ *                           batteries:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 battery_id:
+ *                                   type: string
+ *                                 battery_serial:
+ *                                   type: string
+ *                                 current_soc:
+ *                                   type: number
+ *                                 current_soh:
+ *                                   type: number
+ *                                 status:
+ *                                   type: string
+ *                           status:
+ *                             type: string
+ *                             enum: [pending, completed, cancelled]
+ *                           expired_time:
+ *                             type: string
+ *                             format: date-time
+ *                           create_time:
+ *                             type: string
+ *                             format: date-time
+ *                     total:
+ *                       type: integer
+ *                       example: 15
+ *                     filters:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: string
+ *                           example: all
+ *                         date:
+ *                           type: string
+ *                           example: all
+ *       400:
+ *         description: Bad request - missing station_id
+ *       404:
+ *         description: Station not found
+ *       401:
+ *         description: Unauthorized - authentication required
+ */
+router.get(
+  '/station/:station_id',
+  verifyToken,
+  bookingController.getBookingsByStation
+);
+
 module.exports = router;
