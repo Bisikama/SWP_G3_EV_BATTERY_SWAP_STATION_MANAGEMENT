@@ -90,12 +90,6 @@ function formatBookingResponse(booking) {
   if (bookingData.create_time) {
     bookingData.create_time = formatToVietnamTime(bookingData.create_time);
   }
-  if (bookingData.actual_start_time) {
-    bookingData.actual_start_time = formatToVietnamTime(bookingData.actual_start_time);
-  }
-  if (bookingData.actual_end_time) {
-    bookingData.actual_end_time = formatToVietnamTime(bookingData.actual_end_time);
-  }
   
   return bookingData;
 }
@@ -215,7 +209,7 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
   }
 
   // Step 7: Kiểm tra vehicle có subscription active không
-  const activeSubscription = await checkVehicleSubscription(vehicle_id);
+  await checkVehicleSubscription(vehicle_id);
 
   // Note: Giới hạn số lượng pin chỉ phụ thuộc vào vehicle capacity
   // và số lượng pin available tại station, không giới hạn theo plan
@@ -298,6 +292,11 @@ async function createBooking(driver_id, { vehicle_id, station_id, battery_quanti
  * Không có pagination, sắp xếp theo expired_time giảm dần (mới nhất trước).
  * Response đã được format sang múi giờ Việt Nam.
  * 
+ * LAZY LOAD AUTO-CANCEL:
+ * Trước khi query, hàm này tự động phát hiện và hủy các bookings pending đã expired
+ * (expired_time < now). Điều này đảm bảo user luôn thấy data đã được cleanup mà không
+ * cần đợi cron job chạy.
+ * 
  * @param {string} driver_id - ID của driver
  * @param {object} options - Object chứa status filter (pending/completed/cancelled)
  * @returns {Promise<object>} Object chứa bookings array và total count
@@ -309,7 +308,55 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
     throw err;
   }
 
-  // Xây dựng where clause
+  // STEP 0: LAZY CLEANUP - Tự động hủy expired bookings
+  const now = new Date();
+  
+  // Tìm tất cả bookings pending đã expired của driver
+  const expiredBookings = await Booking.findAll({
+    where: {
+      driver_id,
+      status: 'pending',
+      expired_time: { [Op.lt]: now }
+    },
+    include: [{
+      model: Battery,
+      as: 'batteries',
+      attributes: ['battery_id', 'slot_id', 'current_soh'],
+      through: { attributes: [] }
+    }]
+  });
+
+  // Auto-cancel từng expired booking
+  if (expiredBookings.length > 0) {
+    console.log(`[LAZY-CLEANUP] Found ${expiredBookings.length} expired booking(s) for driver ${driver_id}`);
+    
+    for (const booking of expiredBookings) {
+      try {
+        // Update booking status sang cancelled
+        await booking.update({ status: 'cancelled' });
+        
+        // Unlock cabinet slots dựa trên SOH của battery
+        const batteries = booking.batteries || [];
+        for (const battery of batteries) {
+          if (battery.slot_id) {
+            // SOH >= 70%: occupied (sẵn sàng), SOH < 70%: locked (cần bảo trì)
+            const newStatus = battery.current_soh >= 70 ? 'occupied' : 'locked';
+            await CabinetSlot.update(
+              { status: newStatus },
+              { where: { slot_id: battery.slot_id } }
+            );
+          }
+        }
+        
+        console.log(`[LAZY-CLEANUP] Auto-cancelled booking ${booking.booking_id} (expired at ${booking.expired_time})`);
+      } catch (error) {
+        console.error(`[LAZY-CLEANUP] Failed to cancel booking ${booking.booking_id}:`, error.message);
+        // Tiếp tục cancel các bookings khác nếu 1 booking fail
+      }
+    }
+  }
+
+  // STEP 1: Xây dựng where clause với filter status từ user
   const where = { driver_id };
   
   // Thêm filter status nếu được cung cấp
@@ -317,6 +364,7 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
     where.status = status;
   }
 
+  // STEP 2: Query bookings (lúc này expired bookings đã được cancel)
   const bookings = await Booking.findAll({
     where,
     include: [
@@ -345,7 +393,7 @@ async function getBookingsByDriver(driver_id, { status } = {}) {
     order: [['expired_time', 'DESC']]
   });
 
-  // Format tất cả datetime fields sang múi giờ Việt Nam
+  // STEP 3: Format tất cả datetime fields sang múi giờ Việt Nam
   const formattedBookings = bookings.map(booking => formatBookingResponse(booking));
 
   return {
@@ -431,64 +479,6 @@ async function getBookingById(booking_id, driver_id = null) {
 }
 
 /**
- * Update booking (DEPRECATED)
- * 
- * Function này không còn được sử dụng vì booking time được tự động quản lý
- * bởi system config. Giữ lại để backward compatibility với code cũ.
- * 
- * Nếu muốn thay đổi thời gian booking, driver cần cancel booking cũ
- * và tạo booking mới.
- * 
- * @param {string} booking_id - UUID của booking
- * @param {string} driver_id - ID của driver
- * @param {object} updateData - Dữ liệu update (không sử dụng)
- * @returns {Promise<Booking>} Luôn throw error
- * @throws {Error} Throw error vì function đã deprecated
- */
-async function updateBooking(booking_id, driver_id, updateData = {}) {
-  if (!booking_id) {
-    const err = new Error('Booking ID is required');
-    err.statusCode = 400;
-    throw err;
-  }
-
-  // 1. Find booking
-  const booking = await Booking.findByPk(booking_id);
-  if (!booking) {
-    const err = new Error('Booking not found');
-    err.statusCode = 404;
-    throw err;
-  }
-
-  // 2. Check ownership
-  if (booking.driver_id !== driver_id) {
-    const err = new Error('You do not have permission to update this booking');
-    err.statusCode = 403;
-    throw err;
-  }
-
-  // Kiểm tra status phải là pending
-  if (booking.status !== 'pending') {
-    const err = new Error(`Cannot update booking with status '${booking.status}'. Only pending bookings can be updated.`);
-    err.statusCode = 422;
-    throw err;
-  }
-
-  // Kiểm tra booking chưa expired
-  const now = new Date();
-  if (new Date(booking.expired_time) < now) {
-    const err = new Error('Cannot update a booking that has already expired');
-    err.statusCode = 422;
-    throw err;
-  }
-
-  // Throw error vì function đã deprecated
-  const err = new Error('Booking times are now automatically managed and cannot be changed. Please cancel and create a new booking if needed.');
-  err.statusCode = 422;
-  throw err;
-}
-
-/**
  * Hủy booking
  * 
  * Cancel booking bằng cách update status sang cancelled và giải phóng
@@ -555,8 +545,8 @@ async function cancelBooking(booking_id, driver_id) {
   for (const bb of bookingBatteries) {
     const battery = bb.battery;
     if (battery && battery.slot_id) {
-      // SOH > 70%: occupied (sẵn sàng), SOH <= 70%: locked (cần bảo trì)
-      const newStatus = battery.current_soh > 70 ? 'occupied' : 'locked';
+      // SOH >= 70%: occupied (sẵn sàng), SOH < 70%: locked (cần bảo trì)
+      const newStatus = battery.current_soh >= 70 ? 'occupied' : 'locked';
       await CabinetSlot.update(
         { status: newStatus },
         { where: { slot_id: battery.slot_id } }
@@ -581,7 +571,7 @@ async function cancelBooking(booking_id, driver_id) {
  * - Chưa hết hạn (end_date >= hôm nay)
  * 
  * @param {string} vehicle_id - UUID của vehicle cần kiểm tra
- * @returns {Promise<Subscription>} Active subscription với plan details
+ * @returns {Promise<void>} Không return gì, chỉ throw error nếu không có subscription
  * @throws {Error} Throw error nếu vehicle không có subscription active
  */
 async function checkVehicleSubscription(vehicle_id) {
@@ -594,7 +584,7 @@ async function checkVehicleSubscription(vehicle_id) {
       cancel_time: null,
       end_date: { [Op.gte]: today }
     },
-    attributes: ['subscription_id', 'plan_id', 'vehicle_id', 'start_date', 'end_date']
+    attributes: ['subscription_id'] // Chỉ cần check tồn tại, không cần details
   });
 
   if (!activeSubscription) {
@@ -603,21 +593,7 @@ async function checkVehicleSubscription(vehicle_id) {
     throw err;
   }
 
-  // Lấy thông tin subscription plan
-  const plan = await SubscriptionPlan.findByPk(activeSubscription.plan_id, {
-    attributes: ['plan_id', 'plan_name', 'plan_fee', 'swap_fee', 'soh_cap']
-  });
-
-  if (!plan) {
-    const err = new Error('Subscription plan not found');
-    err.statusCode = 500;
-    throw err;
-  }
-
-  // Gắn plan vào subscription object
-  activeSubscription.plan = plan;
-
-  return activeSubscription;
+  // Không cần return, chỉ cần validate
 }
 
 /**
@@ -907,7 +883,6 @@ module.exports = {
   createBooking,
   getBookingsByDriver,
   getBookingById,
-  updateBooking,
   cancelBooking,
   checkAvailability
 };
