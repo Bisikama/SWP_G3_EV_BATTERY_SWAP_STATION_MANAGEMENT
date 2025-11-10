@@ -1,29 +1,34 @@
-// ========================================
-// BOOKING CONTROLLER
-// ========================================
-// File: src/controllers/booking.controller.js
-// Mục đích: HTTP request/response handler cho booking operations
-// 
-// Thin controller - chỉ xử lý:
-// 1. Extract data từ request (body, params, query, user)
-// 2. Call service methods
-// 3. Format và return response
-// 4. Error handling được xử lý tự động bởi asyncHandler
-// 
-// Business logic nằm trong booking.service.js
-// ========================================
+/**
+ * BOOKING CONTROLLER
+ * File: src/controllers/booking.controller.js
+ * 
+ * HTTP request/response handler cho booking operations.
+ * Thin controller pattern - chỉ xử lý HTTP layer, không chứa business logic.
+ * 
+ * Responsibilities:
+ * - Extract và validate data từ request (body, params, query, headers)
+ * - Gọi service methods để xử lý business logic
+ * - Format response trả về cho client
+ * - Error handling tự động thông qua asyncHandler middleware
+ * 
+ * Business logic được xử lý trong booking.service.js
+ */
 
 'use strict';
 const bookingService = require('../services/booking.service');
 const asyncHandler = require('../middlewares/asyncHandler');
 /**
- * ========================================
- * CREATE BOOKING
- * ========================================
- * POST /api/booking
+ * Tạo booking mới
  * 
- * @description Tạo booking mới cho driver (auto-calculated expiration time)
- * @access Private (driver only)
+ * Endpoint: POST /api/booking
+ * Access: Private (driver only)
+ * 
+ * Body params:
+ * - vehicle_id: UUID của vehicle
+ * - station_id: ID của station
+ * - battery_quantity: Số lượng pin cần swap (default: 1)
+ * 
+ * Thời gian expired được tự động tính từ system config.
  */
 const createBooking = asyncHandler(async (req, res) => {
   const { vehicle_id, station_id, battery_quantity } = req.body;
@@ -32,7 +37,7 @@ const createBooking = asyncHandler(async (req, res) => {
   const booking = await bookingService.createBooking(driver_id, {
     vehicle_id,
     station_id,
-    battery_quantity: battery_quantity || 1 // Default to 1 if not provided
+    battery_quantity: battery_quantity || 1 // Mặc định 1 pin nếu không cung cấp
   });
 
   return res.status(201).json({
@@ -42,13 +47,15 @@ const createBooking = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * GET MY BOOKINGS
- * ========================================
- * GET /api/booking/my-bookings
+ * Lấy danh sách bookings của driver
  * 
- * @description Lấy tất cả bookings của driver đang đăng nhập với filter status (KHÔNG PAGINATION)
- * @access Private (driver)
+ * Endpoint: GET /api/booking/my-bookings
+ * Access: Private (driver)
+ * 
+ * Query params:
+ * - status: Filter theo status (pending/completed/cancelled) - optional
+ * 
+ * Lưu ý: Không có pagination, trả về toàn bộ bookings của driver.
  */
 const getMyBookings = asyncHandler(async (req, res) => {
   const driver_id = req.user.account_id;
@@ -66,19 +73,23 @@ const getMyBookings = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * GET BOOKING BY ID
- * ========================================
- * GET /api/booking/:id
+ * Lấy chi tiết booking theo ID
  * 
- * @description Lấy chi tiết booking theo ID
- * @access Public (no token required) - for kiosk/station hardware
+ * Endpoint: GET /api/booking/:id
+ * Access: Public (không cần token) - cho kiosk/station hardware
+ * 
+ * Path params:
+ * - id: UUID của booking
+ * 
+ * Authorization logic:
+ * - Có token + role driver: Chỉ xem được booking của mình
+ * - Có token + role admin: Xem được tất cả bookings
+ * - Không có token: Xem được bất kỳ booking nào (cho kiosk)
  */
 const getBookingById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
-  // Nếu có token, check ownership (driver chỉ xem của mình, admin xem tất cả)
-  // Nếu không có token (kiosk), cho phép xem booking bất kỳ
+  // Check ownership nếu có token, cho phép access mọi booking nếu không có token
   let ownerDriverId = null;
   if (req.user) {
     const driver_id = req.user.account_id;
@@ -95,13 +106,17 @@ const getBookingById = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * UPDATE BOOKING
- * ========================================
- * PATCH /api/booking/:id
+ * Update booking (DEPRECATED)
  * 
- * @description DEPRECATED: Booking times are now auto-managed
- * @access Private (driver only - owner)
+ * Endpoint: PATCH /api/booking/:id
+ * Access: Private (driver only - owner)
+ * 
+ * Path params:
+ * - id: UUID của booking
+ * 
+ * Status: DEPRECATED
+ * Reason: Booking times được tự động quản lý bởi system config.
+ * Action: Sẽ luôn throw error, driver cần cancel và tạo booking mới.
  */
 const updateBooking = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -116,13 +131,16 @@ const updateBooking = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * CANCEL BOOKING
- * ========================================
- * PATCH /api/booking/:id/cancel
+ * Hủy booking
  * 
- * @description Hủy booking bằng cách update status = 'cancelled'
- * @access Private (driver)
+ * Endpoint: PATCH /api/booking/:id/cancel
+ * Access: Private (driver)
+ * 
+ * Path params:
+ * - id: UUID của booking cần cancel
+ * 
+ * Chỉ owner của booking mới có quyền cancel.
+ * Chỉ cancel được bookings có status pending.
  */
 const cancelBooking = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -137,13 +155,16 @@ const cancelBooking = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * CHECK AVAILABILITY
- * ========================================
- * GET /api/booking/check-availability
+ * Kiểm tra availability của pin tại station
  * 
- * @description Kiểm tra station hiện tại có pin phù hợp với loại xe không
- * @access Private (driver)
+ * Endpoint: GET /api/booking/check-availability
+ * Access: Private (driver)
+ * 
+ * Query params:
+ * - station_id: ID của station cần check
+ * - vehicle_id: UUID của vehicle (để xác định loại pin)
+ * 
+ * Trả về số lượng pins available và thông tin chi tiết về station.
  */
 const checkAvailability = asyncHandler(async (req, res) => {
   const { station_id, vehicle_id } = req.query;
@@ -160,15 +181,19 @@ const checkAvailability = asyncHandler(async (req, res) => {
 });
 
 /**
- * ========================================
- * GET BOOKINGS BY STATION
- * ========================================
- * GET /api/booking/station/:station_id
+ * Lấy danh sách bookings tại station
  * 
- * @description Lấy danh sách bookings tại một trạm (cho staff/manager)
- * @access Private (staff/manager only)
- * @query status - Filter by status (pending/completed/cancelled)
- * @query date - Filter by date (YYYY-MM-DD)
+ * Endpoint: GET /api/booking/station/:station_id
+ * Access: Private (staff/manager only)
+ * 
+ * Path params:
+ * - station_id: ID của station
+ * 
+ * Query params:
+ * - status: Filter theo status (pending/completed/cancelled) - optional
+ * - date: Filter theo ngày (YYYY-MM-DD) - optional
+ * 
+ * Dùng cho staff/manager để xem bookings tại trạm họ quản lý.
  */
 const getBookingsByStation = asyncHandler(async (req, res) => {
   const { station_id } = req.params;

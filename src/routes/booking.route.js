@@ -1,10 +1,19 @@
-// ========================================
-// BOOKING ROUTES
-// ========================================
-// File: src/routes/booking.route.js
-// Mục đích: Định nghĩa routes cho booking operations
-// Base path: /api/booking
-// ========================================
+/**
+ * BOOKING ROUTES
+ * File: src/routes/booking.route.js
+ * 
+ * Định nghĩa routes cho booking operations.
+ * Base path: /api/booking
+ * 
+ * Endpoints:
+ * - POST / : Tạo booking mới (driver only)
+ * - GET /my-bookings : Lấy bookings của driver hiện tại
+ * - GET /check-availability : Check availability tại station
+ * - GET /:id : Lấy chi tiết booking (public - cho kiosk)
+ * - PATCH /:id : Update booking (deprecated)
+ * - PATCH /:id/cancel : Cancel booking
+ * - GET /station/:station_id : Lấy bookings theo station (staff/manager)
+ */
 
 const express = require('express');
 const router = express.Router();

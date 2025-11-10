@@ -2,19 +2,24 @@ const { Booking, BookingBattery, Battery, CabinetSlot } = require('../models');
 const { Op } = require('sequelize');
 
 /**
- * Cron Job: Auto-cancel expired bookings
+ * Cron Job: Tự động cancel các booking đã quá hạn
+ * File: src/jobs/booking.job.js
  * 
- * This job finds all bookings that are still in 'pending' status but have passed
- * their expiration time. For each expired booking, it will:
- *   1. Update booking status to 'cancelled'
- *   2. Release the reserved cabinet slots back to available state
+ * Chức năng:
+ * Job này tìm tất cả bookings có status pending nhưng đã quá expired_time.
+ * Với mỗi booking expired, job sẽ:
+ * 1. Update booking status thành cancelled
+ * 2. Release các cabinet slots đã reserve về trạng thái available
  * 
- * Slot status logic after release:
- *   - If battery SOH >= 70%: slot becomes 'occupied' (available for new bookings)
- *   - If battery SOH < 70%: slot becomes 'locked' (unavailable, needs maintenance)
+ * Cabinet slot status logic sau khi release:
+ * - Nếu battery SOH >= 70%: slot chuyển về occupied (available cho booking mới)
+ * - Nếu battery SOH < 70%: slot chuyển về locked (unavailable, cần maintenance)
  * 
- * Note: This job only modifies Booking.status and CabinetSlot.status.
- *       Battery records and BookingBattery associations remain unchanged.
+ * Lưu ý:
+ * Job chỉ modify Booking.status và CabinetSlot.status.
+ * Battery records và BookingBattery associations không thay đổi.
+ * 
+ * Schedule: Chạy mỗi 1 phút (cron: * * * * *)
  */
 async function cancelExpiredBookings() {
   try {
@@ -24,7 +29,7 @@ async function cancelExpiredBookings() {
     console.log('[CRON JOB] Running at:', now.toLocaleString('vi-VN'));
     console.log('[CRON JOB] Checking bookings with expired_time <', now.toISOString());
     
-    // Query all bookings that are still pending but already expired
+    // Query tất cả bookings có status pending nhưng đã quá hạn
     const expiredBookings = await Booking.findAll({
       where: {
         status: 'pending',
@@ -34,7 +39,7 @@ async function cancelExpiredBookings() {
       }
     });
     
-    // Early return if no expired bookings found
+    // Không có booking nào expired thì return luôn
     if (expiredBookings.length === 0) {
       console.log('[CRON JOB] No expired bookings found');
       console.log('[CRON JOB] Cancel Expired Bookings - COMPLETED\n');
@@ -48,16 +53,16 @@ async function cancelExpiredBookings() {
 
     console.log('[CRON JOB] Found', expiredBookings.length, 'expired booking(s) to cancel');
 
-    // Process each expired booking
+    // Xử lý từng booking expired
     let successCount = 0;
     
     for (const booking of expiredBookings) {
       try {
-        // Step 1: Mark booking as cancelled
+        // Bước 1: Đánh dấu booking là cancelled
         await booking.update({ status: 'cancelled' });
 
-        // Step 2: Get all batteries associated with this booking
-        // Only select batteries that are currently in cabinet slots
+        // Bước 2: Lấy tất cả batteries liên quan với booking này
+        // Chỉ lấy batteries đang ở trong cabinet slots (slot_id not null)
         const bookingBatteries = await BookingBattery.findAll({
           where: { 
             booking_id: booking.booking_id 
@@ -72,8 +77,8 @@ async function cancelExpiredBookings() {
           }]
         });
 
-        // Step 3: Update cabinet slot status for each battery
-        // Status depends on battery health (SOH)
+        // Bước 3: Update cabinet slot status cho mỗi battery
+        // Status phụ thuộc vào battery health (SOH)
         for (const bb of bookingBatteries) {
           const battery = bb.battery;
           
@@ -87,7 +92,7 @@ async function cancelExpiredBookings() {
           }
         }
 
-        // Log success details
+        // Log chi tiết booking đã cancel thành công
         console.log('[CRON JOB] Successfully cancelled booking:', booking.booking_id);
         console.log('[CRON JOB]   - Driver ID:', booking.driver_id);
         console.log('[CRON JOB]   - Vehicle ID:', booking.vehicle_id);
@@ -97,7 +102,7 @@ async function cancelExpiredBookings() {
         successCount++;
         
       } catch (bookingError) {
-        // Log individual booking error but continue processing others
+        // Log lỗi của booking cá nhân nhưng vẫn tiếp tục xử lý các booking khác
         console.error('[CRON JOB] Failed to cancel booking:', booking.booking_id);
         console.error('[CRON JOB] Error:', bookingError.message);
       }
@@ -113,7 +118,7 @@ async function cancelExpiredBookings() {
     };
     
   } catch (error) {
-    // Log critical error
+    // Log critical error nếu toàn bộ job bị lỗi
     console.error('[CRON JOB] CRITICAL ERROR in cancelExpiredBookings:', error.message);
     console.error('[CRON JOB] Stack trace:', error.stack);
     
