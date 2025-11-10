@@ -20,7 +20,7 @@ const countByStationAndType = [
 const findByVehicle = [
   param('vehicle_id')
     .notEmpty().withMessage('vehicle_id is required')
-    .isInt().withMessage('vehicle_id must be an integer'),
+    .isUUID().withMessage('vehicle_id must be a valid UUID'),
 ];
 
 const createByVehicle = [
