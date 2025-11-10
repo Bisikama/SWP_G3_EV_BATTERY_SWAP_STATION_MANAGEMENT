@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const errorHandler = require('./src/middlewares/errorHandler');
 const { startCronJobs, stopCronJobs } = require('./src/config/cron.config');
+const routeConfig = require('./src/config/route.config');
 
 const authRoutes = require('./src/routes/auth.route');
 const userRoutes = require('./src/routes/user.route');
@@ -25,6 +26,8 @@ const transferRoutes = require('./src/routes/transfer.route');
 const swapBatteryRoutes = require('./src/routes/swap_battery.route');
 const cabinetRoutes = require('./src/routes/cabinet.route');
 const analysisRoutes = require('./src/routes/analysis.route');
+const swapRecordRoutes = require('./src/routes/swap_record.route');
+const configRoutes = require('./src/routes/config.route');
 
 const app = express();
 app.use(express.json());
@@ -50,33 +53,52 @@ app.use('/api/transfers', transferRoutes);
 app.use('/api/swap', swapBatteryRoutes);
 app.use('/api/cabinets', cabinetRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/swap-records', swapRecordRoutes);
+app.use('/api/config', configRoutes);
 
 // catch errors
 app.use(errorHandler);
 
 // start server
 const port = process.env.PORT;
-const server = app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-  
-  // ✅ Khởi động cron jobs sau khi server start
-  const cronJobs = startCronJobs();
-  
-  // ✅ Graceful shutdown: Dừng cron jobs khi server tắt
-  process.on('SIGTERM', () => {
-    console.log('SIGTERM signal received: closing HTTP server');
-    stopCronJobs(cronJobs);
-    server.close(() => {
-      console.log('HTTP server closed');
+
+// Initialize server with configuration loading
+async function startServer() {
+  try {
+    // ⚙️ Load system configuration from database
+    console.log('⚙️  Loading system configuration...');
+    await routeConfig.loadConfig();
+    console.log('✅ System configuration loaded successfully');
+    
+    const server = app.listen(port, () => {
+      console.log(`🚀 Server running at http://localhost:${port}`);
+      
+      // ✅ Khởi động cron jobs sau khi server start
+      const cronJobs = startCronJobs();
+      
+      // ✅ Graceful shutdown: Dừng cron jobs khi server tắt
+      process.on('SIGTERM', () => {
+        console.log('SIGTERM signal received: closing HTTP server');
+        stopCronJobs(cronJobs);
+        server.close(() => {
+          console.log('HTTP server closed');
+        });
+      });
+      
+      process.on('SIGINT', () => {
+        console.log('SIGINT signal received: closing HTTP server');
+        stopCronJobs(cronJobs);
+        server.close(() => {
+          console.log('HTTP server closed');
+          process.exit(0);
+        });
+      });
     });
-  });
-  
-  process.on('SIGINT', () => {
-    console.log('SIGINT signal received: closing HTTP server');
-    stopCronJobs(cronJobs);
-    server.close(() => {
-      console.log('HTTP server closed');
-      process.exit(0);
-    });
-  });
-});
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();

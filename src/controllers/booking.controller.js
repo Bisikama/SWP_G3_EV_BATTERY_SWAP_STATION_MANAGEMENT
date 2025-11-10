@@ -16,7 +16,6 @@
 'use strict';
 const bookingService = require('../services/booking.service');
 const asyncHandler = require('../middlewares/asyncHandler');
-
 /**
  * ========================================
  * CREATE BOOKING
@@ -160,11 +159,39 @@ const checkAvailability = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * ========================================
+ * GET BOOKINGS BY STATION
+ * ========================================
+ * GET /api/booking/station/:station_id
+ * 
+ * @description Lấy danh sách bookings tại một trạm (cho staff/manager)
+ * @access Private (staff/manager only)
+ * @query status - Filter by status (pending/completed/cancelled)
+ * @query date - Filter by date (YYYY-MM-DD)
+ */
+const getBookingsByStation = asyncHandler(async (req, res) => {
+  const { station_id } = req.params;
+  const { status, date } = req.query;
+
+  const result = await bookingService.getBookingsByStation(station_id, {
+    status,
+    date
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: 'Bookings retrieved successfully',
+    data: result
+  });
+});
+
 module.exports = {
   createBooking,
   getMyBookings,
   getBookingById,
   updateBooking,
   cancelBooking,
-  checkAvailability
+  checkAvailability,
+  getBookingsByStation
 };

@@ -1,7 +1,6 @@
 const db = require('../models');
 const ApiError = require('../utils/ApiError');
 const paginate = require('../utils/paginate');
-const { v4: uuidv4 } = require('uuid');
 
 const detailData = [
 	{ model: db.CabinetSlot, as: 'slots',
@@ -73,25 +72,14 @@ async function createCabinet(data) {
       throw new ApiError(404, 'No supported battery types found to create new batteries');
     }
 
-    const now = new Date();
-    const todayStr = 
-      now.getFullYear().toString() +
-      String(now.getMonth() + 1).padStart(2, '0') +
-      String(now.getDate()).padStart(2, '0');
-
     const batteries = [];
 
     for (let i = 0; i < numberOfBatteries; i++) {
       const randomType = batteryTypes[Math.floor(Math.random() * batteryTypes.length)];
-			const id = uuidv4();
-      const serialNumber = id.split('-')[0].toUpperCase();
-      const battery_serial = `BATT${todayStr}${serialNumber}`;
 
       batteries.push({
-				battery_id: id,
         battery_type_id: randomType.battery_type_id,
         slot_id: slots[i].slot_id,
-        battery_serial,
         current_soc: 100.0,
         current_soh: 100.0
       });
@@ -103,11 +91,15 @@ async function createCabinet(data) {
     }
 
     if (batteries.length) {
-      await db.Battery.bulkCreate(batteries, { transaction: t });
+      await db.Battery.bulkCreate(batteries, { 
+        individualHooks: true, 
+        transaction: t 
+      });
     }
 
     await t.commit();
 
+    cabinet.power_capacity_kw = Number(cabinet.power_capacity_kw);
     return {
       cabinet,
       slotsCreated: slots.length,

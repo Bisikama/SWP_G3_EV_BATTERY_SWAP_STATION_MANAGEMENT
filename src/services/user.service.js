@@ -76,6 +76,26 @@ async function updateDriver(user, data) {
   const account = await db.Account.findByPk(user.account_id);
   if (!account) throw new ApiError(404, 'Account not found');
 
+  if (citizen_id) {
+    const existingCitizen = await db.Account.findOne({
+      where: {
+        citizen_id,
+        account_id: { [db.Sequelize.Op.ne]: user.account_id } // exclude current account
+      }
+    });
+    if (existingCitizen) throw new ApiError(409, 'Citizen ID is already used by another account');
+  }
+  
+  if (driving_license) {
+    const existingLicense = await db.Account.findOne({
+      where: {
+        driving_license,
+        account_id: { [db.Sequelize.Op.ne]: user.account_id } // exclude current account
+      }
+    });
+    if (existingLicense) throw new ApiError(409, 'Driving license is already used by another account');
+  }
+
   await account.update({ fullname, phone_number, citizen_id, driving_license });
 
   return findById(user.account_id);

@@ -96,7 +96,10 @@ async function getVehiclesWithoutSubscription(driver_id) {
   
   // 1. Lấy tất cả vehicles của driver này
   const vehicles = await db.Vehicle.findAll({
-    where: { driver_id },
+    where: { 
+      driver_id,
+      status: 'active'
+    },
     include: [
       {
         model: db.VehicleModel,
@@ -124,7 +127,8 @@ async function getVehiclesWithoutSubscription(driver_id) {
         vehicle_id: vehicle.vehicle_id,
         cancel_time: null,
         start_date: { [db.Sequelize.Op.lte]: today },
-        end_date: { [db.Sequelize.Op.gte]: today }
+        end_date: { [db.Sequelize.Op.gte]: today },
+        status : 'active'
       }
     });
     

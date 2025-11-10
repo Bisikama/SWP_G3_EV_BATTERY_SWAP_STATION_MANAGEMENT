@@ -239,8 +239,14 @@ async function sendVerificationEmail(toEmail, code) {
     
     console.log('✅ Resend initialized');
     
+    // Normalize RESEND_FROM: remove smart quotes and trim
+    let fromAddress = (process.env.RESEND_FROM || 'VinStation Support <noreply@stationvinswap.xyz>').trim();
+    fromAddress = fromAddress.replace(/[""]/g, '"'); // Replace smart quotes
+    
+    console.log('📧 Using FROM address:', fromAddress);
+    
     const { data, error } = await resend.emails.send({
-      from: 'VinStation Support <onboarding@resend.dev>',
+      from: fromAddress,
       to: toEmail,
       subject: '🔐 Mã xác thực đăng ký tài khoản - VinStation',
       text: `Chào mừng bạn đến với VinStation!\n\nMã xác thực của bạn là: ${code}\n\nVui lòng nhập mã này vào trang web để hoàn tất đăng ký.\n\nMã xác thực có hiệu lực trong 10 phút.\n\nNếu bạn không yêu cầu đăng ký, vui lòng bỏ qua email này.`,
@@ -331,8 +337,12 @@ async function sendPasswordResetEmail(toEmail, code) {
     
     console.log('✅ Resend initialized');
     
+    // Normalize RESEND_FROM: remove smart quotes and trim
+    let fromAddress = (process.env.RESEND_FROM || 'VinStation Support <noreply@stationvinswap.xyz>').trim();
+    fromAddress = fromAddress.replace(/[""]/g, '"');
+    
     const { data, error } = await resend.emails.send({
-      from: 'VinStation Support <onboarding@resend.dev>',
+      from: fromAddress,
       to: toEmail,
       subject: '🔐 Mã xác thực đặt lại mật khẩu - VinStation',
       text: `Bạn đã yêu cầu đặt lại mật khẩu.\n\nMã xác thực của bạn là: ${code}\n\nVui lòng nhập mã này vào trang web để tiếp tục đặt lại mật khẩu.\n\nMã có hiệu lực trong 10 phút.\n\nNếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.`,
@@ -422,9 +432,12 @@ async function sendPasswordChangeConfirmation(toEmail) {
     
     console.log('✅ Resend initialized');
     
+    // Normalize RESEND_FROM: remove smart quotes and trim
+    let fromAddress = (process.env.RESEND_FROM || 'VinStation Support <noreply@stationvinswap.xyz>').trim();
+    fromAddress = fromAddress.replace(/[""]/g, '"');
+    
     const { data, error } = await resend.emails.send({
-      from: 'VinStation Support <onboarding@resend.dev>',
-      from: `"VinStation Support" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: fromAddress,
       to: toEmail,
       subject: '✅ Mật khẩu đã được thay đổi - VinStation',
       text: 'Mật khẩu của bạn đã được thay đổi thành công.\n\nThời gian: ' + new Date().toLocaleString('vi-VN') + '\n\nNếu bạn không thực hiện thay đổi này, vui lòng liên hệ với bộ phận hỗ trợ ngay lập tức.',
@@ -497,8 +510,12 @@ async function sendSubscriptionExpiryEmail(toEmail, driverName, planName, licens
     
     console.log('✅ Resend initialized for subscription expiry email');
     
+    // Normalize RESEND_FROM: remove smart quotes and trim
+    let fromAddress = (process.env.RESEND_FROM || 'VinStation Support <noreply@stationvinswap.xyz>').trim();
+    fromAddress = fromAddress.replace(/[""]/g, '"');
+    
     const { data, error } = await resend.emails.send({
-      from: 'VinStation Support <onboarding@resend.dev>',
+      from: fromAddress,
       to: toEmail,
       subject: '⚠️ Gói đăng ký của bạn đã hết hạn - Gia hạn ngay!',
       text: `Xin chào ${driverName},\n\nGói đăng ký của bạn đã hết hạn.\n\nThông tin gói:\n- Tên gói: ${planName}\n- Biển số xe: ${licensePlate}\n- Ngày hết hạn: ${new Date(endDate).toLocaleDateString('vi-VN')}\n- Giá gia hạn: ${planPrice?.toLocaleString('vi-VN')} VNĐ\n\nVui lòng gia hạn để tiếp tục sử dụng dịch vụ đổi pin.\n\nTrân trọng,\nEV Battery Swap Station Team`,
