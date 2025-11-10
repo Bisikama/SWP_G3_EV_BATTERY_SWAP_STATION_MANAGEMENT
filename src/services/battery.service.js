@@ -10,7 +10,9 @@ const { v4: uuidv4 } = require('uuid');
 async function findAll(filters = {}, page = 1, pageSize = 10) {
   const options = {
     include: [
-      { model: BatteryType, as: 'batteryType' }
+      { model: BatteryType, as: 'batteryType' },
+      { model: Vehicle },
+      { model: CabinetSlot, as: 'cabinetSlot' }
     ],
     order: [['battery_id', 'ASC']]
   };
