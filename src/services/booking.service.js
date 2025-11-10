@@ -854,7 +854,7 @@ async function checkAvailability(station_id, vehicle_id) {
     },
     include: [{
       model: CabinetSlot,
-      as: 'slot',
+      as: 'cabinetSlot',
       required: true,
       include: [{
         model: Cabinet,
