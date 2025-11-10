@@ -5,13 +5,12 @@ const swapBatteryService = require('./swap_battery.service');
 const { Op } = require('sequelize');
 const ApiError = require('../utils/ApiError');
 const paginate = require('../utils/paginate');
+const { v4: uuidv4 } = require('uuid');
 
 async function findAll(filters = {}, page = 1, pageSize = 10) {
   const options = {
     include: [
-      { model: BatteryType, as: 'batteryType' },
-      { model: Vehicle, as: 'vehicle', include: [{ model: VehicleModel, as: 'model' }] },
-      { model: CabinetSlot, as: 'cabinetSlot', include: [{ model: Cabinet, as: 'cabinet', include: [{ model: Station, as: 'station' }] }] }
+      { model: BatteryType, as: 'batteryType' }
     ],
     order: [['battery_id', 'ASC']]
   };
@@ -71,7 +70,6 @@ async function createByVehicle(vehicle_id) {
         vehicle_id,
         battery_type_id: vehicle.model?.battery_type_id,
         slot_id: null,
-        battery_serial: `BAT-VEH-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
         current_soc: 100.0,
         current_soh: 100.0,
       })
@@ -119,6 +117,13 @@ async function updateBattery(battery_id, soc, soh) {
   if (soc < 0 || soc > 100) throw new ApiError(400, 'Invalid SOC value');
   if (soh < 0 || soh > 100) throw new ApiError(400, 'Invalid SOH value');
 
+  if (battery.current_soc > soc) {
+    throw new ApiError(400, 'SOC value must less than current battery SOC');
+  }
+  if (battery.current_soh > soh) {
+    throw new ApiError(400, 'SOH value must less than current battery SOH');
+  }
+
   await battery.update({
     current_soc: soc,
     current_soh: soh,
@@ -127,11 +132,33 @@ async function updateBattery(battery_id, soc, soh) {
   return battery;
 }
 
+async function createBattery(battery_type_id, soc, soh) {
+  const now = new Date();
+  const todayStr = 
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0');
+
+  const id = uuidv4();
+  const serialNumber = id.split('-')[0].toUpperCase();
+  const battery_serial = `BATT${todayStr}${serialNumber}`;
+
+  return Battery.create({
+    battery_type_id,
+    vehicle_id: null,
+    slot_id: null,
+    battery_serial,
+    current_soc: soc,
+    current_soh: soh,
+  })
+}
+
 module.exports = {
   findAll,
   countByStationAndType,
   findByVehicle,
   createByVehicle,
   getBatteryStatsAtStation,
-  updateBattery
+  updateBattery,
+  createBattery
 };

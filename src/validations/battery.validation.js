@@ -20,7 +20,7 @@ const countByStationAndType = [
 const findByVehicle = [
   param('vehicle_id')
     .notEmpty().withMessage('vehicle_id is required')
-    .isInt().withMessage('vehicle_id must be an integer'),
+    .isUUID().withMessage('vehicle_id must be a valid UUID'),
 ];
 
 const createByVehicle = [
@@ -36,9 +36,9 @@ const getBatteryAtStation = [
 ];
 
 const update = [
-  param('batteryId')
+  param('battery_id')
     .isUUID()
-    .withMessage('Invalid battery ID format'),
+    .withMessage('Invalid battery ID format, must be UUID'),
 
   body('current_soc')
     .exists().withMessage('current_soc is required')
