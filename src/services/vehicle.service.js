@@ -42,7 +42,7 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
   // Step 1: Validate required fields
   if (!vin || !model_id || !license_plate) {
     const err = new Error('VIN, model_id, and license_plate are required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -56,14 +56,14 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
 
   if (!vehicleModel) {
     const err = new Error('Vehicle model not found');
-    err.status = 404;
+    err.statusCode = 404;
     err.field = 'model_id';
     throw err;
   }
 
   if (!driver || driver.role !== 'driver') {
     const err = new Error('Only drivers can register vehicles');
-    err.status = 403;
+    err.statusCode = 403;
     throw err;
   }
 
@@ -74,7 +74,7 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     if (!driver.driving_license) missingFields.push('driving_license');
     
     const err = new Error(`Driver must have ${missingFields.join(' and ')} to register vehicle`);
-    err.status = 403;
+    err.statusCode = 403;
     err.missingFields = missingFields;
     throw err;
   }
@@ -89,7 +89,7 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     // Case A: VIN is active - cannot register
     if (existingVin.status === 'active') {
       const err = new Error('VIN already registered');
-      err.status = 409;
+      err.statusCode = 409;
       err.field = 'vin';
       throw err;
     }
@@ -104,7 +104,7 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
       
       if (duplicatePlate) {
         const err = new Error('License plate already registered');
-        err.status = 409;
+        err.statusCode = 409;
         err.field = 'license_plate';
         throw err;
       }
@@ -130,7 +130,7 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
   
   if (existingPlate) {
     const err = new Error('License plate already registered');
-    err.status = 409;
+    err.statusCode = 409;
     err.field = 'license_plate';
     throw err;
   }
@@ -161,7 +161,7 @@ async function getVehiclesByDriver(driver_id, options = {}) {
   
   if (!driver_id) {
     const err = new Error('Driver ID is required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -211,7 +211,7 @@ async function getVehicleByVin(vin) {
   
   if (!vin) {
     const err = new Error('VIN is required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -240,7 +240,7 @@ async function getVehicleByVin(vin) {
 
   if (!vehicle) {
     const err = new Error('Vehicle not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
@@ -262,7 +262,7 @@ async function getVehicleById(vehicle_id, includeRelations = true) {
   
   if (!vehicle_id) {
     const err = new Error('Vehicle ID is required');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -274,7 +274,7 @@ async function getVehicleById(vehicle_id, includeRelations = true) {
   
   if (!vehicle) {
     const err = new Error('Vehicle not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
@@ -305,7 +305,7 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
   // Validate at least one field to update
   if (!license_plate && !model_id) {
     const err = new Error('At least one field (license_plate or model_id) is required to update');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -314,14 +314,14 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
   
   if (!vehicle) {
     const err = new Error('Vehicle not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
   // Check ownership
   if (vehicle.driver_id !== driver_id) {
     const err = new Error('You can only update your own vehicles');
-    err.status = 403;
+    err.statusCode = 403;
     throw err;
   }
 
@@ -334,7 +334,7 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
     
     if (existingPlate) {
       const err = new Error('License plate already exists');
-      err.status = 409;
+      err.statusCode = 409;
       err.field = 'license_plate';
       throw err;
     }
@@ -349,7 +349,7 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
     
     if (!vehicleModel) {
       const err = new Error('Vehicle model not found');
-      err.status = 404;
+      err.statusCode = 404;
       err.field = 'model_id';
       throw err;
     }
@@ -385,21 +385,21 @@ async function deleteVehicle(vehicle_id, driver_id) {
   
   if (!vehicle) {
     const err = new Error('Vehicle not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
   // Check ownership
   if (vehicle.driver_id !== driver_id) {
     const err = new Error('You can only delete your own vehicles');
-    err.status = 403;
+    err.statusCode = 403;
     throw err;
   }
 
   // Check if already inactive
   if (vehicle.status === 'inactive') {
     const err = new Error('Vehicle is already deactivated');
-    err.status = 400;
+    err.statusCode = 400;
     throw err;
   }
 
@@ -424,13 +424,13 @@ async function deleteVehicle(vehicle_id, driver_id) {
 
   if (activeSubscription) {
     const err = new Error('Cannot deactivate vehicle. Active subscription exists. Please cancel subscription first');
-    err.status = 409;
+    err.statusCode = 409;
     throw err;
   }
 
   if (pendingBooking) {
     const err = new Error('Cannot deactivate vehicle. Pending bookings exist. Please cancel bookings first');
-    err.status = 409;
+    err.statusCode = 409;
     throw err;
   }
 
@@ -495,7 +495,7 @@ async function findVehicleWithModel(vehicle_id) {
 
   if (!vehicle) {
     const err = new Error('Vehicle not found');
-    err.status = 404;
+    err.statusCode = 404;
     throw err;
   }
 
