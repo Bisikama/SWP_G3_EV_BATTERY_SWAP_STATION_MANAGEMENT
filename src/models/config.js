@@ -13,10 +13,9 @@
 
 module.exports = (sequelize, DataTypes) => {
   const Config = sequelize.define('Config', {
-    config_id: {
-      type: DataTypes.INTEGER,
+    config_name: {
+      type: DataTypes.STRING,
       primaryKey: true,
-      autoIncrement: true
     },
     booking_expired_interval: {
       type: DataTypes.SMALLINT,
