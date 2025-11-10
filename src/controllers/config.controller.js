@@ -45,15 +45,16 @@ const updateConfig = async (req, res, next) => {
       booking_expired_interval,
       soh_available_threshole,
       soh_maintenance_threshole,
-      allowed_empty_slot
+      allowed_empty_slot,
+      soc_available_threshole
     } = req.body;
     
     // Validate input
     if (booking_expired_interval !== undefined) {
-      if (typeof booking_expired_interval !== 'number' || booking_expired_interval < 1) {
+      if (typeof booking_expired_interval !== 'number' || booking_expired_interval < 1 || booking_expired_interval > 60) {
         return res.status(400).json({
           success: false,
-          message: 'booking_expired_interval must be a positive number'
+          message: 'booking_expired_interval must be a positive number and at most 60'
         });
       }
     }
@@ -77,10 +78,19 @@ const updateConfig = async (req, res, next) => {
     }
 
     if (allowed_empty_slot !== undefined) {
-      if (typeof allowed_empty_slot !== 'number' || allowed_empty_slot < 0) {
+      if (typeof allowed_empty_slot !== 'number' || allowed_empty_slot < 0 || allowed_empty_slot > 12) {
         return res.status(400).json({
           success: false,
-          message: 'allowed_empty_slot must be a non-negative number'
+          message: 'allowed_empty_slot must be a non-negative number and at most 12'
+        });
+      }
+    }
+
+    if (soc_available_threshole !== undefined) {
+      if (typeof soc_available_threshole !== 'number' || soc_available_threshole < 0 || soc_available_threshole > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'soc_available_threshole must be a number between 0 and 100'
         });
       }
     }
@@ -94,6 +104,7 @@ const updateConfig = async (req, res, next) => {
     if (soh_available_threshole !== undefined) updateData.soh_available_threshole = soh_available_threshole;
     if (soh_maintenance_threshole !== undefined) updateData.soh_maintenance_threshole = soh_maintenance_threshole;
     if (allowed_empty_slot !== undefined) updateData.allowed_empty_slot = allowed_empty_slot;
+    if (soc_available_threshole !== undefined) updateData.soc_available_threshole = soc_available_threshole;
 
     // Check if any field is provided for update
     if (Object.keys(updateData).length === 0) {
@@ -107,9 +118,10 @@ const updateConfig = async (req, res, next) => {
       // Create new config if not exists (with default values)
       configRecord = await db.Config.create({
         booking_expired_interval: booking_expired_interval || 30,
-        soh_available_threshole: soh_available_threshole || null,
-        soh_maintenance_threshole: soh_maintenance_threshole || null,
-        allowed_empty_slot: allowed_empty_slot || null
+        soh_available_threshole: soh_available_threshole || 90,
+        soh_maintenance_threshole: soh_maintenance_threshole || 70,
+        allowed_empty_slot: allowed_empty_slot || 3,
+        soc_available_threshole: soc_available_threshole || 90
       });
     } else {
       // Update existing config with only provided fields
@@ -148,7 +160,8 @@ const resetConfig = async (req, res, next) => {
       booking_expired_interval: 30,
       soh_available_threshole: 90,
       soh_maintenance_threshole: 70,
-      allowed_empty_slot: 3
+      allowed_empty_slot: 3,
+      soc_available_threshole: 90
     });
     
     // Reload config from database

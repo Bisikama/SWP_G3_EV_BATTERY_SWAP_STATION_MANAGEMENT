@@ -52,8 +52,9 @@ const { verifyToken, authorizeRole } = require('../middlewares/verifyTokens');
  *                     allowed_empty_slot:
  *                       type: integer
  *                       description: Number of allowed empty slots
- *                 message:
- *                   type: string
+ *                     soc_available_threshole:
+ *                       type: number
+ *                       description: SOC threshold for battery availability (0-100)
  */
 router.get('/', verifyToken, authorizeRole('admin'), configController.getConfig);
 
@@ -117,6 +118,12 @@ router.get('/:key', verifyToken, authorizeRole('admin'), configController.getCon
  *                 description: Number of allowed empty slots
  *                 minimum: 0
  *                 example: 5
+ *               soc_available_threshole:
+ *                 type: number
+ *                 description: SOC threshold for battery availability (0-100)
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 example: 70
  *     responses:
  *       200:
  *         description: Configuration updated successfully

@@ -3,7 +3,8 @@ const subscriptionService = require('../services/subscription.service');
 const vehicleService = require('../services/vehicle.service');
 const db = require('../models');
 const { where } = require('sequelize');
-
+const routeConfig = require('../config/route.config');
+const sohMaintenanceThreshole = routeConfig.getConfig()?.soh_maintenance_threshole || 70;
 /**
  * API 4: Validate và chuẩn bị đổi pin 1-1
  * POST /api/swap/validate-and-prepare
@@ -353,7 +354,7 @@ async function executeSwapInternal(params, res) {
       }
 
       const soh_in = battery.current_soh;
-      const newSlotStatus = soh_in < 70 ? 'locked' : 'occupied';
+      const newSlotStatus = soh_in < sohMaintenanceThreshole ? 'locked' : 'occupied';
 
       console.log(`  📦 Battery ${battery_id} (SOH: ${soh_in}%) → Slot ${slot_id} (status: ${newSlotStatus})`);
 
@@ -847,7 +848,7 @@ async function executeSwapWithBookingInternal(params, res) {
       }
 
       const soh_in = battery.current_soh;
-      const newSlotStatus = soh_in < 70 ? 'locked' : 'occupied';
+      const newSlotStatus = soh_in < sohMaintenanceThreshole ? 'locked' : 'occupied';
 
       console.log(`  📦 Battery ${battery_id} (SOH: ${soh_in}%) → Slot ${slot_id} (status: ${newSlotStatus})`);
 
