@@ -47,7 +47,7 @@ class RouteConfig {
     try {
       // Lấy config đầu tiên trong bảng (hoặc tất cả nếu có nhiều record)
       const configRecord = await db.Config.findOne({
-        attributes: [ 'config_name', 'booking_expired_interval','soh_available_threshole', 'soh_maintenance_threshole','allowed_empty_slot'],
+        attributes: [ 'config_name', 'booking_expired_interval','soh_available_threshole', 'soh_maintenance_threshole','allowed_empty_slot','soc_available_threshole'],
         raw: true
       });
 
@@ -59,7 +59,8 @@ class RouteConfig {
           booking_expired_interval: 30,
           soh_available_threshole: null,
           soh_maintenance_threshole: null,
-          allowed_empty_slot: null
+          allowed_empty_slot: null,
+          soc_available_threshole: null
         };
       } else {
         this.configData = configRecord;
@@ -124,6 +125,9 @@ class RouteConfig {
 
   getAllowedEmptySlot() {
     return this.getConfigValue('allowed_empty_slot');
+  }
+  getSocAvailableThreshole() {
+    return this.getConfigValue('soc_available_threshole');
   }
 
   /**

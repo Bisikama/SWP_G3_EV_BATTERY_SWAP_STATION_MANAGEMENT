@@ -1,8 +1,8 @@
 const { CabinetSlot, Battery, SwapRecord, Cabinet, BatteryType } = require('../models');
 const { Op } = require('sequelize');
 const routeConfig = require('../config/route.config');
-const sohAvailableThreshole = routeConfig.getConfig()?.soh_available_threshole || 90;
 const sohMaintenanceThreshole = routeConfig.getConfig()?.soh_maintenance_threshole || 70;
+const socAvailableThreshole = routeConfig.getConfig()?.soc_available_threshole || 90;
 /**
  * Service 4: Lấy danh sách các ô pin đang trống của cabinet tại trạm
  * @param {number} station_id - ID của trạm
@@ -286,7 +286,7 @@ async function getAvailableBatteriesForSwap(station_id, battery_type_id, quantit
           where: {
             battery_type_id: battery_type_id,
             current_soc: {
-              [Op.gte]: 90 // SOC >= 90% mới cho đổi (đã tăng từ 80% lên 90%)
+              [Op.gte]: socAvailableThreshole // SOC >= 90% mới cho đổi (đã tăng từ 80% lên 90%)
             }
           },
           include: [
@@ -328,7 +328,7 @@ async function getAvailableBatteriesForSwapAtStation(station_id) {
           as: 'battery',
           where: {
             current_soc: {
-              [Op.gte]: 90 // SOC >= 90% mới cho đổi (đã tăng từ 80% lên 90%)
+              [Op.gte]: socAvailableThreshole // SOC >= 90% mới cho đổi (đã tăng từ 80% lên 90%)
             }
           },
           include: [
