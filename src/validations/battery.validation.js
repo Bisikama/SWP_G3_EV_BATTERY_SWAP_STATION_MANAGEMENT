@@ -36,9 +36,9 @@ const getBatteryAtStation = [
 ];
 
 const update = [
-  param('batteryId')
+  param('battery_id')
     .isUUID()
-    .withMessage('Invalid battery ID format'),
+    .withMessage('Invalid battery ID format, must be UUID'),
 
   body('current_soc')
     .exists().withMessage('current_soc is required')
