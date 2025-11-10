@@ -93,6 +93,20 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
+  Battery.beforeCreate(async (battery) => {
+  if (!battery.battery_serial) {
+    const now = new Date();
+    const todayStr =
+      now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0');
+
+    const shortId = battery.battery_id.split('-')[0].toUpperCase();
+
+    battery.battery_serial = `BATT${todayStr}${shortId}`;
+  }
+});
+
   // hooks
   // Battery.beforeSave(async (battery, options) => {
   //   const locations = [battery.vehicle_id, battery.slot_id];
