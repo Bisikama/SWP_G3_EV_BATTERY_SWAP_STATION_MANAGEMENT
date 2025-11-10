@@ -8,11 +8,23 @@ const paginate = require('../utils/paginate');
 const { v4: uuidv4 } = require('uuid');
 
 async function findAll(filters = {}, page = 1, pageSize = 10) {
+  const cabinetWhere = {};
+  if (filters.station_id) {
+    cabinetWhere.station_id = filters.station_id;
+  }
+  delete filters.station_id;
+
   const options = {
     include: [
       { model: BatteryType, as: 'batteryType' },
       { model: Vehicle },
-      { model: CabinetSlot, as: 'cabinetSlot' }
+      { model: CabinetSlot, as: 'cabinetSlot', required: true,
+        include: [
+          { model: Cabinet, as: 'cabinet',
+            where: cabinetWhere
+          }
+        ]
+      }
     ],
     order: [['battery_id', 'ASC']]
   };
