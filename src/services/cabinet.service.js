@@ -11,7 +11,7 @@ const ruleConfig = require('../config/route.config');
 
 const detailData = [
 	{ model: db.CabinetSlot, as: 'slots',
-		attributes: ['slot_number', 'voltage', 'current', 'status'],
+		attributes: ['slot_id', 'slot_number', 'voltage', 'current', 'status'],
 		include: [
 			{ model: db.Battery, as: 'battery',
 				attributes: ['battery_id', 'battery_serial', 'current_soc', 'current_soh'],
@@ -41,7 +41,7 @@ async function findAll(filters = {}, page = 1, pageSize = 10) {
 
     await Promise.all(c.slots.map(async slot => {
       if (!slot.battery) return;
-      const slotId = slot.cabinet_slot_id || slot.id || slot.slot_id;
+      const slotId = slot.slot_id;
       const [avail, full] = await Promise.all([
         estimateBatteryChargeTime(slotId, availableThreshold),
         estimateBatteryChargeTime(slotId, max_soc)
@@ -56,22 +56,37 @@ async function findAll(filters = {}, page = 1, pageSize = 10) {
 }
 
 async function findById(id) {
-	const result = await db.Cabinet.findByPk(id, {
-		include: detailData,
-    raw: true,
-    nested: true
-	});
+  if (!id) throw new ApiError(400, 'Cabinet ID is required');
+
+  const cabinet = await db.Cabinet.findByPk(id, {
+    include: detailData,
+  });
+
+  if (!cabinet) throw new ApiError(404, 'Cabinet not found');
 
   const max_soc = 100;
-  for (const slot of result.slots) {
-    if (slot.battery) {
-      slot.battery.estimate_charge_time_until_available = await estimateBatteryChargeTime(slot.slot_id, ruleConfig.getConfigValue('soc_available_threshole'));
-      slot.battery.estimate_charge_time_until_full = await estimateBatteryChargeTime(slot.slot_id, max_soc);
-    }
-  }
+  const availableThreshold = ruleConfig.getConfigValue('soc_available_threshole');
 
-  return result;
+  const c = cabinet.toJSON(); // plain object for response
+
+  await Promise.all(
+    c.slots.map(async slot => {
+      if (!slot.battery) return;
+
+      const slotId = slot.cabinet_slot_id || slot.slot_id; // make sure this is correct PK
+      const [avail, full] = await Promise.all([
+        estimateBatteryChargeTime(slotId, availableThreshold),
+        estimateBatteryChargeTime(slotId, max_soc)
+      ]);
+
+      slot.battery.estimate_charge_time_until_available = avail;
+      slot.battery.estimate_charge_time_until_full = full;
+    })
+  );
+
+  return c;
 }
+
 
 async function createCabinet(data) {
   const { station_id, battery_capacity, power_capacity_kw } = data;
