@@ -98,23 +98,30 @@ async function getBatteryStatsAtStation(station_id) {
   const station = await Station.findByPk(station_id);
   if (!station) throw new ApiError(404, 'Station not found');
 
-  const occupiedSlots = await CabinetSlot.findAll({
-    where: { status: { [Op.notIn]: ['empty'] } },
-    include: [{ model: Cabinet, as: 'cabinet', where: { station_id }, attributes: ['cabinet_id', 'station_id'] }]
+  const slotCount = await CabinetSlot.count({
+    include: [
+      { model: Cabinet, as: 'cabinet', where: { station_id } }
+    ]
   });
 
-  const emptySlots = await CabinetSlot.findAll({
-    where: { status: { [Op.in]: ['empty'] } },
-    include: [{ model: Cabinet, as: 'cabinet', where: { station_id }, attributes: ['cabinet_id', 'station_id'] }]
+  const batteryCount = await Battery.count({
+    include: [
+      { model: CabinetSlot, as: 'cabinetSlot', required: true,
+        include: [
+          { model: Cabinet, as: 'cabinet', where: { station_id } }
+        ]
+      } 
+    ]
   });
 
-  const availableBatteries = await swapBatteryService.getAvailableBatteriesForSwapAtStation(station_id);
+  const emptyCount = slotCount - batteryCount;
   const allowedEmptySlot = ruleConfig.getConfigValue('allowed_empty_slot');
+  const availableBatteries = await swapBatteryService.getAvailableBatteriesForSwapAtStation(station_id);
 
-  const totalCount = occupiedSlots.length;
+  const totalCount = batteryCount;
   const availableCount = availableBatteries.length;
-  const shortageCount = emptySlots.length > allowedEmptySlot
-    ? emptySlots.length - allowedEmptySlot
+  const shortageCount = emptyCount > allowedEmptySlot
+    ? emptyCount - allowedEmptySlot
     : 0;
 
   return {
