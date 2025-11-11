@@ -10,7 +10,7 @@ module.exports = {
       },
       driver_id: {
         type: Sequelize.UUID,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'Accounts',
           key: 'account_id'
@@ -30,7 +30,7 @@ module.exports = {
       },
       license_plate: {
         type: Sequelize.STRING(20),
-        allowNull: false,
+        allowNull: true,
         unique: true
       },
       vin: {
@@ -41,7 +41,7 @@ module.exports = {
       status: {
         type: Sequelize.ENUM('active', 'inactive'),
         allowNull: false,
-        defaultValue: 'active'
+        defaultValue: 'inactive'
       }
       
     });
