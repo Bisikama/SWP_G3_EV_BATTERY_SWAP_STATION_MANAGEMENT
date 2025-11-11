@@ -1,6 +1,12 @@
 const db = require('../models');
 const ApiError = require('../utils/ApiError');
 const paginate = require('../utils/paginate');
+const {
+  calculateCabinetSlotPower,
+  calculateCabinetSlotChargeCurrent,
+  calculateICCCurrent,
+  estimateTotalChargeTime
+} = require('../utils/chargingMath');
 const ruleConfig = require('../config/route.config');
 
 const detailData = [
@@ -11,7 +17,11 @@ const detailData = [
 				attributes: ['battery_id', 'battery_serial', 'current_soc', 'current_soh'],
         include: [
           { model: db.BatteryType, as: 'batteryType',
-            attributes: ['battery_type_id', 'cell_chemistry', 'battery_type_code']
+            attributes: [
+              'battery_type_id', 
+              'cell_chemistry', 
+              'battery_type_code'
+            ]
           }
         ]
 			}
@@ -20,16 +30,47 @@ const detailData = [
 ];
 
 async function findAll(filters = {}, page = 1, pageSize = 10) {
-	const options = {
-		include: detailData
-	};
-	return paginate(db.Cabinet, filters, { ...options, page, pageSize });
+  const options = { include: detailData };
+  const result = await paginate(db.Cabinet, filters, { ...options, page, pageSize });
+
+  const max_soc = 100;
+  const availableThreshold = ruleConfig.getConfigValue('soc_available_threshole');
+
+  return Promise.all(result.data.map(async cabinet => {
+    const c = cabinet.toJSON();
+
+    await Promise.all(c.slots.map(async slot => {
+      if (!slot.battery) return;
+      const slotId = slot.cabinet_slot_id || slot.id || slot.slot_id;
+      const [avail, full] = await Promise.all([
+        estimateBatteryChargeTime(slotId, availableThreshold),
+        estimateBatteryChargeTime(slotId, max_soc)
+      ]);
+
+      slot.battery.estimate_charge_time_until_available = avail;
+      slot.battery.estimate_charge_time_until_full = full;
+    }));
+
+    return c;
+  }));
 }
 
 async function findById(id) {
-	return db.Cabinet.findByPk(id, {
-		include: detailData
+	const result = await db.Cabinet.findByPk(id, {
+		include: detailData,
+    raw: true,
+    nested: true
 	});
+
+  const max_soc = 100;
+  for (const slot of result.slots) {
+    if (slot.battery) {
+      slot.battery.estimate_charge_time_until_available = await estimateBatteryChargeTime(slot.slot_id, ruleConfig.getConfigValue('soc_available_threshole'));
+      slot.battery.estimate_charge_time_until_full = await estimateBatteryChargeTime(slot.slot_id, max_soc);
+    }
+  }
+
+  return result;
 }
 
 async function createCabinet(data) {
@@ -132,6 +173,38 @@ async function chargeFull(id) {
 	);
 
 	return batteries;
+}
+
+async function estimateBatteryChargeTime(slot_id, target_SOC) {
+  const slot = await db.CabinetSlot.findByPk(slot_id, {
+    include: [
+      { model: db.Battery, as: 'battery',
+        include: { model: db.BatteryType, as: 'batteryType' }
+      },
+      { model: db.Cabinet, as: 'cabinet' }
+    ]
+  });
+
+  if (!slot || !slot.battery || !slot.battery.batteryType || !slot.cabinet) return 1;
+
+  const { battery, cabinet } = slot;
+  const { batteryType } = battery;
+
+  const slotPower = calculateCabinetSlotPower(
+    cabinet.power_capacity_kw * 1000,
+    cabinet.battery_capacity
+  );
+  const slotCurrent = calculateCabinetSlotChargeCurrent(slotPower, batteryType.nominal_voltage);
+  const i_cc = calculateICCCurrent(slotCurrent, batteryType.rated_charge_current);
+
+  const estHours = estimateTotalChargeTime(
+    battery.current_soc / 100,
+    target_SOC / 100,
+    batteryType.nominal_capacity,
+    i_cc
+  );
+
+  return estHours;
 }
 
 module.exports = { findAll, findById, createCabinet, chargeFull };
