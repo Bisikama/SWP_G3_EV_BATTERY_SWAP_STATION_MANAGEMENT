@@ -178,14 +178,14 @@ async function chargeFull(id) {
 async function estimateBatteryChargeTime(slot_id, target_SOC) {
   const slot = await db.CabinetSlot.findByPk(slot_id, {
     include: [
-      { model: db.Battery, as: 'battery',
+      { model: db.Battery, as: 'battery', required: true,
         include: { model: db.BatteryType, as: 'batteryType' }
       },
       { model: db.Cabinet, as: 'cabinet' }
     ]
   });
 
-  if (!slot || !slot.battery || !slot.battery.batteryType || !slot.cabinet) return 1;
+  if (!slot || !slot.battery || !slot.battery.batteryType || !slot.cabinet) return null;
 
   const { battery, cabinet } = slot;
   const { batteryType } = battery;
