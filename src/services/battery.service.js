@@ -6,13 +6,26 @@ const { Op } = require('sequelize');
 const ApiError = require('../utils/ApiError');
 const paginate = require('../utils/paginate');
 const { v4: uuidv4 } = require('uuid');
+const ruleConfig = require('../config/route.config');
 
 async function findAll(filters = {}, page = 1, pageSize = 10) {
+  const cabinetWhere = {};
+  if (filters.station_id) {
+    cabinetWhere.station_id = filters.station_id;
+  }
+  delete filters.station_id;
+
   const options = {
     include: [
       { model: BatteryType, as: 'batteryType' },
       { model: Vehicle },
-      { model: CabinetSlot, as: 'cabinetSlot' }
+      { model: CabinetSlot, as: 'cabinetSlot', required: true,
+        include: [
+          { model: Cabinet, as: 'cabinet',
+            where: cabinetWhere
+          }
+        ]
+      }
     ],
     order: [['battery_id', 'ASC']]
   };
@@ -85,23 +98,30 @@ async function getBatteryStatsAtStation(station_id) {
   const station = await Station.findByPk(station_id);
   if (!station) throw new ApiError(404, 'Station not found');
 
-  const occupiedSlots = await CabinetSlot.findAll({
-    where: { status: { [Op.in]: ['occupied'] } },
-    include: [{ model: Cabinet, as: 'cabinet', where: { station_id }, attributes: ['cabinet_id', 'station_id'] }]
+  const slotCount = await CabinetSlot.count({
+    include: [
+      { model: Cabinet, as: 'cabinet', where: { station_id } }
+    ]
   });
 
-  const emptySlots = await CabinetSlot.findAll({
-    where: { status: { [Op.in]: ['empty'] } },
-    include: [{ model: Cabinet, as: 'cabinet', where: { station_id }, attributes: ['cabinet_id', 'station_id'] }]
+  const batteryCount = await Battery.count({
+    include: [
+      { model: CabinetSlot, as: 'cabinetSlot', required: true,
+        include: [
+          { model: Cabinet, as: 'cabinet', where: { station_id } }
+        ]
+      } 
+    ]
   });
 
+  const emptyCount = slotCount - batteryCount;
+  const allowedEmptySlot = ruleConfig.getConfigValue('allowed_empty_slot');
   const availableBatteries = await swapBatteryService.getAvailableBatteriesForSwapAtStation(station_id);
-  const defaultEmptySlotsCount = 3;
 
-  const totalCount = occupiedSlots.length;
+  const totalCount = batteryCount;
   const availableCount = availableBatteries.length;
-  const shortageCount = emptySlots.length > defaultEmptySlotsCount
-    ? emptySlots.length - defaultEmptySlotsCount
+  const shortageCount = emptyCount > allowedEmptySlot
+    ? emptyCount - allowedEmptySlot
     : 0;
 
   return {

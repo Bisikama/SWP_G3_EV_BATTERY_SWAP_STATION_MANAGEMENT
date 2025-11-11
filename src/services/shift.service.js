@@ -3,19 +3,36 @@ const ApiError = require('../utils/ApiError');
 const paginate = require('../utils/paginate');
 
 async function findAll(filters = {}, page = 1, pageSize = 10) {
+  const include = [
+    { model: db.Station, as: 'station' },
+    { model: db.Account, as: 'staff',
+      attributes: { 
+        exclude: ['password_hash', 'citizen_id', 'driving_license'] 
+      },
+    }
+  ];
+
+  const day = filters.day || null;
+  delete filters.day;
+  if (day) {
+    const startOfDay = new Date(day);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(day);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    filters.start_time = { [db.Sequelize.Op.gte]: startOfDay };
+    filters.end_time = { [db.Sequelize.Op.lte]: endOfDay };
+  }
+
   const options = {
-    include: [
-      { model: db.Station, as: 'station' },
-      { model: db.Account, as: 'staff',
-        attributes: { 
-          exclude: ['password_hash', 'citizen_id', 'driving_license'] 
-        },
-      }
-    ],
-    order: [['start_time', 'ASC']]
+    include,
+    order: [['start_time', 'ASC']],
+    page,
+    pageSize
   };
 
-  return paginate(db.Shift, filters, { ...options, page, pageSize });
+  return paginate(db.Shift, filters, options);
 }
 
 async function findById(id) {

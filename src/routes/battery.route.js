@@ -107,10 +107,30 @@ router.put(
  *     description: |
  *       Requires authentication.  
  *       Accessible by **admin** only.  
- *       Retrieve a list of all batteries in the system without filters.
+ *       Retrieve a paginated list of batteries with optional filter by station.
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: station_id
+ *         schema:
+ *           type: integer
+ *         description: Optional filter to return batteries for a specific station
  *     responses:
  *       200:
- *         description: List of all batteries retrieved successfully
+ *         description: List of batteries retrieved successfully
  *       401:
  *         description: Unauthorized - invalid or missing token
  *       403:

@@ -96,7 +96,7 @@ module.exports = router;
  * @swagger
  * /api/shifts:
  *   get:
- *     summary: Get all shifts (with optional pagination/filter)
+ *     summary: Get all shifts (with optional pagination/filter/day)
  *     tags: [Shifts]
  *     security:
  *       - bearerAuth: []
@@ -124,6 +124,13 @@ module.exports = router;
  *         schema:
  *           type: integer
  *         description: Filter by station ID
+ *       - in: query
+ *         name: day
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: '2025-11-11'
+ *         description: Filter shifts by day (shifts that overlap this day)
  *     responses:
  *       200:
  *         description: List of shifts
