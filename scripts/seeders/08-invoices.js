@@ -54,7 +54,6 @@ module.exports = {
         const planFee = Math.round(parseFloat(plan.plan_fee) || 0);
 
         const totalSwapFee = Math.round(planFee * 0.05);   // 5% of plan fee
-        const totalPenaltyFee = Math.round(planFee * 0.02); // 2% of plan fee
 
         // 80% paid, 20% unpaid for realistic revenue data
         const paymentStatus = Math.random() < 0.8 ? 'paid' : 'unpaid';
@@ -76,7 +75,6 @@ module.exports = {
           create_date: createDateStr,
           plan_fee: planFee,
           total_swap_fee: totalSwapFee,
-          total_penalty_fee: totalPenaltyFee,
           payment_status: paymentStatus
         });
       }

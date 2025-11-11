@@ -31,14 +31,6 @@ module.exports = {
         allowNull: false,
         defaultValue: 0
       },
-      penalty_fee: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
-      },
-      soh_cap: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
-      },
       duration_days: {
         type: Sequelize.INTEGER,
         allowNull: false,

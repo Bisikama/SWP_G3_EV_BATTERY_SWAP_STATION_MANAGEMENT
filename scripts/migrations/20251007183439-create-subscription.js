@@ -46,11 +46,6 @@ module.exports = {
           key: 'invoice_id'
         }
       },
-      soh_usage: {
-        type: Sequelize.DECIMAL(5, 2),
-        allowNull: false,
-        defaultValue: 0
-      },
       swap_count: {
         type: Sequelize.INTEGER,
         allowNull: false,

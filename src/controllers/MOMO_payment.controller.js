@@ -47,7 +47,7 @@ async function createPayment (req, res)  {
     }
     
     // ✅ Lấy amount từ invoice
-    total_fee  = invoice.plan_fee + invoice.total_swap_fee + invoice.total_penalty_fee;
+    total_fee  = invoice.plan_fee + invoice.total_swap_fee;
     console.log(`💰 Creating payment for Invoice ${invoice.invoice_number} - Amount: ${total_fee}`);
     const amount = parseInt(total_fee.toString());
     
@@ -285,7 +285,6 @@ async function handlePaymentIPN (req, res)  {
           driver_id: invoice.driver_id,
           vehicle_id: vehicle_id,
           plan_id: plan_id,
-          soh_usage: 0,
           start_date: pay_date,
           end_date: due_date,
           cancel_time: null,

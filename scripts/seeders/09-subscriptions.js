@@ -136,14 +136,12 @@ module.exports = {
         }
 
         // SOH usage và swap count theo plan type
-        let sohUsage, swapCount;
+        let swapCount;
         if (planName.includes('Unlimited')) {
           // Unlimited plans: swap nhiều hơn
-          sohUsage = 0.02 + Math.random() * 0.05; // 2-7%
           swapCount = 10 + Math.floor(Math.random() * 15); // 10-25 swaps
         } else {
           // Pay-per-swap plans: swap ít hơn
-          sohUsage = Math.random() * 0.03; // 0-3%
           swapCount = Math.floor(Math.random() * 10); // 0-10 swaps
         }
 
@@ -153,7 +151,6 @@ module.exports = {
           driver_id: invoice.driver_id,
           vehicle_id: vehicle.vehicle_id,
           plan_id: byName[planName] || fallbackPlanId,
-          soh_usage: sohUsage,
           swap_count: swapCount,
           start_date: startDate,
           end_date: endDate,

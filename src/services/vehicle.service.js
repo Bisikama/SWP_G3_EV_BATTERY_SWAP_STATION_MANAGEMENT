@@ -17,6 +17,7 @@
 
 'use strict';
 
+const { where } = require('sequelize');
 const { Vehicle, VehicleModel, BatteryType, Account, Subscription, Booking, Sequelize } = require('../models');
 const { Op } = Sequelize;
 
@@ -478,7 +479,9 @@ async function checkVehicleOwnership(vehicle_id, driver_id) {
  */
 async function findVehicleWithModel(vehicle_id) {
   
-  const vehicle = await Vehicle.findByPk(vehicle_id, {
+  const vehicle = await Vehicle.findByPk(vehicle_id,    
+    {
+    where: { status: 'active' },
     include: [
       {
         model: VehicleModel,
