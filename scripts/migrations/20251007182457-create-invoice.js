@@ -42,13 +42,6 @@ module.exports = {
           min: 0
         }
       },
-      total_penalty_fee: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
       payment_status: {
         type: Sequelize.ENUM('paid', 'unpaid'),
         allowNull: false,

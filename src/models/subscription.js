@@ -55,14 +55,6 @@ module.exports = (sequelize, DataTypes) => {
           key: 'plan_id'
         }
       },
-      soh_usage: {
-        type: DataTypes.DECIMAL(5, 2),
-        allowNull: false,
-        defaultValue: 0,
-        validate: {
-          min: 0
-        }
-      },
       swap_count: {
         type: DataTypes.INTEGER,
         allowNull: false,

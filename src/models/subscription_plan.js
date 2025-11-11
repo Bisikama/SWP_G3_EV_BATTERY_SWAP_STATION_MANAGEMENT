@@ -50,20 +50,6 @@ module.exports = (sequelize, DataTypes) => {
           min: 0
         }
       },
-      penalty_fee: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
-      soh_cap: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
       duration_days: {
         type: DataTypes.INTEGER,
         allowNull: false,

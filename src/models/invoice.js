@@ -54,13 +54,6 @@ module.exports = (sequelize, DataTypes) => {
           min: 0
         }
       },
-      total_penalty_fee: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-          min: 0
-        }
-      },
       payment_status: {
         type: DataTypes.ENUM('unpaid', 'paid'),
         allowNull: false,

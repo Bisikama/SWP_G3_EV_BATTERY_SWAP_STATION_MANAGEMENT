@@ -373,7 +373,6 @@ async function executeSwapInternal(params, res) {
     // Bước 6: Tạo swap records và tính soh_usage đồng thời
     console.log('\n📝 Step 6: Creating swap records and calculating soh_usage...');
     const swapRecords = [];
-    let totalSohUsage = 0;
 
     for (let i = 0; i < batteriesIn.length; i++) {
       const batteryIn = batteriesIn[i];
@@ -381,16 +380,6 @@ async function executeSwapInternal(params, res) {
 
       const batteryInData = await db.Battery.findByPk(batteryIn.battery_id, { transaction });
       const batteryOutData = await db.Battery.findByPk(batteryOut.battery_id, { transaction });
-
-      // Query previous swap TRƯỚC KHI tạo swap mới
-      const previousSwapRecord = await db.SwapRecord.findOne({
-        where: {
-          vehicle_id: vehicle_id,
-          battery_id_out: batteryIn.battery_id // Pin đưa vào lần này = Pin lấy ra lần trước
-        },
-        order: [['swap_time', 'DESC']],
-        transaction
-      });
 
       // Tạo swap record
       const swapRecord = await swapBatteryService.createSwapRecord({
@@ -407,18 +396,7 @@ async function executeSwapInternal(params, res) {
       swapRecords.push(swapRecord);
       console.log(`  ✅ Swap record created: ${swapRecord.swap_id}`);
 
-      // Tính soh_usage
-      if (previousSwapRecord) {
-        const sohDiff = previousSwapRecord.soh_out - swapRecord.soh_in;
-        totalSohUsage += sohDiff;
-        
-        console.log(`  📉 Battery ${swapRecord.battery_id_in}:`);
-        console.log(`     - SOH lần trước (out): ${previousSwapRecord.soh_out}%`);
-        console.log(`     - SOH lần này (in): ${swapRecord.soh_in}%`);
-        console.log(`     - SOH usage: ${sohDiff}%`);
-      } else {
-        console.log(`  ⚠️ No previous swap found for battery ${swapRecord.battery_id_in}`);
-      }
+      
     }
 
     // Bước 7: Update subscription.soh_usage và swap_count
@@ -437,13 +415,10 @@ async function executeSwapInternal(params, res) {
     if (!subscription) {
       console.log(`  ⚠️ No active subscription found for vehicle ${vehicle_id}`);
     } else {
-      const currentSohUsage = parseFloat(subscription.soh_usage);
-      const newSohUsage = currentSohUsage + totalSohUsage;
       const newSwapCount = subscription.swap_count + swapRecords.length;
 
       await db.Subscription.update(
         { 
-          soh_usage: newSohUsage, 
           swap_count: newSwapCount 
         },
         {
@@ -453,7 +428,6 @@ async function executeSwapInternal(params, res) {
       );
 
       console.log(`  ✅ Subscription updated:`);
-      console.log(`     - soh_usage: ${currentSohUsage.toFixed(2)}% → ${newSohUsage.toFixed(2)}% (Δ ${totalSohUsage > 0 ? '+' : ''}${totalSohUsage.toFixed(2)}%)`);
       console.log(`     - swap_count: ${subscription.swap_count} → ${newSwapCount} (+${swapRecords.length})`);
     }
 
@@ -914,24 +888,12 @@ if (!battery || !battery.slot_id) {
     // Bước 3: Tạo swap records và tính soh_usage
     console.log('\n📝 Step 3: Creating swap records and calculating soh_usage...');
     const swapRecords = [];
-    let totalSohUsage = 0;
-
     for (let i = 0; i < batteriesIn.length; i++) {
       const batteryIn = batteriesIn[i];
       const batteryOut = processedBatteriesOut[i];
 
       const batteryInData = await db.Battery.findByPk(batteryIn.battery_id, { transaction });
       const batteryOutData = await db.Battery.findByPk(batteryOut.battery_id, { transaction });
-
-      // Query previous swap
-      const previousSwapRecord = await db.SwapRecord.findOne({
-        where: {
-          vehicle_id: vehicle_id,
-          battery_id_out: batteryIn.battery_id
-        },
-        order: [['swap_time', 'DESC']],
-        transaction
-      });
 
       // Tạo swap record (với booking_id)
       const swapRecord = await swapBatteryService.createSwapRecord({
@@ -947,18 +909,6 @@ if (!battery || !battery.slot_id) {
       swapRecords.push(swapRecord);
       console.log(`  ✅ Swap record created: ${swapRecord.swap_id} (with booking_id: ${booking_id})`);
 
-      // Tính soh_usage
-      if (previousSwapRecord) {
-        const sohDiff = previousSwapRecord.soh_out - swapRecord.soh_in;
-        totalSohUsage += sohDiff;
-        
-        console.log(`  📉 Battery ${swapRecord.battery_id_in}:`);
-        console.log(`     - SOH lần trước (out): ${previousSwapRecord.soh_out}%`);
-        console.log(`     - SOH lần này (in): ${swapRecord.soh_in}%`);
-        console.log(`     - SOH usage: ${sohDiff}%`);
-      } else {
-        console.log(`  ⚠️ No previous swap found for battery ${swapRecord.battery_id_in}`);
-      }
     }
 
     // Bước 4: Update subscription.soh_usage và swap_count
@@ -975,13 +925,10 @@ if (!battery || !battery.slot_id) {
     });
 
     if (subscription) {
-      const currentSohUsage = parseFloat(subscription.soh_usage) || 0;
-      const newSohUsage = currentSohUsage + totalSohUsage;
       const newSwapCount = subscription.swap_count + swapRecords.length;
 
       await db.Subscription.update(
         { 
-          soh_usage: newSohUsage,
           swap_count: newSwapCount
         },
         {
@@ -991,7 +938,6 @@ if (!battery || !battery.slot_id) {
       );
 
       console.log(`  ✅ Subscription updated:`);
-      console.log(`     - soh_usage: ${currentSohUsage.toFixed(2)}% → ${newSohUsage.toFixed(2)}% (Δ ${totalSohUsage > 0 ? '+' : ''}${totalSohUsage.toFixed(2)}%)`);
       console.log(`     - swap_count: ${subscription.swap_count} → ${newSwapCount} (+${swapRecords.length})`);
     } else {
       console.log(`  ⚠️ No active subscription found for vehicle ${vehicle_id}`);
