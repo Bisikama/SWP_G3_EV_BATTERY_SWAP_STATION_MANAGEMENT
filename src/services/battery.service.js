@@ -81,22 +81,25 @@ async function createByVehicle(vehicle_id) {
 
   const batteries = await Promise.all(
     Array.from({ length: slots }, async () => {
-      const battery = await Battery.create({
-        vehicle_id,
-        battery_type_id: vehicle.model?.battery_type_id,
-        slot_id: null,
-        current_soc: 100.0,
-        current_soh: 100.0,
-      });
-
       const now = new Date();
       const todayStr =
         now.getFullYear().toString() +
         String(now.getMonth() + 1).padStart(2, '0') +
         String(now.getDate()).padStart(2, '0');
 
-      const shortId = battery.battery_id.split('-')[0].toUpperCase();
-      battery.battery_serial = `BATT${todayStr}${shortId}`;
+      const id = uuidv4();
+      const shortId = id.split('-')[0].toUpperCase();
+      const battery_serial = `BATT${todayStr}${shortId}`;
+
+      const battery = await Battery.create({
+        battery_id: id,
+        vehicle_id,
+        battery_type_id: vehicle.model?.battery_type_id,
+        battery_serial,
+        slot_id: null,
+        current_soc: 100.0,
+        current_soh: 100.0,
+      });
 
       // Save the updated serial
       await battery.save();
