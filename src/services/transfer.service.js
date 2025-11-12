@@ -37,21 +37,16 @@ async function findOrderById(id) {
 }
 
 async function requestTransfer(user, request_quantity, notes) {
-  const now = new Date();
-  const activeShift = await db.Shift.findOne({
-    where: {
-      staff_id: user.account_id,
-      start_time: { [db.Sequelize.Op.lte]: now },
-      end_time: { [db.Sequelize.Op.gte]: now },
-    },
+  const station = db.Station.findOne({
+    where: { staff_id: user.account_id }
   });
-  if (!activeShift) {
-    throw new ApiError(400, "You do not have any active shift at this current time");
+  if (!station) {
+    throw new ApiError(400, "You do not work for this station");
   }
 
   const pendingRequest = await db.TransferRequest.findOne({
     where: {
-      station_id: activeShift.station_id,
+      station_id: station.station_id,
       status: 'requested'
     }
   });
@@ -60,7 +55,7 @@ async function requestTransfer(user, request_quantity, notes) {
   }
 
   return db.TransferRequest.create({
-    station_id: activeShift.station_id,
+    station_id: station.station_id,
     staff_id: user.account_id,
     request_quantity,
     request_time: now,
@@ -201,15 +196,12 @@ async function confirmTransfer(user, transfer_order_id) {
   const t = await db.sequelize.transaction();
 
   try {
-    const activeShift = await db.Shift.findOne({
-      where: {
-        staff_id: user.account_id,
-        start_time: { [db.Sequelize.Op.lte]: now },
-        end_time: { [db.Sequelize.Op.gte]: now },
-      },
-      transaction: t,
+    const station = db.Station.findOne({
+      where: { staff_id: user.account_id }
     });
-    if (!activeShift) throw new ApiError(400, "You do not have any active shift at this current time");
+    if (!station) {
+      throw new ApiError(400, "You do not work for this station");
+    }
 
     const order = await db.TransferOrder.findByPk(transfer_order_id, {
       include: [{ model: db.Battery, as: 'batteries' }],
@@ -270,20 +262,17 @@ async function confirmTransfer(user, transfer_order_id) {
 }
 
 async function cancelTransfer(user, transfer_request_id) {
-  const now = new Date();
-  const activeShift = await db.Shift.findOne({
-    where: {
-      staff_id: user.account_id,
-      start_time: { [db.Sequelize.Op.lte]: now },
-      end_time: { [db.Sequelize.Op.gte]: now },
-    },
+  const station = db.Station.findOne({
+    where: { staff_id: user.account_id }
   });
-  if (!activeShift) throw new ApiError(400, "You do not have any active shift at this current time");
+  if (!station) {
+    throw new ApiError(400, "You do not work for this station");
+  }
 
   const transferReq = await db.TransferRequest.findByPk(transfer_request_id);
   if (!transferReq) throw new ApiError(404, 'Transfer request not found');
 
-  if (transferReq.station_id != activeShift.station_id) {
+  if (transferReq.station_id != station.station_id) {
     throw new ApiError(400, 'You are not currently working at this station');
   }
 

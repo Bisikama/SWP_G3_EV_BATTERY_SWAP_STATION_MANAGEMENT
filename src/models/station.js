@@ -12,11 +12,11 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       this.hasMany(models.Booking, { as: 'bookings', foreignKey: 'station_id' });
       this.hasMany(models.Cabinet, { as: 'cabinets', foreignKey: 'station_id' });
-      this.hasMany(models.Shift, { as: 'shifts', foreignKey: 'station_id' });
       this.hasMany(models.SwapRecord, { as: 'swapRecords', foreignKey: 'station_id' });
       this.hasMany(models.TransferRequest, { as: 'transferRequests', foreignKey: 'station_id' });
       this.hasMany(models.TransferOrder, { as: 'sourceTransferOrders', foreignKey: 'source_station_id' });
       this.hasMany(models.TransferOrder, { as: 'targetTransferOrders', foreignKey: 'target_station_id' });
+      this.belongsTo(models.Account, { as: 'staff', foreignKey: 'staff_id' })
     }
   }
   Station.init(
@@ -25,6 +25,17 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
+      },
+      staff_id: {
+        type: DataTypes.UUID,
+        unique: true,
+        allowNull: true,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
       },
       station_name: {
         type: DataTypes.STRING(100),

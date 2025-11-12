@@ -2,8 +2,6 @@ const cron = require('node-cron');
 const { deactivateExpiredSubscriptions, sendExpiryReminders } = require('../jobs/subscription.job');
 const { cancelExpiredBookings } = require('../jobs/booking.job');
 const { autoCharge } = require('../jobs/charging.job');
-const { autoAssignShiftDaily } = require('../jobs/shift.job');
-const { now } = require('sequelize/lib/utils');
 
 /**
  * Khởi động tất cả cron jobs
@@ -66,18 +64,6 @@ function startCronJobs() {
   console.log('   ⏰ Schedule: Every 15 minutes');
   console.log('   📝 Description: Auto-charge batteries inside cabinets at all stations');
 
-  const shiftJob = cron.schedule('59 23 * * *', async () => {
-    autoAssignShiftDaily();
-    console.log("ditmechungmay");
-  }, {
-    scheduled: true,
-    timezone: "Asia/Ho_Chi_Minh"
-  });
-
-  console.log('✅ Cron Job Started: Daily Shift Assignment');
-  console.log('   ⏰ Schedule: Every day at 23:59:00');
-  console.log('   📝 Description: Auto-assign shift for the next day');
-
   // ℹ️ Có thể thêm các cron jobs khác ở đây
   // Ví dụ:
   // const invoiceReminderJob = cron.schedule('0 9 * * *', () => {
@@ -91,7 +77,6 @@ function startCronJobs() {
     bookingJob,
     expiryReminderJob,
     chargingJob,
-    shiftJob
     // invoiceReminderJob, // Thêm jobs khác ở đây
   };
 }
