@@ -26,8 +26,6 @@ module.exports = {
         plan_name: 'Unlimited Standard',
         plan_fee: '800000.00',
         swap_fee: '0.00',
-        penalty_fee: '80000.00',
-        soh_cap: '0.05',
         duration_days: 30,
         description: 'Gói không giới hạn lượt đổi - hỗ trợ 2 pin cùng lúc',
         is_active: true

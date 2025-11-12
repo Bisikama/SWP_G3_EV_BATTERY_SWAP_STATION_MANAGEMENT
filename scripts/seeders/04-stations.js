@@ -1,12 +1,10 @@
 'use strict';
-const db = require('../../src/models');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const staffAccounts = await db.Account.findAll({
-      where: { role: 'staff' },
-      attributes: ['account_id']
-    });
+    const [staffAccounts] = await queryInterface.sequelize.query(`
+      SELECT account_id FROM "Accounts" WHERE role = 'staff';
+    `);
 
     if (staffAccounts.length < 5) {
       throw new Error('Not enough staff accounts to assign unique staff to each station.');
