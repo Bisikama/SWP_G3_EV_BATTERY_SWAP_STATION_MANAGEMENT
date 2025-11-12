@@ -6,7 +6,7 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     // Fetch invoices with all fee components
     const invoices = await queryInterface.sequelize.query(
-      `SELECT invoice_id, plan_fee, total_swap_fee, total_penalty_fee FROM "Invoices"`,
+      `SELECT invoice_id, plan_fee, total_swap_fee FROM "Invoices"`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -37,7 +37,7 @@ module.exports = {
           transaction_num: `TXN${paymentDate.getFullYear()}${String(paymentDate.getMonth() + 1).padStart(2, '0')}${String(invoiceIndex).padStart(3, '0')}${month}`,
           payment_date: paymentDate,
           payment_method: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-          amount: parseFloat(invoice.plan_fee) + parseFloat(invoice.total_swap_fee) + parseFloat(invoice.total_penalty_fee),
+          amount: parseFloat(invoice.plan_fee) + parseFloat(invoice.total_swap_fee),
           status: isSuccess ? 'success' : 'fail',
           message: isSuccess ? 'Payment processed successfully' : 'Payment failed - insufficient funds',
           signature: isSuccess ? `SIG-${uuidv4().substring(0, 8)}` : null
