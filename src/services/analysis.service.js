@@ -131,9 +131,7 @@ function analyzeSubscription({ startDate, endDate, groupDate } = {}) {
         [col('plan.plan_id'), 'plan_id'],
         [col('plan.plan_name'), 'plan_name'],
         [fn('COUNT', col('subscription_id')), 'totalSubscriptions'],
-        [fn('SUM', literal('"invoice"."plan_fee" + "invoice"."total_swap_fee" + "invoice"."total_penalty_fee"')), 'totalPaidFee'],
-        [fn('SUM', col('soh_usage')), 'totalSohUsage'],
-        [fn('AVG', col('soh_usage')), 'avgSohUsage'],
+        [fn('SUM', literal('"invoice"."plan_fee" + "invoice"."total_swap_fee"')), 'totalPaidFee'],
         [fn('SUM', col('swap_count')), 'totalSwapCount'],
         [fn('COUNT', literal(`CASE WHEN status = 'active' THEN 1 END`)), 'activeSubscriptions'],
         [fn('COUNT', literal(`CASE WHEN status = 'inactive' THEN 1 END`)), 'inactiveSubscriptions']
