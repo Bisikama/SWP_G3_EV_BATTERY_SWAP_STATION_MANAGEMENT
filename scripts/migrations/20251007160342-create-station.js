@@ -8,6 +8,17 @@ module.exports = {
         primaryKey: true,
         autoIncrement: true
       },
+      staff_id: {
+        type: Sequelize.UUID,
+        unique: true,
+        allowNull: true,
+        references: {
+          model: 'Accounts',
+          key: 'account_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
       station_name: {
         type: Sequelize.STRING(100),
         allowNull: true

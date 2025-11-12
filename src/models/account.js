@@ -13,12 +13,11 @@ module.exports = (sequelize, DataTypes) => {
       // Admin
       this.hasMany(models.SubscriptionPlan, { as: 'subscriptionPlans', foreignKey: 'admin_id' });
       this.hasMany(models.SupportTicket, { as: 'adminTickets', foreignKey: 'admin_id' });
-      this.hasMany(models.Shift, { as: 'adminShifts', foreignKey: 'admin_id' });
       this.hasMany(models.TransferRequest, { as: 'adminTransferRequests', foreignKey: 'admin_id' });
       // Station Staff
       this.hasMany(models.TransferRequest, { as: 'staffTransferRequests', foreignKey: 'staff_id' });
       this.hasMany(models.TransferOrder, { as: 'staffTransferOrders', foreignKey: 'staff_id' });
-      this.hasMany(models.Shift, { as: 'assignedShift', foreignKey: 'staff_id' });
+      this.hasOne(models.Station, { as: 'station', foreignKey: 'staff_id' });
       // EV Driver
       this.hasMany(models.SupportTicket, { as: 'tickets', foreignKey: 'driver_id' });
       this.hasMany(models.Booking, { as: 'bookings', foreignKey: 'driver_id' });
