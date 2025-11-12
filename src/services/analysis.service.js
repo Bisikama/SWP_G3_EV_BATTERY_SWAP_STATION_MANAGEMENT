@@ -86,10 +86,9 @@ function analyzeRevenue({ startDate, endDate, groupDate } = {}) {
     groupDate,
     query: {
       attributes: [
-        [fn('SUM', literal('"plan_fee" + "total_swap_fee" + "total_penalty_fee"')), 'totalRevenue'],
+        [fn('SUM', literal('"plan_fee" + "total_swap_fee"')), 'totalRevenue'],
         [fn('SUM', col('plan_fee')), 'totalPlanFee'],
         [fn('SUM', col('total_swap_fee')), 'totalSwapFee'],
-        [fn('SUM', col('total_penalty_fee')), 'totalPenaltyFee']
       ],
       where: {
         payment_status: 'paid'
