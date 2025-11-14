@@ -109,12 +109,7 @@ async function registerVehicle(driver_id, { vin, license_plate }) {
 
   // Case C: Vehicle is inactive with null driver_id but has a license plate already
   // This shouldn't happen with proper seeding, but handle it anyway
-  if (vehicle.license_plate !== null) {
-    const err = new Error('This vehicle already has a license plate assigned. Please contact administrator');
-    err.statusCode = 409;
-    err.field = 'vin';
-    throw err;
-  }
+  
 
   // Step 5: Check license plate is not taken by another vehicle
   const duplicatePlate = await Vehicle.findOne({ 
