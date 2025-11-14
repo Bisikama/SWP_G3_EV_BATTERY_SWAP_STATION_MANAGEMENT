@@ -20,19 +20,20 @@ const { body, param } = require('express-validator');
  * 
  * Validates:
  *   - vin: Will be validated by validateVin middleware (custom format)
- *   - model_id: Positive integer
  *   - license_plate: Vietnam motorcycle format
  * 
- * Note: VIN validation is handled by validateVin middleware to support custom format:
- *       RL9[VDS][VIS] where VDS is vehicle model code (LUD, IMP, etc.)
+ * Note: 
+ *   - VIN validation is handled by validateVin middleware to support custom format:
+ *     RL9[VDS][VIS] where VDS is vehicle model code (LUD, IMP, etc.)
+ *   - model_id is NOT required - vehicles are pre-seeded in database with model_id
+ *   - Driver only needs to provide VIN (to find vehicle) and license_plate (to activate)
  */
 const register = [
   // VIN validation removed - handled by validateVin middleware
   // This allows custom validation logic with better error messages
 
-  body('model_id')
-    .notEmpty().withMessage('Vehicle model ID is required')
-    .isInt({ gt: 0 }).withMessage('Model ID must be a positive integer'),
+  // model_id validation removed - vehicles are pre-seeded with model_id
+  // Driver activates existing vehicle by providing VIN + license_plate
 
   body('license_plate')
     .notEmpty().withMessage('License plate is required')
