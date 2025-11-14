@@ -20,17 +20,17 @@ const asyncHandler = require('../middlewares/asyncHandler');
  * Register Vehicle
  * POST /api/vehicles
  * 
- * Registers a new vehicle for the authenticated driver.
+ * Activates a pre-seeded vehicle for the authenticated driver.
+ * Vehicle must exist in database with driver_id = null.
  * 
  * Access: Private (driver only)
  */
 const registerVehicle = asyncHandler(async (req, res) => {
-  const { vin, model_id, license_plate } = req.body;
+  const { vin, license_plate } = req.body;
   const driver_id = req.user.account_id;
 
   const vehicle = await vehicleService.registerVehicle(driver_id, {
     vin,
-    model_id,
     license_plate
   });
 
