@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const https = require('https');
 const db = require('../models');
 const { create } = require('domain');
-const { Invoice, PaymentRecord, Subscription } = db;
+const { Invoice, PaymentRecord, Subscription, SubscriptionPlan } = db;
 require('dotenv').config();
 
 async function createPayment (req, res)  {
@@ -242,6 +242,8 @@ async function handlePaymentIPN (req, res)  {
       });
     }
     console.log(`✅ Invoice found: ${invoice_id} - Amount: ${invoice.total_fee}`);
+
+    const plan = await SubscriptionPlan.findByPk(plan_id);
     
     if (resultCode === 0) {
       // ✅ THANH TOÁN THÀNH CÔNG
@@ -262,10 +264,19 @@ async function handlePaymentIPN (req, res)  {
       const paymentRecord = await PaymentRecord.create(paymentData);
       console.log(`✅ Payment record created: ${paymentRecord.payment_id}`);
       
-      // Bước 2: Cập nhật Invoice
+      // Bước 2: Cập nhật Invoice với due_date dựa trên duration_days
       const pay_date = new Date();
       const due_date = new Date(pay_date);
-      due_date.setMonth(due_date.getMonth() + 1);
+      
+      // Tính due_date dựa trên duration_days của plan
+      if (plan && plan.duration_days) {
+        due_date.setDate(due_date.getDate() + plan.duration_days);
+        console.log(`📅 Calculated due_date based on duration_days: ${plan.duration_days} days`);
+      } else {
+        // Fallback: 30 days nếu không có plan hoặc duration_days
+        due_date.setDate(due_date.getDate() + 30);
+        console.log(`⚠️ No duration_days found, using default 30 days`);
+      }
       
       await Invoice.update({ 
         payment_status: 'paid',
@@ -275,6 +286,8 @@ async function handlePaymentIPN (req, res)  {
         where: { invoice_id: invoice_id }
       });
       console.log(`✅ Invoice updated to 'paid'`);
+      console.log(`   - pay_date: ${pay_date.toISOString()}`);
+      console.log(`   - due_date: ${due_date.toISOString()}`);
       
       // Bước 3: TẠO MỚI SUBSCRIPTION (chỉ khi thanh toán thành công)
       if (plan_id && vehicle_id) {
