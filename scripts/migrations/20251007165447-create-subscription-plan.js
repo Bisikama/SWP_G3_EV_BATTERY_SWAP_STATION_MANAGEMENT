@@ -26,11 +26,6 @@ module.exports = {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false
       },
-      swap_fee: {
-        type: Sequelize.DECIMAL(10, 2),
-        allowNull: false,
-        defaultValue: 0
-      },
       duration_days: {
         type: Sequelize.INTEGER,
         allowNull: false,
