@@ -80,11 +80,6 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 'inactive',
         comment: 'active: đang hoạt động, inactive: hết hạn chưa nhắc, reminded: hết hạn đã nhắc'
-      },
-      swap_count: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
       }
     },
     {

@@ -22,7 +22,8 @@ async function createInvoiceFromSubscription(req, res) {
     }
 
     // Tìm thông tin vehicle
-    const vehicle = await Vehicle.findByPk(vehicle_id, {
+    const vehicle = await Vehicle.findByPk(vehicle_id,
+       {
       include: [
         {
           model: Account,
@@ -100,14 +101,13 @@ async function createInvoiceFromSubscription(req, res) {
         {
           model: SubscriptionPlan,
           as: 'plan',
-          attributes: ['plan_id', 'plan_name', 'swap_fee']
+          attributes: ['plan_id', 'plan_name']
         }
       ],
       order: [['end_date', 'DESC']], // Lấy subscription gần nhất
       limit: 1
     });
 
-    let total_swap_fee = 0;
 
     if (previousSubscription) {
       console.log(`📦 Found previous subscription: ${previousSubscription.subscription_id}`);
@@ -128,22 +128,15 @@ async function createInvoiceFromSubscription(req, res) {
         }
       });
       console.log(`   - Swap Count: ${swap_count} times`);
-
-      // 1.4: Tính total_swap_fee = swap_count × swap_fee của gói cũ
-      const swap_fee_per_swap = parseFloat(previousSubscription.plan?.swap_fee || 0);
-      total_swap_fee = swap_count * swap_fee_per_swap;
-      console.log(`🔄 Total Swap Fee: ${swap_count} × ${swap_fee_per_swap} = ${total_swap_fee}`);
-
       
     } else {
       console.log('📦 No previous subscription found → No swap fee & penalty fee');
     }
 
     // 1.6: Tính tổng total_fee
-    const total_fee = subscription_fee + total_swap_fee;
+    const total_fee = subscription_fee;
     console.log(`\n💵 TOTAL FEE BREAKDOWN:`);
     console.log(`   - Subscription Fee: ${subscription_fee}`);
-    console.log(`   - Total Swap Fee: ${total_swap_fee}`);
     console.log(`   - TOTAL: ${total_fee}`);
     console.log('✅ ========== FEE CALCULATION COMPLETED ==========\n');
 
@@ -162,7 +155,6 @@ async function createInvoiceFromSubscription(req, res) {
       due_date: null, // due_date = null, sẽ được set khi thanh toán (pay_date + 1 tháng)
       pay_date: null, // Chưa thanh toán
       plan_fee: subscription_fee,
-      total_swap_fee: total_swap_fee,
       total_fee: total_fee,
       payment_status: 'unpaid'
     });
@@ -190,7 +182,6 @@ async function createInvoiceFromSubscription(req, res) {
           pay_date: completeInvoice.pay_date,
           due_date: completeInvoice.due_date,
           plan_fee: completeInvoice.plan_fee,
-          total_swap_fee: completeInvoice.total_swap_fee,
           total_fee: completeInvoice.total_fee,
           payment_status: completeInvoice.payment_status,
           driver: {
@@ -204,7 +195,6 @@ async function createInvoiceFromSubscription(req, res) {
           plan_id: plan.plan_id,
           plan_name: plan.plan_name,
           plan_fee: plan.plan_fee,
-          swap_fee: plan.swap_fee,
           description: plan.description,
         },
         previous_subscription: previousSubscription ? {
@@ -277,7 +267,7 @@ async function getAllInvoices(req, res) {
             {
               model: SubscriptionPlan,
               as: 'plan',
-              attributes: ['plan_id', 'plan_name', 'plan_fee', 'swap_fee', 'description'],
+              attributes: ['plan_id', 'plan_name', 'plan_fee', 'description'],
               where: {
                 is_active: true
               }
@@ -448,23 +438,20 @@ async function getPaymentHistoryByVehicle(req, res) {
 
     // Tính tổng số tiền đã thanh toán
     const totalAmountPaid = subscriptions.reduce((sum, sub) => {
-      const invoiceAmount = parseFloat(sub.invoice?.plan_fee || 0) + 
-                            parseFloat(sub.invoice?.total_swap_fee || 0);
+      const invoiceAmount = parseFloat(sub.invoice?.plan_fee || 0);
       return sum + invoiceAmount;
     }, 0);
 
     // Format dữ liệu response
     const paymentHistory = subscriptions.map(sub => {
       const invoice = sub.invoice;
-      const totalAmount = parseFloat(invoice.plan_fee || 0) + 
-                         parseFloat(invoice.total_swap_fee || 0);
+      const totalAmount = parseFloat(invoice.plan_fee || 0);
 
       return {
         invoice_id: invoice.invoice_id,
         invoice_number: invoice.invoice_number,
         create_date: invoice.create_date,
         plan_fee: parseFloat(invoice.plan_fee),
-        total_swap_fee: parseFloat(invoice.total_swap_fee),
         total_amount: totalAmount,
         payment_status: invoice.payment_status,
         
@@ -675,8 +662,7 @@ async function getPaymentHistoryByDriver(req, res) {
     // Nhóm subscriptions theo vehicle
     subscriptions.forEach(sub => {
       const invoice = sub.invoice;
-      const invoiceAmount = parseFloat(invoice.plan_fee || 0) + 
-                            parseFloat(invoice.total_swap_fee || 0);
+      const invoiceAmount = parseFloat(invoice.plan_fee || 0);
       
       totalAmountPaid += invoiceAmount;
 
@@ -698,15 +684,13 @@ async function getPaymentHistoryByDriver(req, res) {
     const vehiclesPaymentHistory = Array.from(vehiclesPaymentMap.values()).map(vehicleData => {
       const paymentHistory = vehicleData.subscriptions.map(sub => {
         const invoice = sub.invoice;
-        const totalAmount = parseFloat(invoice.plan_fee || 0) + 
-                           parseFloat(invoice.total_swap_fee || 0);
+        const totalAmount = parseFloat(invoice.plan_fee || 0);
 
         return {
           invoice_id: invoice.invoice_id,
           invoice_number: invoice.invoice_number,
           create_date: invoice.create_date,
           plan_fee: parseFloat(invoice.plan_fee),
-          total_swap_fee: parseFloat(invoice.total_swap_fee),
           total_amount: totalAmount,
           payment_status: invoice.payment_status,
           

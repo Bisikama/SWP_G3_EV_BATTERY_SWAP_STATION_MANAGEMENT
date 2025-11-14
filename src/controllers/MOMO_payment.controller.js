@@ -47,7 +47,7 @@ async function createPayment (req, res)  {
     }
     
     // ✅ Lấy amount từ invoice
-    total_fee  = invoice.plan_fee + invoice.total_swap_fee;
+    total_fee  = invoice.plan_fee;
     console.log(`💰 Creating payment for Invoice ${invoice.invoice_number} - Amount: ${total_fee}`);
     const amount = parseInt(total_fee.toString());
     
