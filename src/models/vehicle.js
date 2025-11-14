@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       driver_id: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,  // Changed to true: allows null for pre-seeded vehicles awaiting registration
         references: {
           model: 'Accounts',
           key: 'account_id'
@@ -43,8 +43,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       license_plate: {
         type: DataTypes.STRING(20),
-        allowNull: false,
-        unique: true
+        allowNull: true,  // Changed to true: null for pre-seeded vehicles, assigned during registration
+        unique: false     // Uniqueness handled by partial index in migration
       },
       vin: {
         type: DataTypes.STRING(17),
@@ -67,10 +67,16 @@ module.exports = (sequelize, DataTypes) => {
 
   // hooks
   Vehicle.beforeSave(async (vehicle, options) => {
+    // Allow null driver_id for pre-seeded vehicles (not yet registered)
+    if (vehicle.driver_id === null) {
+      return;
+    }
+
+    // If driver_id is set, validate that it's a valid driver account
     const Account = sequelize.models.Account;
     const account = await Account.findByPk(vehicle.driver_id);
     if (!account || account.role !== 'driver') {
-      throw new Error('Vehicle must be associated with a driver');
+      throw new Error('Vehicle must be associated with a driver account');
     }
   });
 

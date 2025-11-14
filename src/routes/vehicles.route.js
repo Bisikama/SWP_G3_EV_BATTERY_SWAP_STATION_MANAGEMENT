@@ -36,8 +36,21 @@ const validateVin = require('../middlewares/validateVin');
  * /api/vehicles:
  *   post:
  *     tags: [Vehicle]
- *     summary: Register a new vehicle
- *     description: Register a new vehicle for the authenticated driver. VIN format is validated (17 characters, alphanumeric).
+ *     summary: Activate and register a pre-seeded vehicle
+ *     description: |
+ *       Activates an existing vehicle in the database by assigning it to the authenticated driver.
+ *       
+ *       **Important Notes:**
+ *       - Vehicles must be pre-seeded in the database (by admin) before registration
+ *       - Driver provides VIN to find the vehicle and license_plate to activate it
+ *       - System will check if vehicle is available (driver_id = null, status = inactive)
+ *       - After successful registration, vehicle status changes to 'active' and driver_id is assigned
+ *       
+ *       **Registration Requirements:**
+ *       - VIN must exist in database (format: RL9[VDS][VIS], e.g., RL9LUD24HN00001)
+ *       - Vehicle must not be registered by another driver
+ *       - License plate must be unique across all vehicles
+ *       - Driver must have citizen_id and driving_license documents
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -48,32 +61,29 @@ const validateVin = require('../middlewares/validateVin');
  *             type: object
  *             required:
  *               - vin
- *               - model_id
  *               - license_plate
  *             properties:
  *               vin:
  *                 type: string
- *                 example: 1HGBH41JXMN109186
- *                 description: Vehicle Identification Number (17 characters)
- *               model_id:
- *                 type: integer
- *                 example: 1
- *                 description: ID of the vehicle model
+ *                 example: RL9LUD24HN00001
+ *                 description: Vehicle Identification Number (17 characters) - must exist in database
  *               license_plate:
  *                 type: string
  *                 example: 30A-12345
- *                 description: Vehicle license plate number
+ *                 description: Vehicle license plate number (Vietnam format)
  *     responses:
  *       201:
- *         description: Vehicle registered successfully
+ *         description: Vehicle activated and registered successfully
  *       400:
  *         description: Invalid VIN format or missing required fields
  *       401:
  *         description: Unauthorized - missing or invalid token
  *       403:
- *         description: Only drivers can register vehicles
+ *         description: Only drivers can register vehicles OR driver missing required documents
+ *       404:
+ *         description: VIN not found in database - vehicle must be seeded first
  *       409:
- *         description: VIN or license plate already exists
+ *         description: Vehicle already registered by another driver OR license plate already exists
  *       500:
  *         description: Internal server error
  */

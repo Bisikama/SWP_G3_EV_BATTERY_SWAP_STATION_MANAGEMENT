@@ -24,43 +24,40 @@ const { Op } = Sequelize;
 /**
  * Register Vehicle
  * 
- * Creates a new vehicle registration for a driver. If the VIN already exists
- * but is inactive, it will be reactivated with new owner information.
+ * Activates an existing vehicle in the database by assigning it to a driver.
+ * This does NOT create new vehicles - vehicles must be seeded in the database first.
+ * 
+ * Registration Flow:
+ *   1. Driver provides VIN and license_plate
+ *   2. System finds vehicle by VIN in database
+ *   3. Checks if vehicle is available (driver_id = null, status = inactive)
+ *   4. Assigns driver_id, license_plate and activates vehicle (status = active)
  * 
  * Validation checks:
- *   - All required fields provided
- *   - Vehicle model exists
+ *   - All required fields provided (vin, license_plate)
+ *   - VIN exists in database (seeded data)
+ *   - Vehicle is available (driver_id = null)
  *   - Driver is valid and has required documents
- *   - VIN and license plate are unique (or reactivating inactive)
+ *   - License plate is unique
  * 
  * @param {string} driver_id - Driver's account ID from JWT token
- * @param {object} vehicleData - { vin, model_id, license_plate }
- * @returns {Promise<Vehicle>} Created vehicle with model details
+ * @param {object} vehicleData - { vin, license_plate } - model_id is ignored, taken from seeded data
+ * @returns {Promise<Vehicle>} Activated vehicle with model details
  * @throws {Error} Validation or business logic error with status code
  */
-async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
+async function registerVehicle(driver_id, { vin, license_plate }) {
   
   // Step 1: Validate required fields
-  if (!vin || !model_id || !license_plate) {
-    const err = new Error('VIN, model_id, and license_plate are required');
+  if (!vin || !license_plate) {
+    const err = new Error('VIN and license_plate are required');
     err.statusCode = 400;
     throw err;
   }
 
   const normalizedVin = vin.toUpperCase();
 
-  // Step 2: Validate model and driver in parallel
-  const [vehicleModel, driver] = await Promise.all([
-    VehicleModel.findByPk(model_id),
-    Account.findByPk(driver_id)
-  ]);
-
-  if (!vehicleModel) {
-    const err = new Error('Vehicle model not found');
-    err.statusCode = 404;
-    err.field = 'model_id';
-    throw err;
-  }
+  // Step 2: Validate driver
+  const driver = await Account.findByPk(driver_id);
 
   if (!driver || driver.role !== 'driver') {
     const err = new Error('Only drivers can register vehicles');
@@ -80,71 +77,66 @@ async function registerVehicle(driver_id, { vin, model_id, license_plate }) {
     throw err;
   }
 
-  // Step 4: Check if VIN already exists
-  const existingVin = await Vehicle.findOne({ 
-    where: { vin: normalizedVin } 
+  // Step 4: Find vehicle by VIN in database (seeded data)
+  const vehicle = await Vehicle.findOne({ 
+    where: { vin: normalizedVin },
+    include: [
+      {
+        model: VehicleModel,
+        as: 'model',
+        attributes: ['model_id', 'name', 'brand']
+      }
+    ]
   });
   
-  if (existingVin) {
-    
-    // Case A: VIN is active - cannot register
-    if (existingVin.status === 'active') {
-      const err = new Error('VIN already registered');
-      err.statusCode = 409;
-      err.field = 'vin';
-      throw err;
-    }
-    
-    // Case B: VIN is inactive - reactivate with new information
-    if (existingVin.status === 'inactive') {
-      
-      // Check license plate is not taken by another vehicle
-      const duplicatePlate = await Vehicle.findOne({ 
-        where: { license_plate } 
-      });
-      
-      if (duplicatePlate) {
-        const err = new Error('License plate already registered');
-        err.statusCode = 409;
-        err.field = 'license_plate';
-        throw err;
-      }
-
-      // Update inactive vehicle with new owner and information
-      existingVin.driver_id = driver_id;
-      existingVin.model_id = model_id;
-      existingVin.license_plate = license_plate;
-      existingVin.status = 'active';
-      
-      await existingVin.save();
-
-      return findVehicleWithModel(existingVin.vehicle_id);
-    }
+  // Case A: VIN not found in database
+  if (!vehicle) {
+    const err = new Error('VIN not found in system. Please contact administrator to add this vehicle model to the database');
+    err.statusCode = 404;
+    err.field = 'vin';
+    err.hint = 'Vehicle must be seeded in database before registration';
+    throw err;
   }
 
-  // Step 5: Create new vehicle
-  
-  // Check license plate uniqueness
-  const existingPlate = await Vehicle.findOne({ 
+  // Case B: Vehicle already has an owner (driver_id is not null)
+  if (vehicle.driver_id !== null) {
+    const err = new Error('This vehicle has already been registered by another account');
+    err.statusCode = 409;
+    err.field = 'vin';
+    err.current_owner = vehicle.driver_id;
+    throw err;
+  }
+
+  // Case C: Vehicle is inactive with null driver_id but has a license plate already
+  // This shouldn't happen with proper seeding, but handle it anyway
+  if (vehicle.license_plate !== null) {
+    const err = new Error('This vehicle already has a license plate assigned. Please contact administrator');
+    err.statusCode = 409;
+    err.field = 'vin';
+    throw err;
+  }
+
+  // Step 5: Check license plate is not taken by another vehicle
+  const duplicatePlate = await Vehicle.findOne({ 
     where: { license_plate } 
   });
   
-  if (existingPlate) {
-    const err = new Error('License plate already registered');
+  if (duplicatePlate) {
+    const err = new Error('License plate already registered to another vehicle');
     err.statusCode = 409;
     err.field = 'license_plate';
     throw err;
   }
 
-  const newVehicle = await Vehicle.create({
-    driver_id,
-    model_id,
-    vin: normalizedVin,
-    license_plate,
-    status: 'active'
-  });
+  // Step 6: Activate vehicle - assign to driver
+  vehicle.driver_id = driver_id;
+  vehicle.license_plate = license_plate;
+  vehicle.status = 'active';
+  
+  await vehicle.save();
 
-  return findVehicleWithModel(newVehicle.vehicle_id);
+  // Step 7: Return full vehicle details with model information
+  return findVehicleWithModel(vehicle.vehicle_id);
 }
 
 /**
@@ -366,8 +358,13 @@ async function updateVehicle(vehicle_id, driver_id, updates) {
 /**
  * Delete Vehicle
  * 
- * Soft deletes a vehicle by setting status to 'inactive'.
- * Cannot delete if vehicle has active subscriptions or pending bookings.
+ * Deactivates a vehicle and releases it back to the system.
+ * This allows the vehicle to be registered by another driver in the future.
+ * 
+ * Changes made:
+ *   - status → 'inactive'
+ *   - driver_id → null (released from current owner)
+ *   - license_plate → null (can be assigned new plate on re-registration)
  * 
  * Pre-conditions:
  *   - Vehicle must belong to driver
@@ -435,15 +432,18 @@ async function deleteVehicle(vehicle_id, driver_id) {
     throw err;
   }
 
-  // Soft delete by setting status to inactive
+  // Release vehicle back to system - can be registered by another driver
   vehicle.status = 'inactive';
+  vehicle.driver_id = null;
+  vehicle.license_plate = null;
   await vehicle.save();
 
   return {
     vehicle_id: vehicle.vehicle_id,
     vin: vehicle.vin,
-    license_plate: vehicle.license_plate,
-    status: vehicle.status
+    license_plate: null,
+    status: vehicle.status,
+    message: 'Vehicle released back to system and available for re-registration'
   };
 }
 
