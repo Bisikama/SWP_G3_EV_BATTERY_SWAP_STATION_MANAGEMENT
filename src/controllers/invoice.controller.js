@@ -152,7 +152,7 @@ async function createInvoiceFromSubscription(req, res) {
       driver_id: vehicle.driver_id,
       invoice_number: invoice_number,
       create_date: new Date(),
-      due_date: null, // due_date = null, sẽ được set khi thanh toán (pay_date + 1 tháng)
+      due_date: null, // due_date = null, sẽ được set khi thanh toán 
       pay_date: null, // Chưa thanh toán
       plan_fee: subscription_fee,
       total_fee: total_fee,
