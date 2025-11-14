@@ -36,7 +36,7 @@ module.exports = {
         allowNull: false
       },
       status: {
-        type: Sequelize.ENUM('operational', 'maintenance', 'closed'),
+        type: Sequelize.ENUM('operational', 'closed'),
         allowNull: false,
         defaultValue: 'operational'
       }

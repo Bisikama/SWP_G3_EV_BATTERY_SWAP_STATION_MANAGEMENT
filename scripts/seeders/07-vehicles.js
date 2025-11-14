@@ -18,34 +18,86 @@ module.exports = {
       return;
     }
 
-    const byName = models.reduce((acc, m) => { acc[m.name] = m.model_id; return acc; }, {});
-    
-    // Danh sách các model names
-    const modelNames = Object.keys(byName);
-    
-    // Tạo 50 vehicles cho 50 drivers
+    const byName = models.reduce((acc, m) => {
+      acc[m.name] = m.model_id;
+      return acc;
+    }, {});
+
+    // Frontend-required VDS codes
+    const modelVdsMap = {
+      'Ludo': 'LUD',
+      'Impes': 'IMP',
+      'Klara S': 'KLA',
+      'Theon S': 'TES',
+      'Vento': 'VEN',
+      'Theon': 'THE',
+      'Vento S': 'VES',
+      'Feliz S': 'FEL',
+      'Evo200': 'EVO',
+    };
+
     const vehicles = [];
-    const licensePlateProvinces = ['51', '59', '50', '60', '61', '63', '64', '65', '67', '68'];
-    const licensePlateLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'K', 'L', 'M', 'N', 'P', 'S', 'T', 'V', 'X', 'Y', 'Z'];
-    
+
+    // Valid province codes (avoiding excluded list)
+    const validProvinces = [
+      '11','12','14','15','16','17','18','19','20','21','22','23','24','25',
+      '26','27','28','29','30','31','32','33','34','35','36','37','38','39',
+      '40','41','43','47','48','49','50','51','52','53','54','55','56','57',
+      '58','59','60','61','62','63','64','65','66','67','68','69','70','71',
+      '72','73','74','75','76','77','78','79','80','81','82','83','84','85',
+      '86','88','89','90','92','93','94','95','97','98','99'
+    ];
+
+    const letters = 'ABCDEFGHJKLMNPRSTUVXYZ';
+
     for (let i = 0; i < drivers.length && i < 50; i++) {
-      const province = licensePlateProvinces[i % licensePlateProvinces.length];
-      const letter = licensePlateLetters[Math.floor(i / licensePlateProvinces.length) % licensePlateLetters.length];
-      const numbers = String(10000 + i).substring(0, 5);
-      
+      const modelNames = Object.keys(byName);
       const modelName = modelNames[i % modelNames.length];
       const modelId = byName[modelName];
-      
-      // Generate VIN (Vehicle Identification Number) - max 17 chars
-      const vinPrefix = modelName.substring(0, 3).toUpperCase().padEnd(3, 'X');
-      const vinNumber = String(100000 + i).substring(1); // 5 digits
-      
+
+      const vds = modelVdsMap[modelName] ?? 'XXX'; // fallback
+      const province = validProvinces[i % validProvinces.length];
+      const series = letters[i % letters.length];
+      const numbers = String(1000 + i).padStart(4, '0'); // 4–5 digits OK
+
+      const vis = (uuidv4().replace(/-/g, '').substring(0, 11).toUpperCase());
+
+      const vin = `RL9${vds}${vis}`;
+
       vehicles.push({
         vehicle_id: uuidv4(),
         driver_id: drivers[i].account_id,
         model_id: modelId,
-        license_plate: `${province}${letter}-${numbers}`,
-        vin: `VF9${vinPrefix}${String.fromCharCode(65 + (i % 26))}${vinNumber}` // VF9 + 3 + 1 + 5 = 12 chars
+        license_plate: `${province}${series}-${numbers}`,
+        vin
+      });
+    }
+
+    // -------------------------
+    //  Add 100 inactive vehicles
+    // -------------------------
+    for (let i = 0; i < 100; i++) {
+      const modelNames = Object.keys(byName);
+      const modelName = modelNames[i % modelNames.length];
+      const modelId = byName[modelName];
+
+      const vds = modelVdsMap[modelName] ?? 'XXX';
+
+      // Valid license plate values
+      const province = validProvinces[i % validProvinces.length];
+      const series = letters[i % letters.length];
+      const numbers = String(2000 + i).padStart(4, '0');
+
+      // VIN = RL9 + VDS + 11-char VIS
+      const vis = uuidv4().replace(/-/g, '').substring(0, 11).toUpperCase();
+      const vin = `RL9${vds}${vis}`;
+
+      vehicles.push({
+        vehicle_id: uuidv4(),
+        driver_id: null,
+        model_id: modelId,
+        license_plate: `${province}${series}-${numbers}`,
+        vin,
       });
     }
 
