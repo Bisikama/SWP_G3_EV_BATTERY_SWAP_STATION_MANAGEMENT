@@ -14,57 +14,26 @@ module.exports = {
       // Unlimited plans
       {
         admin_id: admins[0].account_id,
-        plan_name: 'Unlimited Basic',
-        plan_fee: '500000.00',
-        swap_fee: '0.00',
+        plan_name: 'Unlimited 30',
+        plan_fee: '450000.00',
         duration_days: 30,
-        description: 'Gói không giới hạn lượt đổi - phù hợp người dùng thường xuyên',
+        description: 'Gói 30 ngày với số lần đổi pin không giới hạn phù hợp người dùng di chuyển hằng ngày.',
         is_active: true
       },
       {
         admin_id: admins[0].account_id,
-        plan_name: 'Unlimited Standard',
-        plan_fee: '800000.00',
-        swap_fee: '0.00',
-        duration_days: 30,
-        description: 'Gói không giới hạn lượt đổi - hỗ trợ 2 pin cùng lúc',
+        plan_name: 'Unlimited 60',
+        plan_fee: '850000.00',
+        duration_days: 60,
+        description: 'Gói 60 ngày không giới hạn lượt đổi hỗ trợ sử dụng 2 pin cùng lúc.',
         is_active: true
       },
       {
         admin_id: admins[0].account_id,
-        plan_name: 'Unlimited Premium',
-        plan_fee: '1200000.00',
-        swap_fee: '0.00',
-        duration_days: 30,
-        description: 'Gói không giới hạn lượt đổi - dành cho doanh nghiệp',
-        is_active: true
-      },
-      // Pay-per-swap plans
-      {
-        admin_id: admins[0].account_id,
-        plan_name: 'Basic Plan',
-        plan_fee: '200000.00',
-        swap_fee: '8000.00',
-        duration_days: 30,
-        description: 'Gói cơ bản - thanh toán theo lượt đổi pin',
-        is_active: true
-      },
-      {
-        admin_id: admins[0].account_id,
-        plan_name: 'Standard Plan',
-        plan_fee: '350000.00',
-        swap_fee: '7500.00',
-        duration_days: 30,
-        description: 'Gói tiêu chuẩn - thanh toán theo lượt với giá ưu đãi',
-        is_active: true
-      },
-      {
-        admin_id: admins[0].account_id,
-        plan_name: 'Premium Plan',
-        plan_fee: '500000.00',
-        swap_fee: '7000.00',
-        duration_days: 30,
-        description: 'Gói cao cấp - thanh toán theo lượt với giá tốt nhất',
+        plan_name: 'Unlimited 90',
+        plan_fee: '1250000.00',
+        duration_days: 90,
+        description: 'Gói 90 ngày không giới hạn tối ưu cho doanh nghiệp hoặc người dùng cường độ cao.',
         is_active: true
       }
     ];

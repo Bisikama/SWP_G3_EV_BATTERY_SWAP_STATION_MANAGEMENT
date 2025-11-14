@@ -7,7 +7,8 @@ module.exports = {
     // Fetch vehicles (each vehicle has a driver)
     const vehicles = await queryInterface.sequelize.query(
       `SELECT v.vehicle_id, v.driver_id 
-       FROM "Vehicles" v`,
+       FROM "Vehicles" v
+       WHERE v.driver_id IS NOT NULL`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -20,24 +21,22 @@ module.exports = {
 
     const byName = plans.reduce((acc, p) => { acc[p.plan_name] = p; return acc; }, {});
 
-    // REALISTIC PLAN DISTRIBUTION - Giống như Subscriptions
     const planDistribution = [
-      { name: 'Unlimited Basic', weight: 40 },      // Sweet spot
-      { name: 'Standard Plan', weight: 25 },         // Flexible
-      { name: 'Unlimited Standard', weight: 15 },    // Upgrade
-      { name: 'Basic Plan', weight: 10 },            // Budget
-      { name: 'Premium Plan', weight: 7 },           // Premium
-      { name: 'Unlimited Premium', weight: 3 }       // Luxury
+      { name: 'Unlimited 30', weight: 55 },   // popular choice
+      { name: 'Unlimited 60', weight: 30 },   // mid-tier
+      { name: 'Unlimited 90', weight: 15 }    // enterprise tier
     ];
 
     const getRandomPlan = () => {
       const rand = Math.random() * 100;
       let cumulative = 0;
+
       for (const plan of planDistribution) {
         cumulative += plan.weight;
         if (rand <= cumulative) return plan.name;
       }
-      return 'Unlimited Basic';
+
+      return 'Unlimited 30'; // fallback
     };
 
     // Generate multiple invoices per vehicle (3 invoices per driver over 3 months)
@@ -52,8 +51,6 @@ module.exports = {
         const planName = getRandomPlan();
         const plan = byName[planName] || plans[0];
         const planFee = Math.round(parseFloat(plan.plan_fee) || 0);
-
-        const totalSwapFee = Math.round(planFee * 0.05);   // 5% of plan fee
 
         // 80% paid, 20% unpaid for realistic revenue data
         const paymentStatus = Math.random() < 0.8 ? 'paid' : 'unpaid';
@@ -74,7 +71,6 @@ module.exports = {
           invoice_number: invoiceNumber,
           create_date: createDateStr,
           plan_fee: planFee,
-          total_swap_fee: totalSwapFee,
           payment_status: paymentStatus
         });
       }
