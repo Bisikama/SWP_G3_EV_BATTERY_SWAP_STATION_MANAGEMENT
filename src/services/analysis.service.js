@@ -86,9 +86,7 @@ function analyzeRevenue({ startDate, endDate, groupDate } = {}) {
     groupDate,
     query: {
       attributes: [
-        [fn('SUM', literal('"plan_fee" + "total_swap_fee"')), 'totalRevenue'],
-        [fn('SUM', col('plan_fee')), 'totalPlanFee'],
-        [fn('SUM', col('total_swap_fee')), 'totalSwapFee'],
+        [fn('SUM', col('plan_fee')), 'totalRevenue'],
       ],
       where: {
         payment_status: 'paid'
@@ -131,7 +129,7 @@ function analyzeSubscription({ startDate, endDate, groupDate } = {}) {
         [col('plan.plan_id'), 'plan_id'],
         [col('plan.plan_name'), 'plan_name'],
         [fn('COUNT', col('subscription_id')), 'totalSubscriptions'],
-        [fn('SUM', literal('"invoice"."plan_fee" + "invoice"."total_swap_fee"')), 'totalPaidFee'],
+        [fn('SUM', literal('"invoice"."plan_fee"')), 'totalPaidFee'],
         [fn('SUM', col('swap_count')), 'totalSwapCount'],
         [fn('COUNT', literal(`CASE WHEN status = 'active' THEN 1 END`)), 'activeSubscriptions'],
         [fn('COUNT', literal(`CASE WHEN status = 'inactive' THEN 1 END`)), 'inactiveSubscriptions']
