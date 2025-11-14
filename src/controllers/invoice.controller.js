@@ -22,7 +22,8 @@ async function createInvoiceFromSubscription(req, res) {
     }
 
     // Tìm thông tin vehicle
-    const vehicle = await Vehicle.findByPk(vehicle_id, {
+    const vehicle = await Vehicle.findByPk(vehicle_id,
+       {
       include: [
         {
           model: Account,
