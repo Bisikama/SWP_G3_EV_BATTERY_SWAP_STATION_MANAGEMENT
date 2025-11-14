@@ -6,7 +6,8 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     const drivers = await queryInterface.sequelize.query(
       `SELECT v.vehicle_id, v.driver_id 
-       FROM "Vehicles" v`,
+       FROM "Vehicles" v
+       WHERE v.driver_id IS NOT NULL`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 

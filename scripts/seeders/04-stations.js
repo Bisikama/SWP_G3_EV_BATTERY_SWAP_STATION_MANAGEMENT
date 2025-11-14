@@ -50,7 +50,7 @@ module.exports = {
         address: '147 Hoàng Văn Thụ, Tân Bình, TP.HCM',
         latitude: 10.8124,
         longitude: 106.6657,
-        status: 'maintenance',
+        status: 'closed',
         staff_id: shuffledStaff[4].account_id
       }
     ];
