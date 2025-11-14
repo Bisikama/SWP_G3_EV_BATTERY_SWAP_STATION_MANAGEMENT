@@ -22,7 +22,7 @@ async function findByVehicle(req, res) {
 async function findByDriver(req, res) {
   const { driver_id } = req.params;
   const subs = await subscriptionService.findByDriver(driver_id);
-  if (!subs || subs.length === 0) throw new Error('Subscription not found for driver');
+  if (!subs || subs.length === 0)  return res.status(200).json({ success: false, message: 'Subscription not found for driver' });
   return res.status(200).json({ success: true, payload: { subscription: subs } });
 }
 
