@@ -69,14 +69,14 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
             slot_id: update.slot_id,
             battery_id: update.battery_id,
             valid: false,
-            error: `Slot ${update.slot_id} bị trùng lặp. Mỗi slot chỉ được nhận một pin duy nhất.`
+            error: `Slot ${update.slot_id} is duplicated. Each slot can only hold one battery.`
           });
         }
       });
 
       return {
         allValid: false,
-        error: `Slot bị trùng lặp: ${uniqueDuplicateSlots.join(', ')}. Mỗi slot chỉ được nhận một pin duy nhất.`,
+        error: `Slot duplication detected: ${uniqueDuplicateSlots.join(', ')}. Each slot can only hold one battery.`,
         results
       };
     }
@@ -93,14 +93,14 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
             slot_id: update.slot_id,
             battery_id: update.battery_id,
             valid: false,
-            error: `Battery ${update.battery_id} bị trùng lặp. Mỗi pin chỉ được đưa vào một slot duy nhất.`
+            error: `Battery ${update.battery_id} is duplicated. Each battery can only be placed in one slot.`
           });
         }
       });
 
       return {
         allValid: false,
-        error: `Pin bị trùng lặp: ${uniqueDuplicateBatteries.join(', ')}. Mỗi pin chỉ được đưa vào một slot duy nhất.`,
+        error: `Battery duplication detected: ${uniqueDuplicateBatteries.join(', ')}. Each battery can only be placed in one slot.`,
         results
       };
     }
@@ -123,7 +123,7 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
           slot_id,
           battery_id,
           valid: false,
-          error: `Slot ${slot_id} không tồn tại`
+          error: `Slot ${slot_id} does not exist`
         });
         allValid = false;
         continue;
@@ -134,7 +134,7 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
           slot_id,
           battery_id,
           valid: false,
-          error: `Slot ${slot_id} không trống (status: ${slot.status})`
+          error: `Slot ${slot_id} is not empty (status: ${slot.status})`
         });
         allValid = false;
         continue;
@@ -145,7 +145,7 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
           slot_id,
           battery_id,
           valid: false,
-          error: `Slot ${slot_id} không thuộc về station ${station_id}`
+          error: `Slot ${slot_id} does not belong to station ${station_id}`
         });
         allValid = false;
         continue;
@@ -158,7 +158,7 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
           slot_id,
           battery_id,
           valid: false,
-          error: `Battery ${battery_id} không tồn tại`
+          error: `Battery ${battery_id} does not exist`
         });
         allValid = false;
         continue;
@@ -170,7 +170,7 @@ async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_
           slot_id,
           battery_id,
           valid: false,
-          error: `Battery ${battery_id} không thuộc về xe này (vehicle_id hiện tại: ${battery.vehicle_id || 'null'})`
+          error: `Battery ${battery_id} does not belong to this vehicle (current vehicle_id: ${battery.vehicle_id || 'null'})`
         });
         allValid = false;
         continue;
@@ -218,7 +218,7 @@ async function updateSlotStatus(slot_id, status, transaction = null) {
     );
 
     if (updatedRows === 0) {
-      throw new Error(`Không thể cập nhật slot ${slot_id}`);
+      throw new Error(`Cannot update slot ${slot_id}`);
     }
 
     const findOptions = transaction ? { transaction } : {};
@@ -252,7 +252,7 @@ async function updateOldBatteryToSlot(battery_id, slot_id, transaction = null) {
     );
     //check updatedRows
     if (updatedRows === 0) {
-      throw new Error(`Không thể cập nhật battery ${battery_id}`);
+      throw new Error(`Cannot update battery ${battery_id}`);
     }
 
     const findOptions = transaction ? { transaction } : {};
@@ -292,7 +292,7 @@ async function updateNewBatteryToVehicle(battery_id, vehicle_id, transaction = n
     );
 
     if (updatedRows === 0) {
-      throw new Error(`Không thể cập nhật battery ${battery_id}`);
+      throw new Error(`Cannot update battery ${battery_id}`);
     }
 
     const findOptions = transaction ? { transaction } : {};

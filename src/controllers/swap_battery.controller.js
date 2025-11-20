@@ -43,7 +43,7 @@ async function validateAndPrepareSwap(req, res) {
     if (!batteriesIn || !Array.isArray(batteriesIn) || batteriesIn.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'batteriesIn là bắt buộc (phải có pin cũ để đổi)'
+        message: 'batteriesIn is required (must have old battery to exchange)'
       });
     }
 
@@ -61,7 +61,7 @@ async function validateAndPrepareSwap(req, res) {
     if (!vehicle) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy xe với vehicle_id đã cho'
+        message: 'No vehicle found with given vehicle_id'
       });
     }
 
@@ -69,7 +69,7 @@ async function validateAndPrepareSwap(req, res) {
     if (vehicle.driver_id !== driver_id) {
       return res.status(403).json({
         success: false,
-        message: `Xe ${vehicle.license_plate} không thuộc về tài xế này. Không được phép đổi pin cho xe của người khác.`,
+        message: `Vehicle ${vehicle.license_plate} does not belong to this driver. Not allowed to swap batteries for someone else's vehicle.`,
         data: {
           vehicle_id: vehicle.vehicle_id,
           vehicle_license_plate: vehicle.license_plate,
@@ -89,7 +89,7 @@ async function validateAndPrepareSwap(req, res) {
     if (requested_quantity > maxBatterySlots) {
       return res.status(400).json({
         success: false,
-        message: `Số lượng pin yêu cầu (${requested_quantity}) vượt quá số lượng pin tối đa của xe ${vehicle.model.name} (${maxBatterySlots} pin)`,
+        message: `Requested quantity (${requested_quantity}) exceeds the maximum battery slots of vehicle ${vehicle.model.name} (${maxBatterySlots} slots)`,
         data: {
           requested_quantity: requested_quantity,
           max_battery_slots: maxBatterySlots,
@@ -104,7 +104,7 @@ async function validateAndPrepareSwap(req, res) {
     if (batteriesIn.length !== requested_quantity) {
       return res.status(400).json({
         success: false,
-        message: `Số lượng pin đưa vào (${batteriesIn.length}) phải bằng số lượng yêu cầu đổi (${requested_quantity})`,
+        message: `The number of batteries provided (${batteriesIn.length}) must match the requested quantity (${requested_quantity})`,
         data: {
           batteries_in_count: batteriesIn.length,
           requested_quantity: requested_quantity
@@ -155,17 +155,17 @@ async function validateAndPrepareSwap(req, res) {
 
     if (validBatteries.length === 0) {
       responseStatus = 400;
-      responseMessage = 'Không có viên pin nào hợp lệ. Vui lòng kiểm tra lại các pin đưa vào.';
+      responseMessage = 'No valid batteries were found. Please check the batteries inserted.';
     } else if (!hasEnoughAvailableBatteries) {
       responseStatus = 400;
-      responseMessage = `Không đủ pin sẵn sàng để đổi. Cần ${batteryCheckQuantity} pin, chỉ có ${availableSlots.length} pin sẵn sàng.`;
+      responseMessage = `Not enough batteries are available for swap. Required: ${batteryCheckQuantity}, Available: ${availableSlots.length}.`;
     } else if (!hasEnoughValidBatteries) {
       responseStatus = 400;
-      responseMessage = `Số lượng pin hợp lệ (${validBatteries.length}) không khớp với số lượng yêu cầu (${requested_quantity}). Vui lòng kiểm tra lại.`;
+      responseMessage = `The number of valid batteries (${validBatteries.length}) does not match the requested quantity (${requested_quantity}). Please check again.`;
     } else {
       responseStatus = 200;
       readyToExecute = true;
-      responseMessage = `Tất cả ${validBatteries.length} pin đều hợp lệ. Sẵn sàng để đổi pin.`;
+      responseMessage = `All ${validBatteries.length} batteries are valid. Ready to execute the swap.`;
     }
 
     console.log(`\n📊 Validation Result: ${responseMessage}`);
@@ -217,7 +217,7 @@ async function validateAndPrepareSwap(req, res) {
     console.error('❌ Error in validateAndPrepareSwap:', error);
     return res.status(500).json({
       success: false,
-      message: 'Lỗi khi validate và chuẩn bị đổi pin',
+      message: 'Error while validating and preparing battery swap',
       error: error.message
     });
   }
@@ -254,7 +254,7 @@ async function executeSwapInternal(params, res) {
       console.log(`❌ Found ${invalidBatteries.length} invalid batteries`);
       return res.status(400).json({
         success: false,
-        message: 'Có pin không hợp lệ trong danh sách pin đưa vào',
+        message: 'There are invalid batteries in the list of batteries inserted',
         data: {
           invalid_batteries: invalidBatteries.map(b => ({
             battery_id: b.battery_id,
@@ -275,7 +275,7 @@ async function executeSwapInternal(params, res) {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy thông tin xe hoặc loại pin của xe'
+        message: 'Vehicle or vehicle battery type not found'
       });
     }
     const driverId = vehicle.driver_id;
@@ -297,7 +297,7 @@ async function executeSwapInternal(params, res) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: `Không đủ pin để đổi. Cần ${requiredQuantity} pin, chỉ có ${availableSlots.length} pin sẵn sàng (SOC >= 90%)`,
+        message: `Not enough batteries are available for swap. Required: ${requiredQuantity}, Available: ${availableSlots.length} (SOC >= 90%)`,
         data: {
           required: requiredQuantity,
           available: availableSlots.length
@@ -349,7 +349,7 @@ async function executeSwapInternal(params, res) {
         await transaction.rollback();
         return res.status(404).json({
           success: false,
-          message: `Battery ${battery_id} không tồn tại`
+          message: `Battery ${battery_id} does not exist`
         });
       }
 
@@ -435,7 +435,7 @@ async function executeSwapInternal(params, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Đổi pin thành công',
+      message: 'Battery swap executed successfully',
       data: {
         driver_id : driverId,
         vehicle_id,
@@ -456,7 +456,7 @@ async function executeSwapInternal(params, res) {
     console.error('\n❌ Error in executeSwapInternal:', error);
     return res.status(500).json({
       success: false,
-      message: 'Lỗi khi thực hiện đổi pin',
+      message: 'Error while executing battery swap',
       error: error.message
     });
   }
@@ -485,21 +485,21 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     if (!booking_id) {
       return res.status(400).json({
         success: false,
-        message: 'booking_id là bắt buộc'
+        message: 'booking_id is required'
       });
     }
 
     if (!vehicle_id) {
       return res.status(400).json({
         success: false,
-        message: 'vehicle_id là bắt buộc'
+        message: 'vehicle_id is required'
       });
     }
 
     if (!station_id) {
       return res.status(400).json({
         success: false,
-        message: 'station_id là bắt buộc'
+        message: 'station_id is required'
       });
     }
 
@@ -507,7 +507,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     if (!batteriesIn || !Array.isArray(batteriesIn) || batteriesIn.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'batteriesIn là bắt buộc (phải có pin cũ để đổi)'
+        message: 'batteriesIn is required (must have old batteries to swap)'
       });
     }
 
@@ -540,7 +540,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       console.log(`❌ Vehicle does not have an active subscription`);
       return res.status(400).json({
         success: false,
-        message: 'Xe không có gói đăng ký hợp lệ (active). Vui lòng đăng ký gói dịch vụ trước.'
+        message: 'Vehicle does not have an active subscription. Please subscribe to a service plan first.'
       });
     }
     console.log(`✅ Vehicle has active subscription: ${subscription.plan.plan_name}`);
@@ -571,7 +571,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy booking hợp lệ với vehicle_id và station_id đã cho, hoặc booking không còn ở trạng thái pending'
+        message: 'No valid booking found with the given vehicle_id and station_id, or the booking is no longer in pending status'
       });
     }
 
@@ -587,7 +587,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     if (now < createTime || now > expired_time) {
       return res.status(400).json({
         success: false,
-        message: 'Booking không còn trong khoảng thời gian hợp lệ. Thời gian đổi pin phải nằm giữa thời gian tạo đơn và thời gian đã đặt lịch.',
+        message: 'Booking is no longer within the valid time range. The battery swap time must be between the booking creation time and the scheduled expiration time.',
         data: {
           create_time: createTime,
           expired_time: expired_time,
@@ -596,7 +596,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       });
     }
 
-    console.log(`✅ Booking hợp lệ (trong khoảng thời gian cho phép)`);
+    console.log(`✅ Booking is valid (within the allowed time range)`);
 
     // Bước 3: Lấy danh sách pin đã đặt từ BookingBatteries và thông tin slot
     console.log('\n🔍 Step 3: Getting booked batteries from BookingBatteries...');
@@ -605,7 +605,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     if (bookedBatteriesRaw.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Booking không có pin nào được đặt trước'
+        message: 'Booking does not have any booked batteries'
       });
     }
     
@@ -620,7 +620,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       if (!battery.slot_id) {
         return res.status(400).json({
           success: false,
-          message: `Pin ${battery.battery_id} không có slot_id (chưa được gắn vào slot)`,
+          message: `Battery ${battery.battery_id} does not have a slot_id (not assigned to a slot)`,
           data: {
             battery_id: battery.battery_id
           }
@@ -640,7 +640,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       if (!slot) {
         return res.status(400).json({
           success: false,
-          message: `Không tìm thấy slot ${battery.slot_id} cho pin ${battery.battery_id} tại cabinet ${slot.cabinet_id}`,
+          message: `Cannot find slot ${battery.slot_id} for battery ${battery.battery_id} at cabinet ${slot.cabinet_id}`,
           data: {
             battery_id: battery.battery_id,
             slot_id: battery.slot_id
@@ -652,7 +652,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       if (!['booked'].includes(slot.status)) {
         return res.status(400).json({
           success: false,
-          message: `Pin ${battery.battery_serial} ở slot ${slot.slot_number} không ở trạng thái sẵn sàng (hiện tại: ${slot.status})`,
+          message: `Battery ${battery.battery_serial} at slot ${slot.slot_number} is not in a ready state (current status: ${slot.status})`,
           data: {
             battery_id: battery.battery_id,
             battery_serial: battery.battery_serial,
@@ -681,7 +681,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     if (batteriesIn.length !== bookedBatteries.length) {
       return res.status(400).json({
         success: false,
-        message: `Số lượng pin đưa vào (${batteriesIn.length}) không khớp với số lượng pin đã đặt (${bookedBatteries.length})`,
+        message: `The number of batteries in (${batteriesIn.length}) does not match the number of booked batteries (${bookedBatteries.length})`,
         data: {
           batteries_in_count: batteriesIn.length,
           booked_batteries_count: bookedBatteries.length
@@ -704,7 +704,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
       
       return res.status(400).json({
         success: false,
-        message: 'Có pin không hợp lệ trong danh sách pin đưa vào',
+        message: 'There are invalid batteries in the list of batteries being inserted',
         data: {
           invalid_batteries: invalidBatteries.map(b => ({
             battery_id: b.battery_id,
@@ -721,7 +721,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     // Trả về kết quả validation
     return res.status(200).json({
       success: true,
-      message: 'Validation thành công. Sẵn sàng để thực hiện đổi pin với booking.',
+      message: 'Validation successful. Ready to execute battery swap with booking.',
       ready_to_execute: true,
       data: {
         booking_id,
@@ -762,7 +762,7 @@ async function validateAndPrepareSwapWithBooking(req, res) {
     console.error('❌ Error in validateAndPrepareSwapWithBooking:', error);
     return res.status(500).json({
       success: false,
-      message: 'Lỗi khi validate và chuẩn bị đổi pin với booking',
+      message: 'Error while validating battery swap with booking',
       error: error.message
     });
   }
@@ -799,7 +799,7 @@ async function executeSwapWithBookingInternal(params, res) {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy thông tin xe hoặc loại pin của xe'
+        message: 'Cannot find vehicle information or vehicle battery type'
       });
     }
     const driverId = vehicle.driver_id;
@@ -817,7 +817,7 @@ async function executeSwapWithBookingInternal(params, res) {
         await transaction.rollback();
         return res.status(404).json({
           success: false,
-          message: `Battery ${battery_id} không tồn tại`
+          message: `Battery ${battery_id} does not exist`
         });
       }
 
@@ -855,7 +855,7 @@ if (!battery || !battery.slot_id) {
   await transaction.rollback();
   return res.status(404).json({
     success: false,
-    message: `Battery ${battery_id} không có slot_id (chưa gắn vào slot)`
+    message: `Battery ${battery_id} does not have a slot_id (not yet assigned to a slot)`
   });
 }
 
@@ -960,7 +960,7 @@ if (!battery || !battery.slot_id) {
 
     return res.status(200).json({
       success: true,
-      message: 'Đổi pin thành công với booking',
+      message: 'Battery swap successful with booking',
       data: {
         booking_id,
         driver_id : driverId,
@@ -982,7 +982,7 @@ if (!battery || !battery.slot_id) {
     console.error('\n❌ Error in executeSwapWithBookingInternal:', error);
     return res.status(500).json({
       success: false,
-      message: 'Lỗi khi thực hiện đổi pin với booking',
+      message: 'Error while executing battery swap with booking',
       error: error.message
     });
   }
@@ -1010,21 +1010,21 @@ async function executeSwap(req, res) {
   if (!vehicle_id) {
     return res.status(400).json({
       success: false,
-      message: 'vehicle_id là bắt buộc'
+      message: 'vehicle_id is required'
     });
   }
 
   if (!station_id) {
     return res.status(400).json({
       success: false,
-      message: 'station_id là bắt buộc'
+      message: 'station_id is required'
     });
   }
 
   if (!batteriesIn || !Array.isArray(batteriesIn) || batteriesIn.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'batteriesIn phải là mảng không rỗng'
+      message: 'batteriesIn must be a non-empty array'
     });
   }
 
@@ -1058,28 +1058,28 @@ async function executeSwapWithBooking(req, res) {
   if (!booking_id || !vehicle_id || !station_id) {
     return res.status(400).json({
       success: false,
-      message: 'booking_id, vehicle_id, station_id là bắt buộc'
+      message: 'booking_id, vehicle_id, station_id are required'
     });
   }
 
   if (!batteriesIn || !Array.isArray(batteriesIn) || batteriesIn.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'batteriesIn phải là mảng không rỗng'
+      message: 'batteriesIn must be a non-empty array'
     });
   }
 
   if (!batteriesOut || !Array.isArray(batteriesOut) || batteriesOut.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'batteriesOut phải là mảng không rỗng'
+      message: 'batteriesOut must be a non-empty array'
     });
   }
 
   if (batteriesIn.length !== batteriesOut.length) {
     return res.status(400).json({
       success: false,
-      message: 'Số lượng batteriesIn phải bằng batteriesOut'
+      message: 'The number of batteriesIn must be equal to batteriesOut'
     });
   }
 
@@ -1104,7 +1104,7 @@ async function getAvailableBatteries(req, res) {
     if (!station_id || !battery_type_id || !quantity) {
       return res.status(400).json({
         success: false,
-        message: 'station_id, battery_type_id, quantity là bắt buộc'
+        message: 'station_id, battery_type_id, quantity are required'
       });
     }
 
@@ -1146,7 +1146,7 @@ async function getAvailableBatteries(req, res) {
     console.error('❌ Error in getAvailableBatteries:', error);
     return res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy danh sách pin sẵn sàng',
+      message: 'Error while fetching available batteries',
       error: error.message
     });
   }
@@ -1160,7 +1160,7 @@ async function getEmptySlots(req, res) {
     if (!station_id) {
       return res.status(400).json({
         success: false,
-        message: 'station_id là bắt buộc'
+        message: 'station_id is required'
       });
     }
 
@@ -1172,7 +1172,7 @@ async function getEmptySlots(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Lấy danh sách slot trống thành công',
+      message: 'Successfully retrieved empty slots list',
       data: {
         station_id: parseInt(station_id),
         total_empty_slots: emptySlots.length,
@@ -1189,7 +1189,7 @@ async function getEmptySlots(req, res) {
     console.error('❌ Error in getEmptySlots:', error);
     return res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy danh sách slot trống',
+      message: 'Error while fetching empty slots',
       error: error.message
     });
   }
