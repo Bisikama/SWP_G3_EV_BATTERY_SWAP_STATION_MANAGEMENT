@@ -50,8 +50,61 @@ async function getEmptySlots(station_id, cabinet_id = null) {
  */
 async function validateBatteryInsertion(slotUpdates, station_id = null, vehicle_id = null) {
   try {
+     // ✅ BƯỚC 1: Kiểm tra duplicate slot_id và battery_id TRƯỚC KHI validate chi tiết
+    const slotIds = slotUpdates.map(update => update.slot_id);
+    const batteryIds = slotUpdates.map(update => update.battery_id);
+
     const results = [];
     let allValid = true;
+
+    // Kiểm tra slot_id trùng lặp
+    const duplicateSlots = slotIds.filter((id, index) => slotIds.indexOf(id) !== index);
+    if (duplicateSlots.length > 0) {
+      const uniqueDuplicateSlots = [...new Set(duplicateSlots)];
+      
+      // Push chi tiết lỗi cho từng slot trùng
+      slotUpdates.forEach(update => {
+        if (uniqueDuplicateSlots.includes(update.slot_id)) {
+          results.push({
+            slot_id: update.slot_id,
+            battery_id: update.battery_id,
+            valid: false,
+            error: `Slot ${update.slot_id} bị trùng lặp. Mỗi slot chỉ được nhận một pin duy nhất.`
+          });
+        }
+      });
+
+      return {
+        allValid: false,
+        error: `Slot bị trùng lặp: ${uniqueDuplicateSlots.join(', ')}. Mỗi slot chỉ được nhận một pin duy nhất.`,
+        results
+      };
+    }
+
+    // Kiểm tra battery_id trùng lặp
+    const duplicateBatteries = batteryIds.filter((id, index) => batteryIds.indexOf(id) !== index);
+    if (duplicateBatteries.length > 0) {
+      const uniqueDuplicateBatteries = [...new Set(duplicateBatteries)];
+      
+      // Push chi tiết lỗi cho từng battery trùng
+      slotUpdates.forEach(update => {
+        if (uniqueDuplicateBatteries.includes(update.battery_id)) {
+          results.push({
+            slot_id: update.slot_id,
+            battery_id: update.battery_id,
+            valid: false,
+            error: `Battery ${update.battery_id} bị trùng lặp. Mỗi pin chỉ được đưa vào một slot duy nhất.`
+          });
+        }
+      });
+
+      return {
+        allValid: false,
+        error: `Pin bị trùng lặp: ${uniqueDuplicateBatteries.join(', ')}. Mỗi pin chỉ được đưa vào một slot duy nhất.`,
+        results
+      };
+    }
+
 
     for (const update of slotUpdates) {
       const { slot_id, battery_id } = update;
