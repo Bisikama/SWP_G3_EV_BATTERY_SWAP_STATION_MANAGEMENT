@@ -36,6 +36,30 @@ const getConfig = async (req, res, next) => {
   }
 };
 
+const getConfigBookingInterval = async (req, res, next) => {
+  try {
+    // Get cached config (no database query)
+    const config = routeConfig.getBookingExpiredInterval();    
+    if (!config) {
+      // If not loaded, load from database
+      const loadedConfig = await routeConfig.loadConfig();
+      return res.status(200).json({
+        success: true,
+        data: loadedConfig,
+        message: 'Configuration booking expired interval loaded successfully'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: config,
+      message: 'Configuration booking expired interval retrieved successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * Update system configuration
  */
@@ -215,5 +239,6 @@ module.exports = {
   getConfig,
   updateConfig,
   resetConfig,
-  getConfigValue
+  getConfigValue,
+  getConfigBookingInterval
 };
