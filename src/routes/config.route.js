@@ -60,6 +60,37 @@ router.get('/', verifyToken, authorizeRole('admin'), configController.getConfig)
 
 /**
  * @swagger
+ * /api/config/booking-interval:
+ *   get:
+ *     summary: Get booking expired interval configuration
+ *     tags: [Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Booking expired interval retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: integer
+ *                   description: Booking expiration interval in minutes
+ *                   example: 30
+ *                 message:
+ *                   type: string
+ *                   example: Configuration booking expired interval retrieved successfully
+ *       500:
+ *         description: Configuration not loaded
+ */
+router.get('/booking-interval', verifyToken, configController.getConfigBookingInterval);
+
+/**
+ * @swagger
  * /api/config/{key}:
  *   get:
  *     summary: Get specific configuration value by key
