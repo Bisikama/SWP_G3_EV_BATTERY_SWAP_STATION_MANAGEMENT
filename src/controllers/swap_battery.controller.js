@@ -399,7 +399,7 @@ async function executeSwapInternal(params, res) {
       
     }
 
-    // Bước 7: Update subscription.soh_usage và swap_count
+    // Bước 7: Update subscription swap_count
     console.log('\n📊 Step 7: Updating subscription soh_usage and swap_count...');
     
     const subscription = await db.Subscription.findOne({

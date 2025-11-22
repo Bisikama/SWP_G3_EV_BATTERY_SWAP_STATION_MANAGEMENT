@@ -7,4 +7,3 @@ build/
 .env
 
 #Bỏ qua file md
-*.md
