@@ -15,6 +15,9 @@ async function findAll(filters = {}, page = 1, pageSize = 10) {
   }
   delete filters.station_id;
 
+  if (filters.battery_serial) 
+    filters.battery_serial = { [db.Sequelize.Op.iLike]: `%${filters.battery_serial}%` };
+
   const options = {
     include: [
       { model: BatteryType, as: 'batteryType' },
