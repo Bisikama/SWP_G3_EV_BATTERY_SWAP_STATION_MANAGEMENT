@@ -1,52 +1,165 @@
+// Import service xử lý authentication logic (verify credentials, generate JWT token)
 const authService = require('../services/auth.service');
+
+// Import service xử lý user-related operations (query user data)
 const userService = require('../services/user.service');
+
+// Import database models
+// Account: Bảng lưu thông tin tài khoản (email, password_hash, role, etc.)
+// EmailChallenge: Bảng lưu mã xác thực email (OTP) cho register/reset password
 const { Account, EmailChallenge } = require('../models');
+
+// Import bcrypt để hash password
+// Bcrypt là thuật toán one-way hashing an toàn cho password
 const bcrypt = require('bcrypt');
+
+// Import crypto để hash verification code
+// Sử dụng SHA-256 để hash OTP code trước khi lưu vào database
 const crypto = require('crypto');
+
+// Import email utilities
+// generateVerificationCode: Tạo mã OTP 6 chữ số
+// sendVerificationEmail: Gửi email cho đăng ký
+// sendPasswordResetEmail: Gửi email reset password
+// sendPasswordChangeConfirmation: Gửi email xác nhận đã đổi password
 const { generateVerificationCode, sendVerificationEmail, sendPasswordResetEmail, sendPasswordChangeConfirmation } = require('../utils/emailService');
+
+// Số vòng lặp để generate bcrypt salt
+// 10 rounds = 2^10 = 1024 iterations, cân bằng giữa security và performance
 const SALT_ROUNDS = 10;
 
+/**
+ * Controller xử lý đăng nhập
+ * 
+ * Flow:
+ * 1. Lấy email và password từ request body
+ * 2. Normalize email (trim space và lowercase)
+ * 3. Gọi authService.authenticate() để verify credentials và tạo JWT token
+ * 4. Lấy thông tin account từ database
+ * 5. Trả về token và account info cho client
+ * 
+ * @param {Object} req.body - { email, password }
+ * @returns {Object} Response với token và account info
+ * @throws Error nếu credentials không hợp lệ (handled by authService)
+ */
 async function login(req, res) {
+	// Destructure email và password từ request body
+	// || {} để tránh error nếu req.body là undefined
 	let { email, password } = req.body || {};
-	// Normalize email: trim whitespace and convert to lowercase
+	
+	// Normalize email để đảm bảo tính nhất quán:
+	// - trim(): Loại bỏ khoảng trắng đầu/cuối (user có thể nhập nhầm)
+	// - toLowerCase(): Chuyển sang chữ thường (email không phân biệt hoa/thường)
+	// Ví dụ: "  Admin@Example.COM  " -> "admin@example.com"
 	email = email ? email.trim().toLowerCase() : email;
 	
+	// Gọi authService để:
+	// 1. Tìm account trong database theo email
+	// 2. So sánh password với password_hash bằng bcrypt.compare()
+	// 3. Nếu hợp lệ, generate JWT token với payload { account_id, email, role }
+	// 4. Throw error nếu credentials sai
 	const token = await authService.authenticate({ email, password });
+	
+	// Lấy thông tin đầy đủ của account từ database
+	// userService.findByEmail() trả về account object (không có password_hash)
 	const account = await userService.findByEmail(email);
+	
+	// Trả về response với:
+	// - success: true (để frontend dễ check)
+	// - payload: chứa token (để lưu vào localStorage/cookie) và account info (để hiển thị)
 	return res.status(200).json({
 		success: true,
 		payload: { token, account }
 	});
 }
 
-// logout: add token to blacklist (expects Authorization: Bearer <token>)
+/**
+ * Controller xử lý đăng xuất
+ * 
+ * Cơ chế: Thêm JWT token vào blacklist để vô hiệu hóa
+ * - Token vẫn còn valid về mặt signature và expiration
+ * - Nhưng bị reject bởi verifyToken middleware khi check blacklist
+ * - Ngăn chặn việc tái sử dụng token sau khi logout
+ * 
+ * @param {Object} req.headers.authorization - Format: "Bearer <token>"
+ * @returns {Object} Response xác nhận logout thành công
+ */
 async function logout(req, res) {
+	// Lấy Authorization header từ request
+	// || '' để tránh error nếu header không tồn tại
 	const auth = req.headers.authorization || '';
+	
+	// Tách chuỗi "Bearer <token>" thành array ["Bearer", "<token>"]
 	const parts = auth.split(' ');
+	
+	// Validate format của Authorization header:
+	// - Phải có đúng 2 phần ("Bearer" và token)
+	// - Phần đầu phải là chữ "Bearer"
+	// Nếu không đúng format, trả về 400 Bad Request
 	if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(400).json({ message: 'Invalid authorization header' });
+	
+	// Lấy token (phần thứ 2 sau "Bearer")
 	const token = parts[1];
+	
+	// Gọi authService.logout() để add token vào blacklist
+	// Blacklist thường được implement bằng:
+	// - In-memory Set (development)
+	// - Redis (production - persistent và distributed)
 	authService.logout(token);
+	
+	// Trả về success response
+	// Client nên xóa token khỏi localStorage/cookie sau khi nhận response này
 	return res.status(200).json({
 		success: true,
 		message: 'Logged out'
 	});
 }
 
+/**
+ * Controller xử lý đăng ký tài khoản mới - Step 3 (sau khi đã verify email)
+ * 
+ * Registration Flow (3 steps):
+ * 1. Client gọi requestEmailVerification() - gửi OTP qua email
+ * 2. Client gọi verifyEmailCode() - xác thực OTP
+ * 3. Client gọi register() - tạo account với thông tin đầy đủ
+ * 
+ * Security:
+ * - Email phải được verify trước (check EmailChallenge với used=true)
+ * - Password được hash bằng bcrypt với SALT_ROUNDS=10
+ * - Phone number được validate theo format Việt Nam
+ * - Response không bao gồm password_hash
+ * 
+ * @param {Object} req.body - { email, password, fullname, phone_number }
+ * @returns {Object} Response với account info (không có password)
+ */
 async function register(req, res) {
+	// Destructure các fields từ request body
 	let { email, password, fullname, phone_number } = req.body || {};
-	// Normalize email: trim whitespace and convert to lowercase
+	
+	// Normalize email để đảm bảo tính nhất quán
+	// Tất cả email trong database đều lowercase và không có space thừa
 	email = email ? email.trim().toLowerCase() : email;
 	
+	// Mặc định role là 'driver' cho user đăng ký
+	// Admin accounts được tạo trực tiếp trong database hoặc qua admin panel
 	const role = 'driver';
+	
+	// Validate required fields
+	// Email và password là bắt buộc để tạo account
 	if (!email || !password) {
 		return res.status(400).json({ message: 'Email and password are required' });
 	}
 
-	// Validate phone number format (Vietnamese phone numbers)
-	// Accepts:
-	// - 0901234567 (10 digits starting with 0)
-	// - +84901234567 (country code + 9 digits)
-	// - 84901234567 (country code without + prefix)
+	// Validate phone number format cho số điện thoại Việt Nam
+	// Regex pattern giải thích:
+	// - ^(\+84|84|0): Bắt đầu bằng +84, 84, hoặc 0
+	// - (3|5|7|8|9): Đầu số mạng (Viettel, Vinaphone, Mobifone, Vietnamobile)
+	// - \d{8}$: Theo sau là 8 chữ số
+	// 
+	// Ví dụ hợp lệ:
+	// - 0901234567 (10 chữ số, bắt đầu bằng 0)
+	// - +84901234567 (country code với dấu +)
+	// - 84901234567 (country code không có dấu +)
 	const phoneRegex = /^(\+84|84|0)(3|5|7|8|9)\d{8}$/;
 	if (phone_number && !phoneRegex.test(phone_number)) {
 		return res.status(400).json({ 
@@ -54,49 +167,72 @@ async function register(req, res) {
 		});
 	}
 
-	// Check if email already registered
+	// Kiểm tra email đã được đăng ký chưa
+	// Tìm account trong database với email này
 	const exists = await Account.findOne({ where: { email } });
 	if (exists) {
+		// Trả về 409 Conflict nếu email đã tồn tại
 		return res.status(409).json({ message: 'Email already registered' });
 	}
 
-	// Check if email is verified via EmailChallenge
+	// Kiểm tra email đã được verify chưa (2-step verification)
+	// Tìm EmailChallenge record với:
+	// - email: Email đang đăng ký
+	// - purpose: 'register' (phân biệt với 'reset_password')
+	// - used: true (đã được verify thành công ở verifyEmailCode())
+	// - order: Lấy record mới nhất (DESC = descending)
 	const verifiedChallenge = await EmailChallenge.findOne({
 		where: {
 			email,
 			purpose: 'register',
-			used: true // Must be marked as used after successful verification
+			used: true // Phải được mark là used sau khi verify code thành công
 		},
 		order: [['created_at', 'DESC']]
 	});
 
+	// Nếu không tìm thấy verified challenge, email chưa được verify
 	if (!verifiedChallenge) {
 		return res.status(400).json({
 			message: 'Email not verified. Please complete email verification first.',
-			requiresVerification: true
+			requiresVerification: true // Flag để frontend biết cần redirect đến verification page
 		});
 	}
 
-	// Check if verification was recent (within 1 hour after verification)
-	const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+	// Kiểm tra verification có còn valid không (trong vòng 1 giờ)
+	// Tránh trường hợp user verify email rồi để quá lâu mới đăng ký
+	// Security reason: Email có thể bị compromise trong thời gian chờ
+	const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour = 60 minutes * 60 seconds * 1000 ms
 	if (verifiedChallenge.created_at < oneHourAgo) {
+		// Verification đã quá 1 giờ, yêu cầu verify lại
 		return res.status(400).json({
 			message: 'Email verification expired. Please verify your email again.',
 			requiresVerification: true
 		});
 	}
 
-	// Create new account with full registration details
+	// Tạo account mới trong database
+	// Step 1: Hash password bằng bcrypt
+	// bcrypt.hash() thực hiện:
+	// 1. Generate random salt (dựa vào SALT_ROUNDS)
+	// 2. Mix salt với password
+	// 3. Apply bcrypt algorithm 2^10 = 1024 lần
+	// 4. Trả về hash string chứa cả salt và hash result
+	// Hash này không thể reverse (one-way function)
 	const hash = await bcrypt.hash(password, SALT_ROUNDS);
+	
+	// Step 2: Tạo record mới trong Accounts table
 	const newAccount = await Account.create({
-		email,
-		password_hash: hash,
-		fullname: fullname || 'User',
-		phone_number,
-		role,
-		status: 'active'
+		email,                              // Email đã normalized (lowercase, trimmed)
+		password_hash: hash,                // Bcrypt hash, không lưu plain password
+		fullname: fullname || 'User',       // Default là 'User' nếu không cung cấp
+		phone_number,                       // Đã được validate ở trên
+		role,                               // Mặc định 'driver'
+		status: 'active'                    // Account active ngay sau khi đăng ký
 	});
 
+	// Tạo safe account object để trả về cho client
+	// KHÔNG BAO GỒM password_hash vì lý do bảo mật
+	// Chỉ trả về các fields cần thiết cho frontend
 	const safeAccount = {
 		account_id: newAccount.account_id,
 		email: newAccount.email,
@@ -105,6 +241,9 @@ async function register(req, res) {
 		role: newAccount.role,
 		status: newAccount.status
 	};
+	
+	// Trả về 201 Created (resource mới được tạo thành công)
+	// Client có thể redirect user đến login page hoặc tự động login
 	return res.status(201).json({
 		success: true,
 		payload: { account: safeAccount }
