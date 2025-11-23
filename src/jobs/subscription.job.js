@@ -96,7 +96,7 @@ async function sendExpiryReminders() {
           association: 'driver',
           where: {
             email: ['nguyenminhbao28032000@gmail.com',
-              'hung1cr761@gmail.com'
+              'hung1cr761@gmail.com', 'minhbao28032005@gmail.com'
             ] // Chỉ lấy những driver có email
           },
           attributes: ['account_id', 'email', 'fullname']
